@@ -1027,6 +1027,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <div class="theme-menu-title" style="margin-top:6px;">Google Sheets Sync (dự phòng)</div>
         <button class="more-menu-item" id="btnGsToggle" type="button">🔌 Bật/Tắt Google Sheets Sync</button>
         <button class="more-menu-item" id="btnGsSetUrl" type="button">🔗 Nhập link Apps Script</button>
+        <button class="more-menu-item" id="btnGsPush" type="button">📤 Đẩy lên Google Sheets</button>
         <button class="more-menu-item" id="btnGsPull" type="button">📥 Tải từ Google Sheets</button>
       </div>
     </div>
@@ -1127,9 +1128,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
             <div class="field" style="flex:1;max-width:420px;">
               <label>Mác thuốc <span style="font-weight:400;color:var(--muted);">— tuỳ chọn, VD: SX NDT-3-16/1 lô 09/26-VN</span></label>
               <div class="input-wrapper">
-                <input type="text" id="batchInput" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off" list="batchOptions">
+                <input type="text" id="batchInput" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off">
                 <button type="button" class="btn-clear-input btn-clear-input-line" id="btnClearBatchInput" title="Xóa mác thuốc">✕</button>
               </div>
+              <div class="combo-list" id="batchCombo" style="display:none;"></div>
             </div>
             <div class="field small">
               <label>Giờ chấm</label>
@@ -1228,9 +1230,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <div class="field" style="flex:1;min-width:200px;">
           <label>Mác thuốc chung <span style="font-weight:400;color:var(--muted);">— áp cho tất cả công đoạn</span></label>
           <div class="input-wrapper">
-            <input type="text" id="msDefaultBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off" list="batchOptions">
+            <input type="text" id="msDefaultBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off">
             <button type="button" class="btn-clear-input btn-clear-input-line" id="btnClearMsDefaultBatch" title="Xóa mác thuốc chung">✕</button>
           </div>
+          <div class="combo-list" id="msDefaultBatchCombo" style="display:none;"></div>
         </div>
         <div class="field small" style="justify-content:flex-end;">
           <label>&nbsp;</label>
@@ -1505,7 +1508,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Mác thuốc <span style="font-weight:400;color:var(--muted);">— tuỳ chọn, VD: SX NDT-3-16/1 lô 09/26-VN</span></label>
-      <input type="text" id="editBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" list="batchOptions">
+      <input type="text" id="editBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN">
+      <div class="combo-list" id="editBatchCombo" style="display:none;"></div>
     </div>
     <div class="field" style="margin-bottom:8px;position:relative;">
       <label>➕ Thêm người vào nhóm này</label>
@@ -1629,7 +1633,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Mác thuốc đích <span style="font-weight:400;color:var(--muted);">— tuỳ chọn</span></label>
-      <input type="text" id="splitBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off" list="batchOptions">
+      <input type="text" id="splitBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off">
+      <div class="combo-list" id="splitBatchCombo" style="display:none;"></div>
     </div>
     <div class="field small" style="margin-bottom:14px;max-width:160px;">
       <label>Hệ số công <span style="font-weight:400;color:var(--muted);">— mặc định 1</span></label>
@@ -1676,7 +1681,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="field" style="margin-bottom:14px;">
       <label>Mác thuốc <span style="font-weight:400;color:var(--muted);">— tuỳ chọn</span></label>
-      <input type="text" id="notCheckedBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off" list="batchOptions">
+      <input type="text" id="notCheckedBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off">
+      <div class="combo-list" id="notCheckedBatchCombo" style="display:none;"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnCloseNotChecked" type="button">Đóng</button>
@@ -2110,7 +2116,51 @@ function renderBatchOptions(){
   if(!dl) return;
   const list = [...state.customBatches].sort((a,b)=>a.localeCompare(b,'vi'));
   dl.innerHTML = list.map(b=>`<option value="${b.replace(/"/g,'&quot;')}"></option>`).join('');
+  // Vẽ lại mọi ô gợi ý mác thuốc (combo-list tự làm bằng JS) đang mở, để danh sách luôn cập nhật mới nhất
+  document.querySelectorAll('[data-batch-combo]').forEach(combo=>{
+    if(combo.style.display !== 'none') renderBatchComboFor(combo);
+  });
 }
+
+// ================= GỢI Ý MÁC THUỐC (combo-list tự vẽ bằng JS — chạy ổn định trên MỌI trình duyệt/điện thoại,
+// không phụ thuộc <datalist> gốc vốn hay bị Android/iOS không hiện gợi ý) =================
+function renderBatchComboFor(combo){
+  const inputEl = combo.__batchInputEl;
+  if(!inputEl) return;
+  const q = normalize(inputEl.value.trim());
+  const list = [...state.customBatches].sort((a,b)=>a.localeCompare(b,'vi'));
+  const matches = list.filter(b => !q || normalize(b).includes(q));
+  combo.innerHTML = matches.length
+    ? matches.map(b=>`<div class="opt" data-pick="${b.replace(/"/g,'&quot;')}"><span>${b}</span></div>`).join('')
+    : (list.length ? '<div class="empty">Không tìm thấy mác thuốc phù hợp</div>' : '<div class="empty">Chưa có mác thuốc nào được ghi nhớ — gõ rồi lưu để lần sau gợi ý</div>');
+  combo.style.display = 'block';
+  combo.querySelectorAll('[data-pick]').forEach(opt=>{
+    opt.onclick = ()=>{
+      inputEl.value = opt.dataset.pick;
+      combo.style.display = 'none';
+      inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+      inputEl.focus();
+    };
+  });
+}
+// Gắn 1 ô nhập mác thuốc với khung gợi ý combo-list tương ứng (bấm vào ô hoặc gõ đều hiện gợi ý ngay)
+function wireBatchCombo(inputId, comboId){
+  const inputEl = document.getElementById(inputId);
+  const combo = document.getElementById(comboId);
+  if(!inputEl || !combo) return;
+  combo.setAttribute('data-batch-combo','1');
+  combo.__batchInputEl = inputEl;
+  inputEl.addEventListener('focus', ()=> renderBatchComboFor(combo));
+  inputEl.addEventListener('input', ()=> renderBatchComboFor(combo));
+  document.addEventListener('click', (e)=>{
+    if(!inputEl.contains(e.target) && !combo.contains(e.target)) combo.style.display = 'none';
+  });
+}
+wireBatchCombo('batchInput', 'batchCombo');
+wireBatchCombo('msDefaultBatch', 'msDefaultBatchCombo');
+wireBatchCombo('editBatch', 'editBatchCombo');
+wireBatchCombo('splitBatch', 'splitBatchCombo');
+wireBatchCombo('notCheckedBatch', 'notCheckedBatchCombo');
 
 // ================= CHUYỂN TAB =================
 function switchTab(tab){
@@ -4952,6 +5002,18 @@ async function gsRead(sheetName, baseUrl){
   return await res.json();
 }
 
+// Ghi (đẩy) dữ liệu lên 1 "sheet". Dùng text/plain để tránh preflight CORS —
+// Apps Script vẫn đọc được nội dung JSON thật trong e.postData.contents.
+async function gsWrite(sheetName, data, baseUrl){
+  const res = await fetch(baseUrl, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body: JSON.stringify({ sheet: sheetName, data })
+  });
+  if(!res.ok) throw new Error('HTTP ' + res.status);
+  return await res.json();
+}
+
 async function pullFromGoogleSheets(){
   document.getElementById('moreMenu').classList.remove('open');
   if(!isGsEnabled()){
@@ -4960,28 +5022,57 @@ async function pullFromGoogleSheets(){
   }
   const baseUrl = getGsUrl();
   if(!baseUrl){ await customAlert('⚠️ Chưa có link Apps Script! Bấm "🔗 Nhập link Apps Script" trước.'); return; }
-  const ok = await customConfirm('Tải từ Google Sheets sẽ GHI ĐÈ danh sách nhân viên và bản ghi chấm công hiện tại. Tiếp tục?');
+  const ok = await customConfirm('Tải từ Google Sheets sẽ GHI ĐÈ danh sách nhân viên, bản ghi chấm công, mác thuốc và công đoạn hiện tại. Tiếp tục?');
   if(!ok) return;
   showToast('⏳ Đang tải từ Google Sheets...', 4000);
   try{
-    const [empData, recData] = await Promise.all([
+    const [empData, recData, batchData, stageData] = await Promise.all([
       gsRead('employees', baseUrl).catch(()=>null),
-      gsRead('records', baseUrl).catch(()=>null)
+      gsRead('records', baseUrl).catch(()=>null),
+      gsRead('batches', baseUrl).catch(()=>null),
+      gsRead('stages', baseUrl).catch(()=>null)
     ]);
     let got = [];
     if(Array.isArray(empData) && empData.length){ EMPLOYEES = empData; saveEmployeesLS(); got.push(empData.length + ' nhân viên'); }
     if(Array.isArray(recData) && recData.length){ state.records = recData; saveRecords(); got.push(recData.length + ' bản ghi'); }
-    if(!got.length){ await customAlert('⚠️ Không nhận được dữ liệu nào từ Google Sheets. Kiểm tra lại link Apps Script và tên các sheet (employees, records).'); return; }
+    if(Array.isArray(batchData) && batchData.length){ state.customBatches = batchData; saveBatches(); renderBatchOptions(); got.push(batchData.length + ' mác thuốc'); }
+    if(Array.isArray(stageData) && stageData.length){ state.customStages = stageData; saveStages(); got.push(stageData.length + ' công đoạn'); }
+    if(!got.length){ await customAlert('⚠️ Không nhận được dữ liệu nào từ Google Sheets. Kiểm tra lại link Apps Script và tên các sheet (employees, records, batches, stages).'); return; }
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); renderChips();
     showToast('✅ Đã tải: ' + got.join(', '));
   }catch(e){
-    await customAlert('❌ Lỗi tải từ Google Sheets:\n\n' + e.message + '\n\n👉 Kiểm tra: link Apps Script đã deploy đúng quyền "Anyone" chưa, và tên sheet có đúng "employees"/"records" không.');
+    await customAlert('❌ Lỗi tải từ Google Sheets:\n\n' + e.message + '\n\n👉 Kiểm tra: link Apps Script đã deploy đúng quyền "Anyone" chưa, và tên sheet có đúng "employees"/"records"/"batches"/"stages" không.');
+  }
+}
+
+async function pushToGoogleSheets(){
+  document.getElementById('moreMenu').classList.remove('open');
+  if(!isGsEnabled()){
+    await customAlert('⚠️ Google Sheets Sync đang TẮT.\n\n👉 Bấm "🔌 Bật/Tắt Google Sheets Sync" để bật trước (cần đã có link Apps Script).');
+    return;
+  }
+  const baseUrl = getGsUrl();
+  if(!baseUrl){ await customAlert('⚠️ Chưa có link Apps Script! Bấm "🔗 Nhập link Apps Script" trước.'); return; }
+  const ok = await customConfirm('Đẩy dữ liệu hiện tại (nhân viên, bản ghi, mác thuốc, công đoạn) lên Google Sheets sẽ GHI ĐÈ dữ liệu đang có trên Sheets. Tiếp tục?');
+  if(!ok) return;
+  showToast('⏳ Đang đẩy lên Google Sheets...', 4000);
+  try{
+    await Promise.all([
+      gsWrite('employees', EMPLOYEES, baseUrl),
+      gsWrite('records', state.records, baseUrl),
+      gsWrite('batches', state.customBatches, baseUrl),
+      gsWrite('stages', state.customStages, baseUrl)
+    ]);
+    showToast('✅ Đã đẩy dữ liệu (gồm mác thuốc, công đoạn) lên Google Sheets');
+  }catch(e){
+    await customAlert('❌ Lỗi đẩy lên Google Sheets:\n\n' + e.message + '\n\n👉 Kiểm tra: link Apps Script đã deploy đúng quyền "Anyone" và đã cập nhật code hỗ trợ ghi (doPost) chưa.');
   }
 }
 
 document.getElementById('btnGsToggle').addEventListener('click', toggleGoogleSheetsSync);
 document.getElementById('btnGsSetUrl').addEventListener('click', setGsUrl);
 document.getElementById('btnGsPull').addEventListener('click', pullFromGoogleSheets);
+document.getElementById('btnGsPush').addEventListener('click', pushToGoogleSheets);
 
 // ================= SAO LƯU / PHỤC HỒI (JSON — thay cho PWA/OCR để gọn) =================
 document.getElementById('btnBackup').onclick = ()=>{
