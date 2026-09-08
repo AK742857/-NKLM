@@ -158,6 +158,7 @@
   .combo-list .opt{padding:9px 12px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;}
   .combo-list .opt:hover{background:var(--amber-soft);}
   .combo-list .empty{padding:9px 12px;font-size:13px;color:var(--muted);}
+  .manage-tab-btn.active{background:var(--amber);color:#fff;border-color:var(--amber);}
 
   /* ================= Lịch mini ================= */
   #workDateDisplay{cursor:pointer;background:#fdfdfb;}
@@ -1278,6 +1279,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <div class="selected-bar" id="journalBulkBar" style="display:none;background:var(--amber-soft);padding:8px 12px;border-radius:10px;">
         <span>Đã chọn <b id="journalSelCount">0</b> công đoạn đang hiển thị</span>
         <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <button class="btn btn-primary" id="btnBulkEditModal" type="button" style="padding:8px 12px;">✏️ Sửa hàng loạt (ngày/ca/công đoạn/mác thuốc)</button>
           <button class="btn btn-ghost" id="btnBulkNote" type="button" style="padding:8px 12px;">📝 Ghi chú</button>
           <button class="btn btn-danger-sm" id="btnBulkToLeave" type="button" style="padding:8px 12px;">🌙 Chuyển sang Nghỉ phép / Ốm</button>
           <select id="bulkShiftSelect" style="padding:8px;border-radius:8px;border:1px solid var(--line);">
@@ -1730,25 +1732,90 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 </div>
 
 <div class="modal-bg" id="stageManageModal">
-  <div class="modal" style="max-width:540px;">
-    <h3>Quản lý danh sách công đoạn</h3>
-    <p class="sub" style="margin-bottom:10px;">Sửa tên rồi bấm 💾 sẽ cập nhật cho toàn bộ dữ liệu đã chấm và mọi nơi chọn công đoạn trong hệ thống. Chỉ xóa được công đoạn chưa có ai chấm công.</p>
-    <div class="field" style="margin-bottom:8px;">
-      <input type="text" id="stageManageSearch" placeholder="Tìm công đoạn..." autocomplete="off">
+  <div class="modal" style="max-width:560px;">
+    <h3>Quản lý danh sách công đoạn &amp; mác thuốc</h3>
+    <div class="row" style="gap:6px;margin-bottom:10px;">
+      <button type="button" class="btn btn-ghost manage-tab-btn" data-managetab="stage" style="flex:1;">🏷️ Công đoạn</button>
+      <button type="button" class="btn btn-ghost manage-tab-btn" data-managetab="batch" style="flex:1;">💊 Mác thuốc</button>
     </div>
-    <div id="stageManageList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
-    <div class="row" style="margin-bottom:6px;">
-      <div class="field" style="flex:1;">
-        <label>➕ Thêm công đoạn mới</label>
-        <input type="text" id="stageManageNewInput" placeholder="Tên công đoạn mới...">
+
+    <div id="stageManagePane">
+      <p class="sub" style="margin-bottom:10px;">Sửa tên rồi bấm 💾 sẽ cập nhật cho toàn bộ dữ liệu đã chấm và mọi nơi chọn công đoạn trong hệ thống. Chỉ xóa được công đoạn chưa có ai chấm công.</p>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="text" id="stageManageSearch" placeholder="Tìm công đoạn..." autocomplete="off">
       </div>
-      <div class="field small" style="justify-content:flex-end;">
-        <label>&nbsp;</label>
-        <button class="btn btn-teal" id="btnStageManageAdd" type="button">Thêm</button>
+      <div id="stageManageList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+      <div class="row" style="margin-bottom:6px;">
+        <div class="field" style="flex:1;">
+          <label>➕ Thêm công đoạn mới</label>
+          <input type="text" id="stageManageNewInput" placeholder="Tên công đoạn mới...">
+        </div>
+        <div class="field small" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <button class="btn btn-teal" id="btnStageManageAdd" type="button">Thêm</button>
+        </div>
       </div>
     </div>
+
+    <div id="batchManagePane" style="display:none;">
+      <p class="sub" style="margin-bottom:10px;">Sửa tên rồi bấm 💾 sẽ cập nhật cho toàn bộ bản ghi đã chấm và mọi ô "Mác thuốc" trong hệ thống. Chỉ xóa được mác thuốc chưa gắn vào bản ghi nào.</p>
+      <div class="field" style="margin-bottom:8px;">
+        <input type="text" id="batchManageSearch" placeholder="Tìm mác thuốc..." autocomplete="off">
+      </div>
+      <div id="batchManageList" style="max-height:340px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+      <div class="row" style="margin-bottom:6px;">
+        <div class="field" style="flex:1;">
+          <label>➕ Thêm mác thuốc mới</label>
+          <input type="text" id="batchManageNewInput" placeholder="Tên mác thuốc mới...">
+        </div>
+        <div class="field small" style="justify-content:flex-end;">
+          <label>&nbsp;</label>
+          <button class="btn btn-teal" id="btnBatchManageAdd" type="button">Thêm</button>
+        </div>
+      </div>
+    </div>
+
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnCloseStageManage" type="button">Đóng</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="bulkEditModal">
+  <div class="modal" style="max-width:480px;">
+    <h3>Sửa hàng loạt <span id="bulkEditCount" style="font-weight:400;color:var(--muted);font-size:13px;"></span></h3>
+    <p class="sub" style="margin-bottom:12px;">Ô nào cần đổi thì điền/chọn — để trống thì giữ nguyên. Áp dụng cho tất cả dòng đang tích chọn.</p>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Ngày mới <span style="font-weight:400;color:var(--muted);">— để trống nếu không đổi</span></label>
+      <input type="date" id="bulkEditDate">
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Ca mới</label>
+      <select id="bulkEditShift"><option value="">— Không đổi —</option></select>
+    </div>
+    <div class="field" style="margin-bottom:12px;">
+      <label>Công đoạn mới <span style="font-weight:400;color:var(--muted);">— để trống nếu không đổi</span></label>
+      <input type="text" id="bulkEditStage" placeholder="Gõ để chọn nhanh hoặc để trống" autocomplete="off">
+      <div class="combo-list" id="bulkEditStageCombo" style="display:none;"></div>
+    </div>
+    <div class="field" style="margin-bottom:8px;">
+      <label>Mác thuốc mới <span style="font-weight:400;color:var(--muted);">— để trống nếu không đổi</span></label>
+      <input type="text" id="bulkEditBatch" placeholder="Gõ để chọn nhanh hoặc để trống" autocomplete="off">
+      <div class="combo-list" id="bulkEditBatchCombo" style="display:none;"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCancelBulkEdit" type="button">Hủy</button>
+      <button class="btn btn-primary" id="btnConfirmBulkEdit" type="button">Áp dụng</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="dayColleaguesModal">
+  <div class="modal" style="max-width:420px;">
+    <h3 id="dayColleaguesTitle">Nhân sự làm cùng ngày</h3>
+    <div id="dayColleaguesList" style="max-height:360px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnCloseDayColleagues" type="button">Đóng</button>
     </div>
   </div>
 </div>
@@ -3449,6 +3516,78 @@ async function bulkApplyShift(newShift){
   showToast(`Đã đổi ca thành "${newShift}" cho ${groups.length} công đoạn`);
 }
 
+// ================= Nhật ký: SỬA HÀNG LOẠT (ngày / ca / công đoạn / mác thuốc) cho các dòng đang tích chọn =================
+const bulkEditModal = document.getElementById('bulkEditModal');
+const bulkEditShiftSel = document.getElementById('bulkEditShift');
+bulkEditShiftSel.innerHTML = '<option value="">— Không đổi —</option>' + SHIFT_LIST_ALL.map(s=>`<option value="${s}">${s}</option>`).join('');
+
+document.getElementById('btnBulkEditModal').onclick = ()=>{
+  if(state.selectedJournalGroups.size===0) return;
+  const groups = groupRecords(getFilteredRecords()).filter(g=>state.selectedJournalGroups.has(g.key));
+  const totalPeople = groups.reduce((sum,g)=>sum+g.records.length,0);
+  document.getElementById('bulkEditCount').textContent = `— ${groups.length} công đoạn, ${totalPeople} lượt chấm`;
+  document.getElementById('bulkEditDate').value = '';
+  bulkEditShiftSel.value = '';
+  document.getElementById('bulkEditStage').value = '';
+  document.getElementById('bulkEditBatch').value = '';
+  bulkEditModal.classList.add('show');
+};
+document.getElementById('btnCancelBulkEdit').onclick = ()=> bulkEditModal.classList.remove('show');
+document.getElementById('btnConfirmBulkEdit').onclick = async ()=>{
+  const groups = groupRecords(getFilteredRecords()).filter(g=>state.selectedJournalGroups.has(g.key));
+  if(!groups.length){ bulkEditModal.classList.remove('show'); return; }
+  const newDate = document.getElementById('bulkEditDate').value;
+  const newShift = bulkEditShiftSel.value;
+  const newStage = document.getElementById('bulkEditStage').value.trim();
+  const newBatch = document.getElementById('bulkEditBatch').value.trim();
+  if(!newDate && !newShift && !newStage && !newBatch){ showToast('Chưa chọn/nhập gì để đổi'); return; }
+  const totalPeople = groups.reduce((sum,g)=>sum+g.records.length,0);
+  const changes = [];
+  if(newDate) changes.push('ngày '+fmtDate(newDate));
+  if(newShift) changes.push(`ca "${newShift}"`);
+  if(newStage) changes.push(`công đoạn "${newStage}"`);
+  if(newBatch) changes.push(`mác thuốc "${newBatch}"`);
+  if(!(await customConfirm(`Đổi ${changes.join(', ')} cho ${groups.length} công đoạn (${totalPeople} lượt chấm) đang chọn?`))) return;
+  if(newStage && !allStages().some(s=>normalize(s)===normalize(newStage))) state.customStages.push(newStage);
+  if(newBatch) rememberBatch(newBatch);
+  const ids = new Set(groups.flatMap(g=>g.records.map(r=>r.id)));
+  state.records.forEach(r=>{
+    if(!ids.has(r.id)) return;
+    if(newDate) r.date = newDate;
+    if(newShift) r.shift = newShift;
+    if(newStage) r.stage = newStage;
+    if(newBatch) r.batch = newBatch;
+  });
+  saveRecords();
+  if(newStage) saveStages();
+  state.selectedJournalGroups.clear();
+  bulkEditModal.classList.remove('show');
+  renderStats(); renderRecords(); renderAnalytics();
+  showToast(`Đã cập nhật ${groups.length} công đoạn đang chọn`);
+};
+// Combo gợi ý công đoạn riêng cho modal Sửa hàng loạt (chỉ điền vào ô, không đụng đến state.currentStage)
+function wireStageTextCombo(inputId, comboId){
+  const inputEl = document.getElementById(inputId);
+  const combo = document.getElementById(comboId);
+  if(!inputEl || !combo) return;
+  function render(){
+    const q = normalize(inputEl.value.trim());
+    const matches = allStages().filter(s=>!q || normalize(s).includes(q));
+    combo.innerHTML = matches.length
+      ? matches.map(s=>`<div class="opt" data-pick="${s.replace(/"/g,'&quot;')}"><span>${s}</span></div>`).join('')
+      : '<div class="empty">Không tìm thấy — gõ tên mới để tạo công đoạn mới</div>';
+    combo.style.display = 'block';
+    combo.querySelectorAll('[data-pick]').forEach(opt=>{
+      opt.onclick = ()=>{ inputEl.value = opt.dataset.pick; combo.style.display='none'; inputEl.dispatchEvent(new Event('input',{bubbles:true})); };
+    });
+  }
+  inputEl.addEventListener('focus', render);
+  inputEl.addEventListener('input', render);
+  document.addEventListener('click', (e)=>{ if(!inputEl.contains(e.target) && !combo.contains(e.target)) combo.style.display = 'none'; });
+}
+wireStageTextCombo('bulkEditStage', 'bulkEditStageCombo');
+wireBatchCombo('bulkEditBatch', 'bulkEditBatchCombo');
+
 function renderRecords(){
   const body = document.getElementById('recordsBody');
   const groups = groupRecords(getFilteredRecords());
@@ -3958,9 +4097,82 @@ document.getElementById('btnStageManageAdd').onclick = ()=>{
 };
 document.getElementById('btnCloseStageManage').onclick = ()=> stageManageModal.classList.remove('show');
 document.getElementById('statStagesCard').onclick = ()=>{
+  switchManageTab('stage');
   document.getElementById('stageManageSearch').value = '';
   renderStageManageList();
   stageManageModal.classList.add('show');
+};
+
+// ================= QUẢN LÝ MÁC THUỐC (chung 1 modal với Công đoạn, chuyển bằng tab) =================
+function switchManageTab(tab){
+  document.querySelectorAll('.manage-tab-btn').forEach(b=> b.classList.toggle('active', b.dataset.managetab===tab));
+  document.getElementById('stageManagePane').style.display = tab==='stage' ? '' : 'none';
+  document.getElementById('batchManagePane').style.display = tab==='batch' ? '' : 'none';
+  if(tab==='batch'){ document.getElementById('batchManageSearch').value=''; renderBatchManageList(); }
+}
+document.querySelectorAll('.manage-tab-btn').forEach(btn=>{
+  btn.onclick = ()=> switchManageTab(btn.dataset.managetab);
+});
+
+function renderBatchManageList(){
+  const q = normalize(document.getElementById('batchManageSearch').value.trim());
+  const batches = [...state.customBatches].sort((a,b)=>a.localeCompare(b,'vi')).filter(b=>!q || normalize(b).includes(q));
+  const listEl = document.getElementById('batchManageList');
+  listEl.innerHTML = batches.length ? batches.map(b=>{
+    const count = state.records.filter(r=>r.batch===b).length;
+    return `<div class="stage-manage-row" data-batch="${b.replace(/"/g,'&quot;')}">
+      <input type="text" class="stage-manage-input">
+      <span class="stage-manage-count">${count} lượt</span>
+      <button type="button" class="stage-manage-save" style="display:none;">💾 Lưu</button>
+      <button type="button" class="stage-manage-del">🗑</button>
+    </div>`;
+  }).join('') : '<div class="empty-state">Không tìm thấy mác thuốc nào.</div>';
+
+  listEl.querySelectorAll('.stage-manage-row').forEach(row=>{
+    const orig = row.dataset.batch;
+    const input = row.querySelector('.stage-manage-input');
+    input.value = orig;
+    const saveBtn = row.querySelector('.stage-manage-save');
+    const delBtn = row.querySelector('.stage-manage-del');
+    input.addEventListener('input', ()=>{
+      saveBtn.style.display = input.value.trim() && input.value.trim() !== orig ? 'inline-flex' : 'none';
+    });
+    saveBtn.onclick = ()=>{
+      const newName = input.value.trim();
+      if(!newName){ showToast('Tên mác thuốc không được để trống'); return; }
+      if(normalize(newName) !== normalize(orig) && state.customBatches.some(b=>normalize(b)===normalize(newName))){
+        showToast('Đã có mác thuốc khác trùng tên này rồi'); return;
+      }
+      const idx = state.customBatches.indexOf(orig);
+      if(idx > -1) state.customBatches[idx] = newName;
+      state.records.forEach(r=>{ if(r.batch === orig) r.batch = newName; });
+      saveRecords(); saveBatches();
+      renderStats(); renderRecords(); renderAnalytics(); renderBatchOptions();
+      renderBatchManageList();
+      showToast(`Đã đổi "${orig}" thành "${newName}" trên toàn hệ thống`);
+    };
+    delBtn.onclick = async ()=>{
+      const count = state.records.filter(r=>r.batch===orig).length;
+      if(count > 0){ showToast(`Không thể xóa — mác thuốc "${orig}" đang gắn với ${count} bản ghi`); return; }
+      if(!(await customConfirm(`Xóa mác thuốc "${orig}" khỏi danh sách gợi ý?`))) return;
+      const idx = state.customBatches.indexOf(orig);
+      if(idx > -1) state.customBatches.splice(idx,1);
+      saveBatches();
+      renderBatchOptions(); renderBatchManageList();
+      showToast(`Đã xóa mác thuốc "${orig}"`);
+    };
+  });
+}
+document.getElementById('batchManageSearch').addEventListener('input', renderBatchManageList);
+document.getElementById('btnBatchManageAdd').onclick = ()=>{
+  const val = document.getElementById('batchManageNewInput').value.trim();
+  if(!val){ showToast('Nhập tên mác thuốc mới'); return; }
+  if(state.customBatches.some(b=>normalize(b)===normalize(val))){ showToast('Mác thuốc này đã có trong danh sách'); return; }
+  state.customBatches.push(val);
+  saveBatches();
+  document.getElementById('batchManageNewInput').value = '';
+  renderBatchOptions(); renderBatchManageList();
+  showToast(`Đã thêm mác thuốc "${val}"`);
 };
 
 // Bấm vào tên 1 người (VD ở Tổng quan 162) -> sang Nhật ký, lọc riêng toàn bộ công ca / công đoạn của người đó (bỏ lọc ngày)
@@ -4477,9 +4689,9 @@ function renderMiniCalendar(records, cursorDate){
     const g = workedDates.get(iso);
     const isToday = isCurrentMonth && d===today.getDate();
     if(g){
-      html += `<div class="mini-cal-day worked${isToday?' today':''}" style="background:${g.bg};border-color:${g.color};color:${g.color};">${d}<span class="mini-cal-badge" style="background:${g.color};">${g.abbr}</span></div>`;
+      html += `<div class="mini-cal-day worked${isToday?' today':''}" data-date="${iso}" style="background:${g.bg};border-color:${g.color};color:${g.color};cursor:pointer;" title="Bấm để xem ai làm cùng ngày">${d}<span class="mini-cal-badge" style="background:${g.color};">${g.abbr}</span></div>`;
     } else {
-      html += `<div class="mini-cal-day${isToday?' today':''}">${d}</div>`;
+      html += `<div class="mini-cal-day${isToday?' today':''}" data-date="${iso}" style="cursor:pointer;" title="Bấm để xem ai làm cùng ngày">${d}</div>`;
     }
   }
   return `<div class="mini-cal">${html}</div>`;
@@ -4525,10 +4737,10 @@ function renderPersonalReport(){
     <p class="sub" style="margin:12px 0 4px;">Chi tiết từng ngày:</p>
     <div style="overflow-x:auto;">
       <table class="roster-table">
-        <thead><tr><th>Ngày</th><th>Ca</th><th>Công đoạn</th></tr></thead>
+        <thead><tr><th>Ngày</th><th>Ca</th><th>Công đoạn</th><th>Mác thuốc</th></tr></thead>
         <tbody>
-          ${records.map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${r.shift||''}</td><td>${r.stage||''}</td></tr>`).join('')
-            || '<tr><td colspan="3" style="text-align:center;padding:14px;color:var(--muted);">Không có bản ghi trong kỳ đã chọn.</td></tr>'}
+          ${records.map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${r.shift||''}</td><td>${r.stage||''}</td><td style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.batch ? r.batch : '—'}</td></tr>`).join('')
+            || '<tr><td colspan="4" style="text-align:center;padding:14px;color:var(--muted);">Không có bản ghi trong kỳ đã chọn.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -4536,6 +4748,34 @@ function renderPersonalReport(){
   const chartEl = document.getElementById('personalShiftChart');
   if(chartEl) renderShiftBarChart(chartEl, records);
 }
+document.getElementById('personalReportArea').addEventListener('click', (e)=>{
+  const cell = e.target.closest('.mini-cal-day[data-date]');
+  if(cell) showDayColleagues(cell.dataset.date);
+});
+function showDayColleagues(iso){
+  const recsAll = state.records.filter(r=>r.date===iso);
+  const myStages = [...new Set(recsAll.filter(r=>r.code===state.personalCode).map(r=>r.stage))];
+  document.getElementById('dayColleaguesTitle').textContent = `👥 Cùng công đoạn ngày ${fmtDate(iso)}`;
+  const listEl = document.getElementById('dayColleaguesList');
+  if(!myStages.length){
+    listEl.innerHTML = '<div class="empty-state">Ngày này không có công đoạn nào để đối chiếu.</div>';
+  } else {
+    listEl.innerHTML = myStages.map(stage=>{
+      // Gộp theo mã người (tránh trùng nếu 1 người có nhiều dòng cùng công đoạn trong ngày, VD 2 ca)
+      const byCode = new Map();
+      recsAll.filter(r=>r.stage===stage).forEach(r=>{ if(!byCode.has(r.code)) byCode.set(r.code, r); });
+      const others = [...byCode.values()].filter(r=>r.code !== state.personalCode)
+        .sort((a,b)=>a.short.localeCompare(b.short,'vi'));
+      const pills = others.map(r=>`<span class="person-pill">${r.short} <small>${r.code}</small></span>`).join(' ');
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">🏭 <b style="color:var(--ink);">${stage}</b> — ${byCode.size} người</div>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills || '<span class="sub" style="margin:0;">Chỉ có mình bạn.</span>'}</div>
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('dayColleaguesModal').classList.add('show');
+}
+document.getElementById('btnCloseDayColleagues').onclick = ()=> document.getElementById('dayColleaguesModal').classList.remove('show');
 wireRangeNav({ toggleId:'personalRangeToggle', prevId:'personalMonthPrev', nextId:'personalMonthNext', labelId:'personalMonthLabel', navId:'personalMonthNav', cursor:personalCursor, onChange:renderPersonalReport });
 
 // ================= ĐỒNG BỘ QUA CLOUDFLARE WORKER (an toàn — trình duyệt KHÔNG còn giữ GitHub Token) =================
