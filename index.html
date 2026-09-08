@@ -2189,6 +2189,18 @@ function renderBatchOptions(){
   });
 }
 
+// Định vị khung gợi ý theo position:fixed dựa trên vị trí ô input trên màn hình —
+// để khung gợi ý KHÔNG bị cắt mất khi ô input nằm bên trong 1 modal có overflow-y:auto
+// (nếu để position:absolute mặc định, khung có thể bị khung modal che/clip khi ô input ở gần cuối modal).
+function positionComboFixed(inputEl, combo){
+  const r = inputEl.getBoundingClientRect();
+  combo.style.position = 'fixed';
+  combo.style.left = r.left + 'px';
+  combo.style.top = (r.bottom + 4) + 'px';
+  combo.style.width = r.width + 'px';
+  combo.style.right = 'auto';
+}
+
 // ================= GỢI Ý MÁC THUỐC (combo-list tự vẽ bằng JS — chạy ổn định trên MỌI trình duyệt/điện thoại,
 // không phụ thuộc <datalist> gốc vốn hay bị Android/iOS không hiện gợi ý) =================
 function renderBatchComboFor(combo){
@@ -2200,6 +2212,7 @@ function renderBatchComboFor(combo){
   combo.innerHTML = matches.length
     ? matches.map(b=>`<div class="opt" data-pick="${b.replace(/"/g,'&quot;')}"><span>${b}</span></div>`).join('')
     : (list.length ? '<div class="empty">Không tìm thấy mác thuốc phù hợp</div>' : '<div class="empty">Chưa có mác thuốc nào được ghi nhớ — gõ rồi lưu để lần sau gợi ý</div>');
+  positionComboFixed(inputEl, combo);
   combo.style.display = 'block';
   combo.querySelectorAll('[data-pick]').forEach(opt=>{
     opt.onclick = ()=>{
@@ -2222,6 +2235,8 @@ function wireBatchCombo(inputId, comboId){
   document.addEventListener('click', (e)=>{
     if(!inputEl.contains(e.target) && !combo.contains(e.target)) combo.style.display = 'none';
   });
+  // Cuộn modal chứa ô input (nếu có) khi cửa sổ đổi cỡ/cuộn để khung gợi ý luôn bám đúng vị trí ô input
+  window.addEventListener('scroll', ()=>{ if(combo.style.display!=='none') positionComboFixed(inputEl, combo); }, true);
 }
 wireBatchCombo('batchInput', 'batchCombo');
 wireBatchCombo('msDefaultBatch', 'msDefaultBatchCombo');
@@ -3576,6 +3591,7 @@ function wireStageTextCombo(inputId, comboId){
     combo.innerHTML = matches.length
       ? matches.map(s=>`<div class="opt" data-pick="${s.replace(/"/g,'&quot;')}"><span>${s}</span></div>`).join('')
       : '<div class="empty">Không tìm thấy — gõ tên mới để tạo công đoạn mới</div>';
+    positionComboFixed(inputEl, combo);
     combo.style.display = 'block';
     combo.querySelectorAll('[data-pick]').forEach(opt=>{
       opt.onclick = ()=>{ inputEl.value = opt.dataset.pick; combo.style.display='none'; inputEl.dispatchEvent(new Event('input',{bubbles:true})); };
@@ -4754,22 +4770,39 @@ document.getElementById('personalReportArea').addEventListener('click', (e)=>{
 });
 function showDayColleagues(iso){
   const recsAll = state.records.filter(r=>r.date===iso);
-  const myStages = [...new Set(recsAll.filter(r=>r.code===state.personalCode).map(r=>r.stage))];
+  const myRecs = recsAll.filter(r=>r.code===state.personalCode);
+  const myStages = [...new Set(myRecs.map(r=>r.stage))];
   document.getElementById('dayColleaguesTitle').textContent = `👥 Cùng công đoạn ngày ${fmtDate(iso)}`;
   const listEl = document.getElementById('dayColleaguesList');
   if(!myStages.length){
     listEl.innerHTML = '<div class="empty-state">Ngày này không có công đoạn nào để đối chiếu.</div>';
   } else {
     listEl.innerHTML = myStages.map(stage=>{
-      // Gộp theo mã người (tránh trùng nếu 1 người có nhiều dòng cùng công đoạn trong ngày, VD 2 ca)
-      const byCode = new Map();
-      recsAll.filter(r=>r.stage===stage).forEach(r=>{ if(!byCode.has(r.code)) byCode.set(r.code, r); });
-      const others = [...byCode.values()].filter(r=>r.code !== state.personalCode)
-        .sort((a,b)=>a.short.localeCompare(b.short,'vi'));
-      const pills = others.map(r=>`<span class="person-pill">${r.short} <small>${r.code}</small></span>`).join(' ');
-      return `<div style="margin-bottom:10px;">
-        <div style="font-size:12px;color:var(--muted);margin-bottom:5px;">🏭 <b style="color:var(--ink);">${stage}</b> — ${byCode.size} người</div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills || '<span class="sub" style="margin:0;">Chỉ có mình bạn.</span>'}</div>
+      // Gộp theo (mã người + ca) — tránh trùng nếu 1 người có nhiều dòng cùng ca/công đoạn trong ngày
+      const seen = new Set();
+      const rows = [];
+      recsAll.filter(r=>r.stage===stage).forEach(r=>{
+        const k = r.code+'|'+r.shift;
+        if(seen.has(k)) return;
+        seen.add(k); rows.push(r);
+      });
+      const totalPeople = new Set(rows.map(r=>r.code)).size;
+      const myShiftsHere = new Set(myRecs.filter(r=>r.stage===stage).map(r=>r.shift));
+      const byShift = new Map();
+      rows.forEach(r=>{ if(!byShift.has(r.shift)) byShift.set(r.shift, []); byShift.get(r.shift).push(r); });
+      const shiftBlocks = [...byShift.entries()].map(([shift, people])=>{
+        const isMine = myShiftsHere.has(shift);
+        const others = people.filter(r=>r.code !== state.personalCode).sort((a,b)=>a.short.localeCompare(b.short,'vi'));
+        const pills = others.map(r=>`<span class="person-pill">${r.short} <small>${r.code}</small></span>`).join(' ')
+          || '<span class="sub" style="margin:0;">Chỉ có mình bạn.</span>';
+        return `<div style="margin:5px 0 5px 12px;">
+          <div style="font-size:11px;margin-bottom:3px;${isMine?'color:var(--amber-dark);font-weight:600;':'color:var(--muted);'}">⏱ ${shift||'—'}${isMine?' · ca của bạn':''} — ${people.length} người</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px;">${pills}</div>
+        </div>`;
+      }).join('');
+      return `<div style="margin-bottom:8px;">
+        <div style="font-size:12px;color:var(--muted);">🏭 <b style="color:var(--ink);">${stage}</b> — ${totalPeople} người</div>
+        ${shiftBlocks}
       </div>`;
     }).join('');
   }
