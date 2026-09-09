@@ -1693,15 +1693,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <input type="text" id="notCheckedSearch" placeholder="Tìm tên/mã..." autocomplete="off">
       </div>
     </div>
-    <div class="field" style="margin-bottom:8px;">
+    <div class="field admin-only" style="margin-bottom:8px;">
       <label>Chọn nhanh theo tổ/nhóm đã lưu <span style="font-weight:400;color:var(--muted);">— tuỳ chọn</span></label>
       <select id="notCheckedTeamSelect">
         <option value="">— Chọn tổ/nhóm —</option>
       </select>
     </div>
+    <p class="sub public-only" style="margin:0 0 10px;">🔒 Đang ở chế độ chỉ xem — đăng nhập Admin để chấm công nhanh cho người còn thiếu.</p>
 
-    <div id="leaveInfoLine" class="sub" style="margin-bottom:6px;min-height:14px;"></div>
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+    <div id="leaveInfoLine" class="sub admin-only" style="margin-bottom:6px;min-height:14px;"></div>
+    <div class="admin-only" style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
       <button class="btn-edit-sm" id="btnNotCheckedSelectAll" type="button">☑️ Chọn tất cả hiển thị</button>
       <button class="btn-edit-sm" id="btnNotCheckedClearSel" type="button">Bỏ chọn</button>
       <button class="btn-edit-sm" id="btnNotCheckedMarkLeave" type="button" title="Loại các ô đã chọn khỏi danh sách 'thiếu' vì đã nghỉ phép">🏖️ Đánh dấu nghỉ phép</button>
@@ -1709,7 +1710,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div id="notCheckedList" style="max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:12px;"></div>
 
-    <div class="row" style="margin-bottom:6px;">
+    <div class="row admin-only" style="margin-bottom:6px;">
       <div class="field" style="flex:1;min-width:180px;position:relative;">
         <label>Công đoạn</label>
         <input type="text" id="notCheckedStage" list="notCheckedStageList" autocomplete="off">
@@ -1725,14 +1726,14 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         </select>
       </div>
     </div>
-    <div class="field" style="margin-bottom:14px;">
+    <div class="field admin-only" style="margin-bottom:14px;">
       <label>Mác thuốc <span style="font-weight:400;color:var(--muted);">— tuỳ chọn</span></label>
       <input type="text" id="notCheckedBatch" placeholder="VD: SX NDT-3-16/1 lô 09/26-VN" autocomplete="off">
       <div class="combo-list" id="notCheckedBatchCombo" style="display:none;"></div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnCloseNotChecked" type="button">Đóng</button>
-      <button class="btn btn-primary" id="btnConfirmNotChecked" type="button">✓ Chấm công cho đã chọn</button>
+      <button class="btn btn-primary admin-only" id="btnConfirmNotChecked" type="button">✓ Chấm công cho đã chọn</button>
     </div>
   </div>
 </div>
@@ -4180,30 +4181,41 @@ function renderMissingList(){
     listEl.innerHTML = filtered.length ? filtered.map(e=>{
       const key = e.code + '|' + iso;
       const checked = notCheckedSelected.has(key) ? 'checked' : '';
-      return `<label class="not-checked-row"><input type="checkbox" class="not-checked-check" data-key="${key}" ${checked}> ${e.short} <small style="color:var(--muted);">${e.full} · ${e.code}</small></label>`;
+      return isAdminV4
+        ? `<label class="not-checked-row"><input type="checkbox" class="not-checked-check" data-key="${key}" ${checked}> ${e.short} <small style="color:var(--muted);">${e.full} · ${e.code}</small></label>`
+        : `<div class="not-checked-row">${e.short} <small style="color:var(--muted);">${e.full} · ${e.code}</small></div>`;
     }).join('') : '<div class="empty-state">Mọi người đã được chấm công ngày này 🎉</div>';
-    listEl.querySelectorAll('.not-checked-check').forEach(cb=>{
-      cb.addEventListener('change', ()=>{
-        if(cb.checked) notCheckedSelected.add(cb.dataset.key); else notCheckedSelected.delete(cb.dataset.key);
-        updateNotCheckedSelCount();
+    if(isAdminV4){
+      listEl.querySelectorAll('.not-checked-check').forEach(cb=>{
+        cb.addEventListener('change', ()=>{
+          if(cb.checked) notCheckedSelected.add(cb.dataset.key); else notCheckedSelected.delete(cb.dataset.key);
+          updateNotCheckedSelCount();
+        });
       });
-    });
+    }
   } else {
     const today = new Date();
     const rangeLabel = `01/${String(today.getMonth()+1).padStart(2,'0')} — ${fmtDate(todayISO())}`;
     let data = computeMonthlyMissing();
     if(q) data = data.filter(({emp})=> normalize(emp.short).includes(q)||normalize(emp.full).includes(q)||normalize(emp.code).includes(q));
     infoEl.textContent = data.length ? `${rangeLabel}: còn ${data.length} người thiếu ngày chấm công.` : `${rangeLabel}: mọi người đã chấm công đầy đủ 🎉`;
-    listEl.innerHTML = data.length ? `<div class="sub" style="padding:2px 4px 8px;">Bấm tên để chọn/bỏ chọn cả người, bấm từng ngày để chọn riêng · <span style="color:#e5484d;">■</span> Chủ nhật</div>` +
+    listEl.innerHTML = data.length ? (isAdminV4
+        ? `<div class="sub" style="padding:2px 4px 8px;">Bấm tên để chọn/bỏ chọn cả người, bấm từng ngày để chọn riêng · <span style="color:#e5484d;">■</span> Chủ nhật</div>`
+        : `<div class="sub" style="padding:2px 4px 8px;"><span style="color:#e5484d;">■</span> Chủ nhật</div>`) +
       data.map(({emp, missing})=>{
         const chips = missing.map(iso=>{
           const key = emp.code + '|' + iso;
           let cls = 'mm-date-chip';
-          if(notCheckedSelected.has(key)) cls += ' sel';
+          if(isAdminV4 && notCheckedSelected.has(key)) cls += ' sel';
           if(isSunday(iso)) cls += ' sunday';
-          return `<button type="button" class="${cls}" data-code="${emp.code}" data-date="${iso}">${fmtDate(iso)}</button>`;
+          return isAdminV4
+            ? `<button type="button" class="${cls}" data-code="${emp.code}" data-date="${iso}">${fmtDate(iso)}</button>`
+            : `<span class="${cls}" style="cursor:default;">${fmtDate(iso)}</span>`;
         }).join('');
-        return `<div class="monthly-missing-row"><b class="mm-name-toggle" data-code="${emp.code}" title="Bấm để chọn/bỏ chọn tất cả ngày của người này">${emp.short}</b> <small style="color:var(--muted);">${emp.full} · ${emp.code}</small>
+        const nameHtml = isAdminV4
+          ? `<b class="mm-name-toggle" data-code="${emp.code}" title="Bấm để chọn/bỏ chọn tất cả ngày của người này">${emp.short}</b>`
+          : `<b>${emp.short}</b>`;
+        return `<div class="monthly-missing-row">${nameHtml} <small style="color:var(--muted);">${emp.full} · ${emp.code}</small>
           <div class="monthly-missing-dates">${chips}</div></div>`;
       }).join('') : '<div class="empty-state">🎉 Mọi người đã chấm công đầy đủ từ đầu tháng.</div>';
   }
@@ -4411,6 +4423,7 @@ document.getElementById('btnStageManageAdd').onclick = ()=>{
 };
 document.getElementById('btnCloseStageManage').onclick = ()=> stageManageModal.classList.remove('show');
 document.getElementById('statStagesCard').onclick = ()=>{
+  if(!isAdminV4){ showToast('🔒 Đăng nhập Admin để quản lý công đoạn'); return; }
   switchManageTab('stage');
   document.getElementById('stageManageSearch').value = '';
   renderStageManageList();
