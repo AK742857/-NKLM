@@ -930,6 +930,27 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .more-menu-item:hover{background:var(--panel-soft);}
   .sync-status-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 14px;font-size:11.5px;color:var(--muted);background:var(--panel-soft,var(--bg));border-bottom:1px solid var(--line);}
   .sync-status-bar button{border:1px solid var(--line);background:var(--card,#fff);border-radius:7px;padding:4px 9px;font-size:11.5px;color:var(--ink);font-family:inherit;cursor:pointer;white-space:nowrap;}
+  /* ---- chấm trạng thái xanh/đỏ cho các tính năng đồng bộ ---- */
+  .sync-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#9aa0a6;vertical-align:middle;flex:none;}
+  .sync-dot.dot-green{background:#2ea043;}
+  .sync-dot.dot-red{background:#e5484d;}
+  .sync-dot.dot-amber{background:#f0a020;}
+  .sync-dot.dot-gray{background:#9aa0a6;}
+  /* ---- Nhật ký thao tác ---- */
+  .activity-log-row{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;line-height:1.5;}
+  .activity-log-row:last-child{border-bottom:none;}
+  .activity-log-time{color:var(--muted);font-size:11px;display:block;}
+  /* ---- Tổng hợp chưa chấm cả tháng ---- */
+  .monthly-missing-row{padding:8px 10px;border-bottom:1px solid var(--line);font-size:12.5px;}
+  .monthly-missing-row:last-child{border-bottom:none;}
+  .monthly-missing-dates{color:var(--muted);font-size:11.5px;margin-top:4px;display:flex;flex-wrap:wrap;gap:5px;}
+  .mm-name-toggle{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;}
+  .mm-date-chip{border:1px solid var(--line);background:var(--card,#fff);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--ink);font-family:inherit;cursor:pointer;line-height:1.6;}
+  .mm-date-chip.sunday{background:#fdeceb;border-color:#e5484d;color:#b42318;}
+  .mm-date-chip.sel{background:var(--amber-soft,#fdeecb);border-color:var(--amber,#d99a1f);font-weight:700;color:var(--amber-dark,#8a5a00);}
+  .seg-btn{flex:1;padding:9px 10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;border-radius:8px;cursor:pointer;text-align:center;}
+  .seg-btn:hover{filter:brightness(0.98);}
+  .seg-btn.active{background:var(--amber-soft);border-color:var(--amber);color:var(--amber-dark);}
   body:not(.public-mode) .public-only{display:none!important;}
   .ms-suggest-list{position:absolute;left:0;right:0;top:100%;z-index:50;background:var(--card,#fff);border:1px solid var(--line);border-radius:0 0 8px 8px;max-height:220px;overflow-y:auto;box-shadow:0 6px 16px rgba(0,0,0,.08);}
   .ms-suggest-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line);}
@@ -1018,18 +1039,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <button class="more-menu-item" id="btnOpenEmpManage" type="button">👥 Quản lý nhân viên</button>
         <button class="more-menu-item" id="btnBackup" type="button">💾 Sao lưu</button>
         <button class="more-menu-item" id="btnRestore" type="button">📂 Phục hồi</button>
-        <div class="theme-menu-title" style="margin-top:6px;">Đồng bộ (qua Worker riêng — an toàn)</div>
+        <div class="theme-menu-title" style="margin-top:6px;display:flex;align-items:center;gap:6px;">Đồng bộ (qua Worker riêng — an toàn) <span class="sync-dot dot-gray" id="dotWorkerSync" title="Trạng thái kết nối máy chủ đồng bộ"></span></div>
         <button class="more-menu-item" id="btnGhUpload" type="button">☁️ Lưu lên máy chủ</button>
         <button class="more-menu-item" id="btnGhDownload" type="button">📥 Tải bản mới nhất</button>
         <button class="more-menu-item" id="btnSetWorkerUrl" type="button">🌐 Nhập địa chỉ Worker</button>
-        <button class="more-menu-item" id="btnGhSetToken" type="button">🔑 Nhập khóa đồng bộ</button>
+        <button class="more-menu-item" id="btnGhSetToken" type="button" style="display:flex;align-items:center;justify-content:space-between;">🔑 Nhập khóa đồng bộ <span class="sync-dot dot-gray" id="dotSyncKey" title="Đã có khóa đồng bộ hay chưa"></span></button>
         <button class="more-menu-item" id="btnGhStatus" type="button">📊 Trạng thái đồng bộ</button>
         <button class="more-menu-item" id="btnGhClearToken" type="button">🗑 Xóa khóa đồng bộ</button>
-        <div class="theme-menu-title" style="margin-top:6px;">Google Sheets Sync (dự phòng)</div>
+        <div class="theme-menu-title" style="margin-top:6px;display:flex;align-items:center;gap:6px;">Google Sheets Sync (dự phòng) <span class="sync-dot dot-gray" id="dotGsSync" title="Google Sheets Sync đang bật hay tắt"></span></div>
         <button class="more-menu-item" id="btnGsToggle" type="button">🔌 Bật/Tắt Google Sheets Sync</button>
         <button class="more-menu-item" id="btnGsSetUrl" type="button">🔗 Nhập link Apps Script</button>
         <button class="more-menu-item" id="btnGsPush" type="button">📤 Đẩy lên Google Sheets</button>
         <button class="more-menu-item" id="btnGsPull" type="button">📥 Tải từ Google Sheets</button>
+        <div class="theme-menu-title" style="margin-top:6px;">Khác</div>
+        <button class="more-menu-item" id="btnOpenActivityLog" type="button">🗒️ Nhật ký thao tác</button>
       </div>
     </div>
     <input type="file" id="restoreFileInput" accept="application/json" style="display:none;">
@@ -1649,23 +1672,44 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   </div>
 </div>
 
-<!-- ============ MODAL: CHẤM NHANH NGƯỜI CHƯA CHẤM CÔNG HÔM NAY ============ -->
+<!-- ============ MODAL: CHẤM NHANH NGƯỜI CHƯA CHẤM CÔNG (1 luồng gộp: theo ngày / cả tháng) ============ -->
 <div class="modal-bg" id="notCheckedModal">
   <div class="modal" style="max-width:560px;">
-    <h3>Người chưa chấm công</h3>
+    <h3>⏰ Người chưa chấm công</h3>
     <p class="sub" id="notCheckedInfo" style="margin-bottom:10px;"></p>
-    <div class="field" style="margin-bottom:8px;">
-      <input type="text" id="notCheckedSearch" placeholder="Tìm tên/mã..." autocomplete="off">
+
+    <div style="display:flex;gap:6px;margin-bottom:10px;">
+      <button type="button" class="seg-btn active" id="btnModeDay" data-mode="day">🗓️ Theo ngày</button>
+      <button type="button" class="seg-btn" id="btnModeMonth" data-mode="month">📅 Cả tháng (từ ngày 01)</button>
     </div>
-    <div style="display:flex;justify-content:flex-end;margin-bottom:6px;">
-      <button class="btn-edit-sm" id="btnNotCheckedSelectAll" type="button">Chọn tất cả đang hiển thị</button>
-    </div>
-    <div id="notCheckedList" style="max-height:260px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:12px;"></div>
-    <div class="row" style="margin-bottom:6px;">
-      <div class="field small">
+
+    <div class="row" id="notCheckedDateRow" style="margin-bottom:6px;">
+      <div class="field small" style="width:130px;">
         <label>Ngày</label>
         <input type="date" id="notCheckedDate">
       </div>
+      <div class="field" style="flex:1;min-width:130px;">
+        <label>Tìm tên/mã</label>
+        <input type="text" id="notCheckedSearch" placeholder="Tìm tên/mã..." autocomplete="off">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:8px;">
+      <label>Chọn nhanh theo tổ/nhóm đã lưu <span style="font-weight:400;color:var(--muted);">— tuỳ chọn</span></label>
+      <select id="notCheckedTeamSelect">
+        <option value="">— Chọn tổ/nhóm —</option>
+      </select>
+    </div>
+
+    <div id="leaveInfoLine" class="sub" style="margin-bottom:6px;min-height:14px;"></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;flex-wrap:wrap;">
+      <button class="btn-edit-sm" id="btnNotCheckedSelectAll" type="button">☑️ Chọn tất cả hiển thị</button>
+      <button class="btn-edit-sm" id="btnNotCheckedClearSel" type="button">Bỏ chọn</button>
+      <button class="btn-edit-sm" id="btnNotCheckedMarkLeave" type="button" title="Loại các ô đã chọn khỏi danh sách 'thiếu' vì đã nghỉ phép">🏖️ Đánh dấu nghỉ phép</button>
+      <span class="sub" id="notCheckedSelCount" style="margin-left:auto;">Chưa chọn ai</span>
+    </div>
+    <div id="notCheckedList" style="max-height:300px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;padding:6px;margin-bottom:12px;"></div>
+
+    <div class="row" style="margin-bottom:6px;">
       <div class="field" style="flex:1;min-width:180px;position:relative;">
         <label>Công đoạn</label>
         <input type="text" id="notCheckedStage" list="notCheckedStageList" autocomplete="off">
@@ -1688,7 +1732,20 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnCloseNotChecked" type="button">Đóng</button>
-      <button class="btn btn-primary" id="btnConfirmNotChecked" type="button">✓ Chấm công cho người đã chọn</button>
+      <button class="btn btn-primary" id="btnConfirmNotChecked" type="button">✓ Chấm công cho đã chọn</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ MODAL: NHẬT KÝ THAO TÁC (ghi lại hoạt động từ khi đăng nhập) ============ -->
+<div class="modal-bg" id="activityLogModal">
+  <div class="modal" style="max-width:560px;">
+    <h3>🗒️ Nhật ký thao tác</h3>
+    <p class="sub" style="margin-bottom:10px;">Ghi lại các thao tác quan trọng (đăng nhập, đồng bộ, chấm công, sửa/xóa...) trong phiên làm việc này. Tự động chỉ giữ tối đa 300 dòng gần nhất.</p>
+    <div id="activityLogList" style="max-height:340px;overflow-y:auto;border:1px solid var(--line);border-radius:8px;margin-bottom:12px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="btnClearActivityLog" type="button">🗑 Xóa nhật ký</button>
+      <button class="btn btn-primary" id="btnCloseActivityLog" type="button">Đóng</button>
     </div>
   </div>
 </div>
@@ -1981,6 +2038,54 @@ function customPrompt(message, defaultValue=''){
     input.addEventListener('keydown', onKey);
   });
 }
+// ================= NHẬT KÝ THAO TÁC (ghi lại hành động kể từ khi đăng nhập, xóa linh hoạt để không phình bộ nhớ) =================
+const ACTIVITY_LOG_KEY = 'v4_activity_log';
+const ACTIVITY_LOG_MAX = 300; // chỉ giữ tối đa 300 dòng gần nhất, tự động cắt bớt dòng cũ
+function loadActivityLog(){
+  try{ return JSON.parse(localStorage.getItem(ACTIVITY_LOG_KEY) || '[]'); }catch(e){ return []; }
+}
+function saveActivityLog(list){
+  try{ localStorage.setItem(ACTIVITY_LOG_KEY, JSON.stringify(list)); }catch(e){}
+}
+function logActivity(msg){
+  try{
+    const list = loadActivityLog();
+    list.push({ t: new Date().toISOString(), msg: String(msg) });
+    while(list.length > ACTIVITY_LOG_MAX) list.shift();
+    saveActivityLog(list);
+    const badge = document.getElementById('tabBadgeActivityLog');
+    if(badge){ badge.style.display='inline-block'; badge.textContent = list.length; }
+    if(document.getElementById('activityLogModal')?.classList.contains('show')) renderActivityLog();
+  }catch(e){ /* ghi nhật ký không được cũng không làm hỏng thao tác chính */ }
+}
+function fmtActivityTime(iso){
+  const d = new Date(iso);
+  return d.toLocaleString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+function renderActivityLog(){
+  const listEl = document.getElementById('activityLogList');
+  if(!listEl) return;
+  const list = loadActivityLog();
+  listEl.innerHTML = list.length ? [...list].reverse().map(item=>
+    `<div class="activity-log-row"><span class="activity-log-time">${fmtActivityTime(item.t)}</span>${(item.msg||'').replace(/</g,'&lt;')}</div>`
+  ).join('') : '<div class="empty-state">Chưa có thao tác nào được ghi lại.</div>';
+}
+document.getElementById('btnOpenActivityLog').addEventListener('click', ()=>{
+  document.getElementById('moreMenu').classList.remove('open');
+  renderActivityLog();
+  document.getElementById('activityLogModal').classList.add('show');
+});
+document.getElementById('btnCloseActivityLog').addEventListener('click', ()=>{
+  document.getElementById('activityLogModal').classList.remove('show');
+});
+document.getElementById('btnClearActivityLog').addEventListener('click', async ()=>{
+  const ok = await customConfirm('Xóa toàn bộ nhật ký thao tác đã ghi trên máy này?');
+  if(!ok) return;
+  saveActivityLog([]);
+  renderActivityLog();
+  showToast('🗑 Đã xóa nhật ký thao tác');
+});
+
 // ================= ĐĂNG NHẬP ADMIN (mọi người xem được Thống kê/Tổng quan; các tab còn lại + Quản lý cần đăng nhập) =================
 // 👉 ĐỔI MẬT KHẨU: mật khẩu KHÔNG còn lưu dạng chữ thường trong code (ai "View Source" cũng đọc được).
 // Thay vào đó code chỉ lưu "mã băm SHA-256" của mật khẩu. Muốn đổi mật khẩu:
@@ -2109,6 +2214,7 @@ async function doLogin(){
     closeLoginGate();
     applyAccessMode();
     showToast('✅ Đã đăng nhập Admin');
+    logActivity('🔓 Đăng nhập Admin');
   } else {
     registerLoginFail();
     const remain = getLoginLockRemainSec();
@@ -2120,6 +2226,7 @@ async function doLogin(){
   }
 }
 function doLogout(){
+  logActivity('🔒 Đăng xuất');
   sessionStorage.removeItem('admin_logged_in');
   applyAccessMode();
   showToast('🔒 Đã đăng xuất — đang ở chế độ chỉ xem');
@@ -2295,11 +2402,15 @@ function renderThemeOptions(activeId){
     });
   });
 }
-function wireDropdownToggle(btnId, menuId){
+function wireDropdownToggle(btnId, menuId, onOpen){
   const btn = document.getElementById(btnId);
   const menu = document.getElementById(menuId);
   if(!btn || !menu) return;
-  btn.addEventListener('click', (e)=>{ e.stopPropagation(); menu.classList.toggle('open'); });
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    menu.classList.toggle('open');
+    if(menu.classList.contains('open') && typeof onOpen === 'function') onOpen();
+  });
   document.addEventListener('click', (e)=>{
     if(!menu.contains(e.target) && e.target !== btn) menu.classList.remove('open');
   });
@@ -2309,7 +2420,7 @@ function initThemePicker(){
   try{ saved = localStorage.getItem(LS_KEYS.theme) || 'titan'; }catch(e){}
   applyTheme(saved, {toast:false});
   wireDropdownToggle('btnThemePicker', 'themeMenu');
-  wireDropdownToggle('btnMoreMenu', 'moreMenu');
+  wireDropdownToggle('btnMoreMenu', 'moreMenu', ()=>{ if(typeof updateSyncDots==='function') updateSyncDots(); });
 }
 
 // Bật/tắt nhanh chế độ tối (dùng theme "muc" có sẵn làm nền tối, nhớ lại theme sáng trước đó để khôi phục)
@@ -3711,6 +3822,7 @@ document.getElementById('btnBulkDelete').onclick = async ()=>{
   saveRecords();
   renderStats(); renderRecords(); renderAnalytics();
   showToast(`Đã xóa ${groups.length} công đoạn đang chọn`);
+  logActivity(`🗑 Xóa hàng loạt: ${groups.length} công đoạn (${totalPeople} lượt chấm)`);
 };
 
 // ================= Nhật ký: ghi chú hàng loạt cho các dòng đang chọn =================
@@ -3728,10 +3840,12 @@ document.getElementById('btnBulkNote').onclick = async ()=>{
 document.getElementById('btnClearFilter').onclick = ()=>{ recordSearch.value=''; recordDateFilter.value=''; recordShiftFilter.value=''; state.selectedJournalGroups.clear(); renderRecords(); };
 document.getElementById('btnDeleteAll').onclick = async ()=>{
   if(await customConfirm('Xóa TOÀN BỘ nhật ký chấm công? Hành động này không thể hoàn tác.')){
+    const n = state.records.length;
     state.records = [];
     saveRecords();
     renderStats(); renderRecords(); renderAnalytics();
     showToast('Đã xóa toàn bộ nhật ký');
+    logActivity(`🗑 Xóa TOÀN BỘ nhật ký chấm công (${n} bản ghi)`);
   }
 };
 
@@ -3982,65 +4096,249 @@ document.getElementById('btnConfirmSplit').onclick = ()=>{
 };
 
 // ---- Chấm nhanh cho người chưa chấm công (bấm vào thẻ "Người đã chấm hôm nay") ----
+// GỘP 2 luồng cũ (theo ngày / cả tháng) thành 1 luồng duy nhất: cùng 1 danh sách chọn,
+// cùng 1 bộ Công đoạn·Ca·Mác thuốc, cùng 1 nút xác nhận — chỉ đổi "chế độ xem".
 const notCheckedModal = document.getElementById('notCheckedModal');
 const notCheckedStageList = document.getElementById('notCheckedStageList');
+const LEAVE_MARKS_KEY = 'v4_leave_marks';
+function loadLeaveMarks(){
+  try{ return new Set(JSON.parse(localStorage.getItem(LEAVE_MARKS_KEY) || '[]')); }catch(e){ return new Set(); }
+}
+function saveLeaveMarks(){ localStorage.setItem(LEAVE_MARKS_KEY, JSON.stringify([...leaveMarks])); }
+const leaveMarks = loadLeaveMarks(); // key: "code|iso" — đã đánh dấu nghỉ phép ngày đó, không tính là "thiếu"
+function isSunday(iso){ return new Date(iso+'T00:00:00').getDay() === 0; }
+
+let notCheckedMode = 'day'; // 'day' | 'month'
+const notCheckedSelected = new Set(); // key: "code|iso" — dùng CHUNG cho cả 2 chế độ xem
 
 function openNotCheckedModal(){
   const iso = workDateHidden.value || todayISO();
-  renderNotCheckedList(iso);
   document.getElementById('notCheckedDate').value = iso;
   document.getElementById('notCheckedStage').value = state.currentStage || '';
   document.getElementById('notCheckedShift').value = shiftSelectEl ? shiftSelectEl.value : '';
   document.getElementById('notCheckedBatch').value = '';
   document.getElementById('notCheckedSearch').value = '';
   notCheckedStageList.innerHTML = allStages().map(s=>`<option value="${s.replace(/"/g,'&quot;')}"></option>`).join('');
+  renderTeamSelectOptions();
+  notCheckedSelected.clear();
+  setNotCheckedMode('day');
   notCheckedModal.classList.add('show');
+  setTimeout(()=>{ const s = document.getElementById('notCheckedSearch'); if(s) s.focus(); }, 50);
 }
-function renderNotCheckedList(iso){
+function setNotCheckedMode(mode){
+  notCheckedMode = mode;
+  document.getElementById('btnModeDay').classList.toggle('active', mode==='day');
+  document.getElementById('btnModeMonth').classList.toggle('active', mode==='month');
+  document.getElementById('notCheckedDateRow').style.display = mode==='day' ? 'flex' : 'none';
+  notCheckedSelected.clear();
+  renderMissingList();
+}
+document.getElementById('btnModeDay').addEventListener('click', ()=> setNotCheckedMode('day'));
+document.getElementById('btnModeMonth').addEventListener('click', ()=> setNotCheckedMode('month'));
+
+// Tổng hợp người thiếu chấm công cả tháng (từ ngày 01 đến hôm nay), gộp theo tên + liệt kê rõ từng ngày
+function computeMonthlyMissing(){
+  const today = new Date();
+  const y = today.getFullYear(), monthIndex0 = today.getMonth(), dToday = today.getDate();
+  const isoForDay = (d)=> `${y}-${String(monthIndex0+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+  const result = [];
+  EMPLOYEES.forEach(e=>{
+    const missing = [];
+    for(let d=1; d<=dToday; d++){
+      const iso = isoForDay(d);
+      if(leaveMarks.has(e.code+'|'+iso)) continue; // đã đánh dấu nghỉ phép — không tính thiếu
+      if(!state.records.some(r=>r.date===iso && r.code===e.code)) missing.push(iso);
+    }
+    if(missing.length) result.push({ emp: e, missing });
+  });
+  result.sort((a,b)=> normalize(a.emp.short).localeCompare(normalize(b.emp.short)));
+  return result;
+}
+function getDayMissing(iso){
   const checkedCodes = new Set(state.records.filter(r=>r.date===iso).map(r=>r.code));
-  const notChecked = EMPLOYEES.filter(e=>!checkedCodes.has(e.code));
-  const q = normalize(document.getElementById('notCheckedSearch').value.trim());
-  const filtered = q ? notChecked.filter(e=>normalize(e.short).includes(q)||normalize(e.full).includes(q)||normalize(e.code).includes(q)) : notChecked;
-  document.getElementById('notCheckedInfo').textContent = `Ngày ${fmtDate(iso)}: còn ${notChecked.length}/${EMPLOYEES.length} người chưa chấm công.`;
-  const listEl = document.getElementById('notCheckedList');
-  listEl.innerHTML = filtered.length ? filtered.map(e=>
-    `<label class="not-checked-row"><input type="checkbox" class="not-checked-check" value="${e.code}"> ${e.short} <small style="color:var(--muted);">${e.full} · ${e.code}</small></label>`
-  ).join('') : '<div class="empty-state">Mọi người đã được chấm công ngày này 🎉</div>';
+  return EMPLOYEES.filter(e=> !checkedCodes.has(e.code) && !leaveMarks.has(e.code+'|'+iso));
 }
-document.getElementById('notCheckedSearch').addEventListener('input', ()=>{
-  renderNotCheckedList(document.getElementById('notCheckedDate').value || todayISO());
+function updateNotCheckedSelCount(){
+  const el = document.getElementById('notCheckedSelCount');
+  if(!el) return;
+  el.textContent = notCheckedSelected.size ? `✓ Đã chọn ${notCheckedSelected.size} lượt` : 'Chưa chọn ai';
+}
+function renderMissingList(){
+  const q = normalize(document.getElementById('notCheckedSearch').value.trim());
+  const listEl = document.getElementById('notCheckedList');
+  const infoEl = document.getElementById('notCheckedInfo');
+  const leaveEl = document.getElementById('leaveInfoLine');
+  leaveEl.innerHTML = leaveMarks.size ? `🏖️ Đã đánh dấu nghỉ phép: <b>${leaveMarks.size}</b> lượt · <span id="btnViewLeaveMarks" style="cursor:pointer;text-decoration:underline;">xem/hoàn tác</span>` : '';
+  const leaveLink = document.getElementById('btnViewLeaveMarks');
+  if(leaveLink) leaveLink.addEventListener('click', renderLeaveMarksPanel);
+
+  if(notCheckedMode === 'day'){
+    const iso = document.getElementById('notCheckedDate').value || todayISO();
+    const missing = getDayMissing(iso);
+    const filtered = q ? missing.filter(e=>normalize(e.short).includes(q)||normalize(e.full).includes(q)||normalize(e.code).includes(q)) : missing;
+    infoEl.textContent = `Ngày ${fmtDate(iso)}: còn ${missing.length}/${EMPLOYEES.length} người chưa chấm công.`;
+    listEl.innerHTML = filtered.length ? filtered.map(e=>{
+      const key = e.code + '|' + iso;
+      const checked = notCheckedSelected.has(key) ? 'checked' : '';
+      return `<label class="not-checked-row"><input type="checkbox" class="not-checked-check" data-key="${key}" ${checked}> ${e.short} <small style="color:var(--muted);">${e.full} · ${e.code}</small></label>`;
+    }).join('') : '<div class="empty-state">Mọi người đã được chấm công ngày này 🎉</div>';
+    listEl.querySelectorAll('.not-checked-check').forEach(cb=>{
+      cb.addEventListener('change', ()=>{
+        if(cb.checked) notCheckedSelected.add(cb.dataset.key); else notCheckedSelected.delete(cb.dataset.key);
+        updateNotCheckedSelCount();
+      });
+    });
+  } else {
+    const today = new Date();
+    const rangeLabel = `01/${String(today.getMonth()+1).padStart(2,'0')} — ${fmtDate(todayISO())}`;
+    let data = computeMonthlyMissing();
+    if(q) data = data.filter(({emp})=> normalize(emp.short).includes(q)||normalize(emp.full).includes(q)||normalize(emp.code).includes(q));
+    infoEl.textContent = data.length ? `${rangeLabel}: còn ${data.length} người thiếu ngày chấm công.` : `${rangeLabel}: mọi người đã chấm công đầy đủ 🎉`;
+    listEl.innerHTML = data.length ? `<div class="sub" style="padding:2px 4px 8px;">Bấm tên để chọn/bỏ chọn cả người, bấm từng ngày để chọn riêng · <span style="color:#e5484d;">■</span> Chủ nhật</div>` +
+      data.map(({emp, missing})=>{
+        const chips = missing.map(iso=>{
+          const key = emp.code + '|' + iso;
+          let cls = 'mm-date-chip';
+          if(notCheckedSelected.has(key)) cls += ' sel';
+          if(isSunday(iso)) cls += ' sunday';
+          return `<button type="button" class="${cls}" data-code="${emp.code}" data-date="${iso}">${fmtDate(iso)}</button>`;
+        }).join('');
+        return `<div class="monthly-missing-row"><b class="mm-name-toggle" data-code="${emp.code}" title="Bấm để chọn/bỏ chọn tất cả ngày của người này">${emp.short}</b> <small style="color:var(--muted);">${emp.full} · ${emp.code}</small>
+          <div class="monthly-missing-dates">${chips}</div></div>`;
+      }).join('') : '<div class="empty-state">🎉 Mọi người đã chấm công đầy đủ từ đầu tháng.</div>';
+  }
+  updateNotCheckedSelCount();
+}
+document.getElementById('notCheckedList').addEventListener('click', (e)=>{
+  if(notCheckedMode !== 'month') return;
+  const nameToggle = e.target.closest('.mm-name-toggle');
+  if(nameToggle){
+    const code = nameToggle.dataset.code;
+    const row = nameToggle.closest('.monthly-missing-row');
+    const chips = [...row.querySelectorAll('.mm-date-chip')];
+    const allSelected = chips.every(c=>notCheckedSelected.has(code+'|'+c.dataset.date));
+    chips.forEach(c=>{
+      const key = code + '|' + c.dataset.date;
+      if(allSelected){ notCheckedSelected.delete(key); c.classList.remove('sel'); }
+      else{ notCheckedSelected.add(key); c.classList.add('sel'); }
+    });
+    updateNotCheckedSelCount();
+    return;
+  }
+  const chip = e.target.closest('.mm-date-chip');
+  if(!chip) return;
+  const key = chip.dataset.code + '|' + chip.dataset.date;
+  if(notCheckedSelected.has(key)){ notCheckedSelected.delete(key); chip.classList.remove('sel'); }
+  else{ notCheckedSelected.add(key); chip.classList.add('sel'); }
+  updateNotCheckedSelCount();
 });
-document.getElementById('notCheckedDate').addEventListener('change', ()=>{
-  renderNotCheckedList(document.getElementById('notCheckedDate').value || todayISO());
-});
+function renderLeaveMarksPanel(){
+  const box = document.getElementById('notCheckedList');
+  if(!box) return;
+  const items = [...leaveMarks].map(key=>{
+    const sep = key.lastIndexOf('|');
+    const code = key.slice(0, sep), iso = key.slice(sep+1);
+    const emp = EMPLOYEES.find(e=>e.code===code);
+    return { key, code, iso, short: emp ? emp.short : code };
+  }).sort((a,b)=> a.iso===b.iso ? normalize(a.short).localeCompare(normalize(b.short)) : a.iso.localeCompare(b.iso));
+  box.innerHTML = `<div class="sub" style="padding:2px 4px 8px;">🏖️ Danh sách đã đánh dấu nghỉ phép (${items.length}) · <span id="btnBackToMissing" style="cursor:pointer;text-decoration:underline;">← quay lại danh sách thiếu</span></div>` +
+    (items.length ? items.map(it=>
+      `<div class="monthly-missing-row" style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span><b>${it.short}</b> <small style="color:var(--muted);">${fmtDate(it.iso)}</small></span>
+        <button type="button" class="btn-danger-sm" data-undo-leave="${it.key}" style="padding:3px 8px;">↩ Hoàn tác</button>
+      </div>`
+    ).join('') : '<div class="empty-state">Chưa có ngày nào được đánh dấu.</div>');
+  document.getElementById('btnBackToMissing').addEventListener('click', renderMissingList);
+  box.querySelectorAll('[data-undo-leave]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      leaveMarks.delete(btn.dataset.undoLeave);
+      saveLeaveMarks();
+      logActivity('↩ Hoàn tác đánh dấu nghỉ phép: ' + btn.dataset.undoLeave.replace('|', ' · '));
+      renderLeaveMarksPanel();
+    });
+  });
+}
+document.getElementById('notCheckedSearch').addEventListener('input', renderMissingList);
+document.getElementById('notCheckedDate').addEventListener('change', renderMissingList);
 document.getElementById('btnNotCheckedSelectAll').onclick = ()=>{
-  document.querySelectorAll('.not-checked-check').forEach(c=> c.checked = true);
+  if(notCheckedMode === 'day'){
+    document.querySelectorAll('.not-checked-check').forEach(c=>{ c.checked = true; notCheckedSelected.add(c.dataset.key); });
+  } else {
+    document.querySelectorAll('#notCheckedList .mm-date-chip').forEach(c=>{
+      notCheckedSelected.add(c.dataset.code + '|' + c.dataset.date);
+      c.classList.add('sel');
+    });
+  }
+  updateNotCheckedSelCount();
 };
+document.getElementById('btnNotCheckedClearSel').onclick = ()=>{
+  notCheckedSelected.clear();
+  renderMissingList();
+};
+document.getElementById('btnNotCheckedMarkLeave').addEventListener('click', async ()=>{
+  if(notCheckedSelected.size===0){ showToast('Chọn ít nhất 1 người (hoặc 1 ô) để đánh dấu nghỉ phép'); return; }
+  const n = notCheckedSelected.size;
+  const ok = await customConfirm(`Đánh dấu nghỉ phép cho ${n} lượt đã chọn? Các ngày này sẽ không còn hiện là "thiếu" nữa (không tạo bản ghi chấm công).`);
+  if(!ok) return;
+  notCheckedSelected.forEach(key=> leaveMarks.add(key));
+  saveLeaveMarks();
+  logActivity(`🏖️ Đánh dấu nghỉ phép cho ${n} lượt (người × ngày)`);
+  notCheckedSelected.clear();
+  renderMissingList();
+  showToast(`🏖️ Đã đánh dấu nghỉ phép cho ${n} lượt`);
+});
+// Chọn nhanh theo tổ/nhóm đã lưu (dùng lại danh sách savedTeams có sẵn của app)
+function renderTeamSelectOptions(){
+  const sel = document.getElementById('notCheckedTeamSelect');
+  if(!sel) return;
+  sel.innerHTML = '<option value="">— Chọn tổ/nhóm —</option>' + state.savedTeams.map((t,i)=>`<option value="${i}">${t.name} (${t.codes.length})</option>`).join('');
+}
+document.getElementById('notCheckedTeamSelect').addEventListener('change', function(){
+  const idx = this.value;
+  if(idx==='') return;
+  const team = state.savedTeams[+idx];
+  if(!team){ this.value=''; return; }
+  let added = 0;
+  if(notCheckedMode === 'day'){
+    const iso = document.getElementById('notCheckedDate').value || todayISO();
+    const missingCodes = new Set(getDayMissing(iso).map(e=>e.code));
+    team.codes.forEach(code=>{ if(missingCodes.has(code)){ notCheckedSelected.add(code+'|'+iso); added++; } });
+  } else {
+    computeMonthlyMissing().forEach(({emp, missing})=>{
+      if(team.codes.includes(emp.code)) missing.forEach(iso=>{ notCheckedSelected.add(emp.code+'|'+iso); added++; });
+    });
+  }
+  this.value = '';
+  renderMissingList();
+  showToast(added ? `Đã chọn thêm ${added} lượt từ tổ "${team.name}"` : `Tổ "${team.name}" không có ai đang thiếu chấm công`);
+});
 document.getElementById('btnCloseNotChecked').onclick = ()=> notCheckedModal.classList.remove('show');
 document.getElementById('btnConfirmNotChecked').onclick = ()=>{
-  const codes = [...document.querySelectorAll('.not-checked-check:checked')].map(c=>c.value);
-  if(!codes.length){ showToast('Chọn ít nhất 1 người'); return; }
-  const date = document.getElementById('notCheckedDate').value || todayISO();
+  if(notCheckedSelected.size===0){ showToast('Chọn ít nhất 1 người'); return; }
   const shift = document.getElementById('notCheckedShift').value;
   const stage = document.getElementById('notCheckedStage').value.trim();
   const batch = document.getElementById('notCheckedBatch').value.trim();
   rememberBatch(batch);
   if(!stage || !shift){ showToast('Vui lòng chọn đủ Công đoạn và Ca'); return; }
   if(!allStages().some(s=>normalize(s)===normalize(stage))) state.customStages.push(stage);
-  let added = 0, dup = 0;
-  codes.forEach(code=>{
+  let added = 0, dup = 0, skippedNoEmp = 0;
+  notCheckedSelected.forEach(key=>{
+    const sep = key.lastIndexOf('|');
+    const code = key.slice(0, sep), date = key.slice(sep+1);
     const emp = EMPLOYEES.find(e=>e.code===code);
-    if(!emp) return;
+    if(!emp){ skippedNoEmp++; return; }
     if(state.records.some(r=>r.date===date && r.shift===shift && r.stage===stage && r.code===code)){ dup++; return; }
     state.records.push({ id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time: nowHM(), mult: 1 });
     added++;
   });
   saveRecords(); saveStages();
   renderStats(); renderRecords(); renderAnalytics();
-  renderNotCheckedList(date);
-  let msg = `Đã chấm công cho ${added} người vào "${stage}" · ${shift}`;
-  if(dup) msg += ` (bỏ qua ${dup} người đã trùng)`;
-  showToast(msg, 4200);
+  notCheckedSelected.clear();
+  renderMissingList();
+  let msg = `✓ Đã chấm công cho ${added} lượt vào "${stage}" · ${shift}`;
+  if(dup) msg += ` (bỏ qua ${dup} đã trùng)`;
+  showToast(msg, 4500);
+  logActivity(`✓ Chấm nhanh ${added} lượt vào "${stage}" · ${shift}` + (dup?` (bỏ qua ${dup} trùng)`:''));
 };
 document.getElementById('statTodayPeopleCard').onclick = openNotCheckedModal;
 
@@ -4838,6 +5136,46 @@ function buildGithubBackupData(){
   };
 }
 
+// ---- Chấm trạng thái xanh/đỏ cho các tính năng đồng bộ: kiểm tra khóa + thử ping thật tới Worker ----
+async function pingWorker(){
+  if(!SYNC_WORKER_URL) return false;
+  try{
+    const res = await fetch(SYNC_WORKER_URL + '/ping', GITHUB_TOKEN ? { headers: { 'X-Sync-Key': GITHUB_TOKEN } } : {});
+    return res.ok;
+  }catch(e){ return false; }
+}
+async function updateSyncDots(){
+  const dotKey = document.getElementById('dotSyncKey');
+  const dotWorker = document.getElementById('dotWorkerSync');
+  const dotGs = document.getElementById('dotGsSync');
+  if(dotKey){
+    dotKey.className = 'sync-dot ' + (GITHUB_TOKEN ? 'dot-green' : 'dot-red');
+    dotKey.title = GITHUB_TOKEN ? 'Đã có khóa đồng bộ' : 'Chưa có khóa đồng bộ';
+  }
+  if(dotGs){
+    const gsOn = isGsEnabled() && !!getGsUrl();
+    dotGs.className = 'sync-dot ' + (gsOn ? 'dot-green' : 'dot-gray');
+    dotGs.title = gsOn ? 'Google Sheets Sync đang bật' : 'Google Sheets Sync đang tắt / chưa cấu hình';
+  }
+  if(dotWorker){
+    if(!SYNC_WORKER_URL){
+      dotWorker.className = 'sync-dot dot-red';
+      dotWorker.title = 'Chưa nhập địa chỉ Worker';
+      return;
+    }
+    if(!GITHUB_TOKEN){
+      dotWorker.className = 'sync-dot dot-amber';
+      dotWorker.title = 'Có địa chỉ Worker nhưng chưa có khóa đồng bộ';
+      return;
+    }
+    dotWorker.className = 'sync-dot dot-gray';
+    dotWorker.title = 'Đang kiểm tra kết nối...';
+    const ok = await pingWorker();
+    dotWorker.className = 'sync-dot ' + (ok ? 'dot-green' : 'dot-red');
+    dotWorker.title = ok ? 'Kết nối máy chủ đồng bộ OK' : 'Không kết nối được máy chủ đồng bộ';
+  }
+}
+
 async function setWorkerUrl(){
   const url = await customPrompt('🌐 Dán địa chỉ Worker (dạng https://ten-worker.xxx.workers.dev):', SYNC_WORKER_URL);
   if(url === null) return;
@@ -4845,6 +5183,8 @@ async function setWorkerUrl(){
   SYNC_WORKER_URL = trimmed;
   localStorage.setItem(SYNC_WORKER_URL_KEY, trimmed);
   showToast(trimmed ? '✅ Đã lưu địa chỉ Worker' : '🗑 Đã xóa địa chỉ Worker');
+  logActivity(trimmed ? `🌐 Đặt địa chỉ Worker: ${trimmed}` : '🌐 Xóa địa chỉ Worker');
+  updateSyncDots();
   document.getElementById('moreMenu').classList.remove('open');
 }
 
@@ -4868,6 +5208,8 @@ async function setGithubToken(){
   }catch(e){
     await customAlert('⚠️ Không gọi được Worker để kiểm tra khóa:\n\n' + e.message + '\n\n👉 Kiểm tra lại địa chỉ Worker.');
   }
+  logActivity('🔑 Nhập/cập nhật khóa đồng bộ');
+  updateSyncDots();
   document.getElementById('moreMenu').classList.remove('open');
 }
 
@@ -4887,6 +5229,8 @@ async function clearGithubToken(){
   GITHUB_TOKEN = '';
   sessionStorage.removeItem(GITHUB_TOKEN_KEY);
   showToast('Đã xóa khóa đồng bộ');
+  logActivity('🗑 Xóa khóa đồng bộ');
+  updateSyncDots();
   document.getElementById('moreMenu').classList.remove('open');
 }
 
@@ -4910,13 +5254,17 @@ async function uploadToGithub(){
     });
     if(res.ok){
       showToast('✅ Đã lưu lên máy chủ!');
+      logActivity('☁️ Lưu dữ liệu lên máy chủ — thành công');
     } else {
       const errData = await res.json().catch(()=>({}));
       await customAlert('❌ Lỗi khi lưu:\n\n' + (errData.error || ('HTTP ' + res.status)));
+      logActivity('❌ Lưu lên máy chủ thất bại: HTTP ' + res.status);
     }
   }catch(e){
     await customAlert('❌ Lỗi khi lưu:\n\n' + e.message);
+    logActivity('❌ Lưu lên máy chủ thất bại: ' + e.message);
   }
+  updateSyncDots();
 }
 
 async function loadFromGithub(){
@@ -4932,6 +5280,8 @@ async function loadFromGithub(){
     const res = await fetch(SYNC_WORKER_URL + '/data?t=' + Date.now(), { cache: 'no-store' });
     if(!res.ok){
       await customAlert('❌ Chưa tìm thấy dữ liệu (hoặc chưa từng "Lưu lên máy chủ" lần nào).');
+      logActivity('❌ Tải bản mới nhất thất bại: HTTP ' + res.status);
+      updateSyncDots();
       return;
     }
     const data = await res.json();
@@ -4944,9 +5294,12 @@ async function loadFromGithub(){
     saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS();
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
     showToast('✅ Đã tải dữ liệu mới nhất!');
+    logActivity('📥 Tải bản mới nhất từ máy chủ — thành công');
   }catch(e){
     await customAlert('❌ Lỗi tải dữ liệu:\n\n' + e.message);
+    logActivity('❌ Tải bản mới nhất thất bại: ' + e.message);
   }
+  updateSyncDots();
 }
 
 document.getElementById('btnGhUpload').addEventListener('click', uploadToGithub);
@@ -5030,7 +5383,12 @@ function addEmployee(code, short, full){
 
 function removeEmployee(code){
   const idx = EMPLOYEES.findIndex(e=>e.code===code);
-  if(idx>-1){ EMPLOYEES.splice(idx,1); refreshAllAfterEmployeeChange(); }
+  if(idx>-1){
+    const emp = EMPLOYEES[idx];
+    EMPLOYEES.splice(idx,1);
+    refreshAllAfterEmployeeChange();
+    logActivity(`👥 Xóa nhân viên: ${emp.short} (${emp.code})`);
+  }
 }
 
 // Phân tích CSV: hỗ trợ cột theo thứ tự "Mã,Tên tắt,Họ và tên" (linh hoạt dấu phẩy/tab/chấm phẩy),
@@ -5073,8 +5431,10 @@ async function importEmployeeCsvFile(file){
     });
     refreshAllAfterEmployeeChange();
     await customAlert(`✅ Đã import xong!\n\n➕ Thêm mới: ${added}\n⏭️ Bỏ qua (trùng mã/rỗng): ${skipped}`);
+    logActivity(`👥 Import CSV nhân viên: +${added} mới, bỏ qua ${skipped}`);
   }catch(e){
     await customAlert('❌ Lỗi đọc file CSV: ' + e.message);
+    logActivity('❌ Import CSV nhân viên thất bại: ' + e.message);
   }
 }
 
@@ -5138,6 +5498,7 @@ document.getElementById('btnEmpManageAdd').addEventListener('click', ()=>{
   document.getElementById('empManageNewFull').value = '';
   refreshAllAfterEmployeeChange();
   showToast('✅ Đã thêm nhân viên');
+  logActivity(`👥 Thêm nhân viên: ${short||full}`);
 });
 document.getElementById('btnEmpImportCsv').addEventListener('click', ()=>{
   document.getElementById('empCsvFileInput').click();
@@ -5247,6 +5608,7 @@ async function toggleGoogleSheetsSync(){
     if(!ok) return;
     localStorage.setItem(GS_ENABLED_KEY, 'false');
     showToast('🔌 Đã tắt Google Sheets Sync');
+    logActivity('🔌 Tắt Google Sheets Sync');
   } else {
     if(!getGsUrl()){
       await customAlert('⚠️ Chưa có link Apps Script!\n\n👉 Bấm "🔗 Nhập link Apps Script" trước để cấu hình.\n\nTính năng này là dự phòng — chỉ hoạt động khi bạn đã tự triển khai (deploy) một Google Apps Script Web App riêng cho Google Sheet của mình.');
@@ -5254,7 +5616,9 @@ async function toggleGoogleSheetsSync(){
     }
     localStorage.setItem(GS_ENABLED_KEY, 'true');
     showToast('🔌 Đã bật Google Sheets Sync');
+    logActivity('🔌 Bật Google Sheets Sync');
   }
+  updateSyncDots();
 }
 
 async function setGsUrl(){
@@ -5267,6 +5631,8 @@ async function setGsUrl(){
   }
   localStorage.setItem(GS_URL_KEY, trimmed);
   showToast(trimmed ? '✅ Đã lưu link Apps Script' : '🗑 Đã xóa link Apps Script');
+  logActivity(trimmed ? '🔗 Cập nhật link Apps Script' : '🔗 Xóa link Apps Script');
+  updateSyncDots();
 }
 
 async function gsRead(sheetName, baseUrl){
@@ -5313,8 +5679,10 @@ async function pullFromGoogleSheets(){
     if(!got.length){ await customAlert('⚠️ Không nhận được dữ liệu nào từ Google Sheets. Kiểm tra lại link Apps Script và tên các sheet (employees, records, batches, stages).'); return; }
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); renderChips();
     showToast('✅ Đã tải: ' + got.join(', '));
+    logActivity('📥 Tải từ Google Sheets — thành công: ' + got.join(', '));
   }catch(e){
     await customAlert('❌ Lỗi tải từ Google Sheets:\n\n' + e.message + '\n\n👉 Kiểm tra: link Apps Script đã deploy đúng quyền "Anyone" chưa, và tên sheet có đúng "employees"/"records"/"batches"/"stages" không.');
+    logActivity('❌ Tải từ Google Sheets thất bại: ' + e.message);
   }
 }
 
@@ -5337,8 +5705,10 @@ async function pushToGoogleSheets(){
       gsWrite('stages', state.customStages, baseUrl)
     ]);
     showToast('✅ Đã đẩy dữ liệu (gồm mác thuốc, công đoạn) lên Google Sheets');
+    logActivity('📤 Đẩy dữ liệu lên Google Sheets — thành công');
   }catch(e){
     await customAlert('❌ Lỗi đẩy lên Google Sheets:\n\n' + e.message + '\n\n👉 Kiểm tra: link Apps Script đã deploy đúng quyền "Anyone" và đã cập nhật code hỗ trợ ghi (doPost) chưa.');
+    logActivity('❌ Đẩy lên Google Sheets thất bại: ' + e.message);
   }
 }
 
@@ -5357,6 +5727,7 @@ document.getElementById('btnBackup').onclick = ()=>{
   a.click();
   URL.revokeObjectURL(url);
   showToast('Đã xuất file sao lưu');
+  logActivity('💾 Xuất file sao lưu dữ liệu');
   document.getElementById('moreMenu').classList.remove('open');
 };
 document.getElementById('btnRestore').onclick = ()=>{ document.getElementById('restoreFileInput').click(); document.getElementById('moreMenu').classList.remove('open'); };
@@ -5377,6 +5748,7 @@ document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
         saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS();
         renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
         showToast('Đã phục hồi dữ liệu');
+        logActivity('📂 Phục hồi dữ liệu từ file sao lưu');
       }
     }catch(err){ customAlert('File JSON không hợp lệ!'); }
   };
