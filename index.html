@@ -200,6 +200,7 @@
   .emp-row{display:flex;align-items:center;gap:10px;padding:8px 12px;border-bottom:1px solid var(--line);font-size:13.5px;}
   .emp-row:last-child{border-bottom:none;}
   .emp-row input{width:16px;height:16px;}
+  .emp-row .emp-stt{font-size:11px;color:var(--muted);width:26px;flex:none;text-align:right;font-family:'IBM Plex Mono',monospace;}
   .emp-row .emp-code{font-family:'IBM Plex Mono',monospace;color:var(--muted);font-size:11.5px;width:56px;flex:none;}
   .emp-row.checked{background:var(--teal-soft);}
   .textarea-wrapper{position:relative;flex:1;}
@@ -211,6 +212,24 @@
   .input-wrapper input[type=text]{padding-right:34px;width:100%;}
   .hint-icon{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:var(--line);color:var(--muted);font-size:11px;font-style:normal;cursor:help;margin-left:4px;position:relative;}
   .hint-icon:hover, .hint-icon:focus{background:var(--amber-soft);color:var(--amber-dark);}
+
+  /* ================= Gợi ý: chữ đang gõ to+đỏ hơn, khớp trong danh sách gợi ý cũng tô đỏ ================= */
+  .name-typed-highlight{color:var(--danger);font-weight:700;font-size:14.5px;}
+  .name-typed-highlight::placeholder{color:var(--muted);font-weight:400;font-style:italic;font-size:13px;}
+  .combo-list .opt .match-hl, .emp-row .match-hl{color:var(--danger);font-weight:800;font-size:1.1em;}
+
+  /* ================= Cảnh báo trùng ca — hộp chờ xử lý ================= */
+  .conflict-panel{margin:0 0 12px;border:1px solid var(--danger);border-radius:10px;overflow:hidden;background:var(--danger-soft);}
+  .conflict-panel-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 14px;background:transparent;border:none;cursor:pointer;font-size:13.5px;font-weight:700;color:var(--danger);text-align:left;}
+  .conflict-panel-toggle .chev{transition:transform .15s ease;}
+  .conflict-panel-toggle.open .chev{transform:rotate(180deg);}
+  .conflict-panel-body{padding:2px 14px 14px;}
+  .conflict-group{background:var(--card);border:1px solid var(--danger);border-radius:8px;padding:10px 12px;margin-top:10px;}
+  .conflict-group .cg-head{font-size:13px;font-weight:700;margin-bottom:8px;}
+  .conflict-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;border-top:1px dashed var(--line);}
+  .conflict-row:first-of-type{border-top:none;}
+  .conflict-row select{flex:1;min-width:110px;}
+  .conflict-row .cr-meta{font-size:12px;color:var(--muted);}
 
   /* ================= Dán danh sách nhiều người (nhận diện tự động) ================= */
   .bulk-paste-box{background:#fbfaf6;border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin:4px 0 14px;}
@@ -985,6 +1004,12 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .top-stage-list{list-style:none;padding:0;margin:8px 0 0;}
   .top-stage-list li{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px;}
   .top-stage-list li:last-child{border-bottom:none;}
+  .personal-extra-box{margin:14px 0;padding:10px 12px;border:1px dashed var(--line);border-radius:10px;background:var(--panel-soft);}
+  .trend-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding:14px 2px 0;}
+  .trend-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
+  .trend-bar-fill{width:70%;background:var(--amber);border-radius:4px 4px 0 0;min-height:2px;transition:height .2s ease;}
+  .trend-bar-val{font-size:9px;color:var(--muted);margin-bottom:2px;white-space:nowrap;}
+  .trend-bar-label{font-size:9px;color:var(--muted);margin-top:4px;}
 </style>
 </head>
 <body>
@@ -1094,6 +1119,15 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
   </div>
 
+  <!-- ============ CẢNH BÁO TRÙNG CA — chờ xử lý ============ -->
+  <div class="conflict-panel admin-only" id="conflictPanel" style="display:none;">
+    <button type="button" class="conflict-panel-toggle" id="conflictPanelToggle">
+      <span>⚠️ Trùng ca cần xử lý — <b id="conflictCount">0</b> trường hợp</span>
+      <span class="chev">▾</span>
+    </button>
+    <div class="conflict-panel-body" id="conflictPanelBody" style="display:none;"></div>
+  </div>
+
   <!-- ============ TAB: NHẬP ============ -->
   <section class="tab-panel" id="tab-entry">
     <div class="panel">
@@ -1138,7 +1172,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <select id="shiftSelect" style="display:none;">
           <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
           <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-          <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+          <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
         </select>
       </div>
 
@@ -1182,7 +1216,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
                   <span class="hint-icon" tabindex="0" title="Mỗi người 1 dòng (hoặc cách nhau bằng dấu phẩy). Nhận tên đầy đủ, tên ngắn, mã số, tên không dấu, thừa/thiếu dấu, viết tắt họ tên đệm, kể cả gõ sai chính tả nhẹ.">ⓘ</span>
                 </label>
                 <div class="textarea-wrapper">
-                  <textarea id="bulkNameInput" class="auto-textarea" rows="1" placeholder="VD dán vào đây:&#10;Bảy&#10;Z0601&#10;Nguyen Viet Cuong&#10;N.V. Cường&#10;Phùng Trọng Tuyển&#10;..."></textarea>
+                  <textarea id="bulkNameInput" class="auto-textarea name-typed-highlight" rows="1" placeholder="VD dán vào đây:&#10;Bảy&#10;Z0601&#10;Nguyen Viet Cuong&#10;N.V. Cường&#10;Phùng Trọng Tuyển&#10;..."></textarea>
                   <button type="button" class="btn-clear-input" id="btnClearBulkInput" title="Xóa nội dung đã dán và bỏ những người vừa nhận diện được">✕</button>
                 </div>
               </div>
@@ -1221,10 +1255,13 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       </div>
 
       <div class="field" style="margin-bottom:10px;">
-        <input type="text" id="empSearch" placeholder="Tìm theo tên, mã số...">
+        <input type="text" id="empSearch" class="name-typed-highlight" placeholder="Tìm theo tên, mã số...">
       </div>
 
       <div class="emp-list" id="empList"></div>
+      <div style="text-align:center;margin-top:6px;">
+        <button class="btn btn-ghost" id="btnToggleEmpList" type="button" style="padding:6px 14px;font-size:12px;display:none;"></button>
+      </div>
 
       <div style="margin-top:16px;display:flex;justify-content:flex-end;">
         <button class="btn btn-primary" id="btnSave" type="button" style="min-width:250px;">✓ XÁC NHẬN & LƯU CHẤM CÔNG</button>
@@ -1248,7 +1285,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
             <option value="">— Không chọn —</option>
             <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
             <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-            <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+            <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
           </select>
         </div>
         <div class="field" style="flex:1;min-width:200px;">
@@ -1266,7 +1303,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       </div>
       <div class="field" style="margin-bottom:10px;">
         <div class="textarea-wrapper">
-          <textarea id="multiStageInput" class="auto-textarea" style="min-height:170px;" placeholder="VD dán vào đây:&#10;Khử nước: P.Hội (NT), Q.Huy, Q.Long&#10;Keo hóa: N.Chiến (NT), Dương, Cường.a&#10;Bao gói đóng hòm (Ca 1): Lý (NT), L.Hiền, Ngân"></textarea>
+          <textarea id="multiStageInput" class="auto-textarea" style="min-height:170px;" placeholder="VD dán vào đây:&#10;Khử nước: P.Hội (NT), Q.Huy, Q.Long&#10;Keo hóa: N.Chiến (NT), Dương, Cường.a&#10;Bao gói đóng hòm (Ca 1): Lý (NT), L.Hiền, Ngân&#10;&#10;Hoặc dán nguyên khối có tiêu đề Ca / mác thuốc, hệ thống sẽ tự gán:&#10;II. CA 1&#10;1. SX NDT-3-16/1 lô 09/26&#10;Khử nước: Thức (NT), Q.Huy, L.Thành"></textarea>
           <button type="button" class="btn-clear-input" id="btnClearMultiStageInput" title="Xóa nội dung đã dán và kết quả đã phân tích">✕</button>
         </div>
       </div>
@@ -1352,7 +1389,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
             <option value="">Tất cả</option>
             <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
             <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-            <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+            <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
           </select>
         </div>
         <div class="field">
@@ -1372,7 +1409,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <h3 style="font-size:13.5px;margin:0 0 8px;">Top công đoạn nhiều lượt nhất</h3>
       <div id="stageRanking"></div>
 
-      <h3 style="font-size:13.5px;margin:18px 0 8px;">Bảng chấm công theo người (162 người)</h3>
+      <h3 style="font-size:13.5px;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>Bảng chấm công theo người (162 người)</span>
+        <button type="button" class="btn btn-ghost" id="btnToggleRoster" style="padding:4px 10px;font-size:11.5px;">🔼 Thu gọn</button>
+      </h3>
+      <div id="rosterSectionBody">
       <div id="rosterLegend" class="legend-row"></div>
       <div style="overflow-x:auto;margin-top:8px;">
         <table class="roster-table">
@@ -1380,12 +1421,28 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <tbody id="rosterTableBody"></tbody>
         </table>
       </div>
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn btn-ghost" id="btnToggleRosterRows" type="button" style="padding:6px 14px;font-size:12px;display:none;"></button>
+      </div>
+      </div>
       </div>
     </div>
   </section>
 
   <!-- ============ TAB: CÁ NHÂN (tab công khai duy nhất) ============ -->
   <section class="tab-panel active" id="tab-personal">
+    <div class="panel admin-only" id="personalExtraTogglePanel">
+      <h2>🆕 Nội dung mới cho tab Cá nhân</h2>
+      <p class="sub">Bật để TẤT CẢ mọi người (không chỉ admin) thấy thêm mục "Xu hướng công 12 tháng" khi tra cứu công cá nhân. Tắt thì mọi người chỉ thấy đúng như bản gốc — chỉ admin xem thử được (kèm nhãn cảnh báo).</p>
+      <button type="button" class="btn" id="btnTogglePersonalExtra" style="min-width:250px;"></button>
+      <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
+    </div>
+    <div class="panel admin-only" id="personalInsightsTogglePanel">
+      <h2>🆕 Nhận xét nhanh cho tab Cá nhân</h2>
+      <p class="sub">Bật để TẤT CẢ mọi người thấy thêm 3 mục khi tra cứu công cá nhân: (1) so với công trung bình của 162 người, (2) chuỗi ngày làm liên tục không nghỉ, (3) cảnh báo khi vắng liên tục nhiều ngày. Tắt thì mọi người chỉ thấy đúng như bản gốc — chỉ admin xem thử được (kèm nhãn cảnh báo).</p>
+      <button type="button" class="btn" id="btnTogglePersonalInsights" style="min-width:250px;"></button>
+      <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
+    </div>
     <div class="panel">
       <div class="stat-cards-row">
         <div class="stat-card"><div class="stat-card-num" id="statCardTotalRecords">0</div><div class="stat-card-label">Tổng bản ghi</div></div>
@@ -1406,28 +1463,38 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <div id="aggregateShiftChart"></div>
     </div>
     <div class="panel">
-      <h2>👤 Tra cứu công cá nhân</h2>
+      <h2 style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <span>👤 Tra cứu công cá nhân</span>
+        <button type="button" class="btn btn-ghost" id="btnTogglePersonalLookup" style="padding:5px 12px;font-size:12px;">🔽 Mở rộng</button>
+      </h2>
       <p class="sub">Gõ tên hoặc mã NV để xem các ngày đã chấm công của người đó.</p>
 
-      <div class="field" style="margin-bottom:10px;position:relative;">
-        <label>Tìm nhân viên</label>
-        <input type="text" id="personalSearchInput" placeholder="Tên hoặc mã NV..." autocomplete="off">
-        <div id="personalSuggest" class="ms-suggest-list" style="display:none;"></div>
-      </div>
-      <div class="month-nav-row" id="personalMonthFilterRow" style="display:none;">
-        <div class="seg-toggle" id="personalRangeToggle">
-          <button type="button" class="seg-btn active" data-range="month">Theo tháng</button>
-          <button type="button" class="seg-btn" data-range="all">Tất cả</button>
+      <div id="personalLookupBody" style="display:none;">
+        <div class="field" style="margin-bottom:10px;position:relative;">
+          <label>Tìm nhân viên</label>
+          <div style="display:flex;gap:6px;align-items:flex-start;">
+            <div style="flex:1;position:relative;">
+              <input type="text" id="personalSearchInput" class="name-typed-highlight" placeholder="Tên hoặc mã NV..." autocomplete="off">
+              <div id="personalSuggest" class="ms-suggest-list" style="display:none;"></div>
+            </div>
+            <button type="button" class="btn btn-ghost" id="btnPersonalClear" style="padding:10px 12px;font-size:13px;" title="Xóa lựa chọn, chọn người khác">✕</button>
+          </div>
         </div>
-        <div class="month-nav" id="personalMonthNav">
-          <button type="button" id="personalMonthPrev">◀</button>
-          <span id="personalMonthLabel"></span>
-          <button type="button" id="personalMonthNext">▶</button>
+        <div class="month-nav-row" id="personalMonthFilterRow" style="display:none;">
+          <div class="seg-toggle" id="personalRangeToggle">
+            <button type="button" class="seg-btn active" data-range="month">Theo tháng</button>
+            <button type="button" class="seg-btn" data-range="all">Tất cả</button>
+          </div>
+          <div class="month-nav" id="personalMonthNav">
+            <button type="button" id="personalMonthPrev">◀</button>
+            <span id="personalMonthLabel"></span>
+            <button type="button" id="personalMonthNext">▶</button>
+          </div>
         </div>
-      </div>
 
-      <div id="personalReportArea">
-        <p class="sub" id="personalEmptyHint">👆 Chưa chọn nhân viên nào.</p>
+        <div id="personalReportArea">
+          <p class="sub" id="personalEmptyHint">👆 Chưa chọn nhân viên nào.</p>
+        </div>
       </div>
     </div>
   </section>
@@ -1445,7 +1512,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <button id="ovNextMonth" type="button">›</button>
         </div>
         <button class="btn btn-ghost" id="ovTodayBtn" type="button" style="padding:8px 12px;font-size:12.5px;">Tháng này</button>
-        <input type="text" id="ovSearch" placeholder="Lọc theo tên, mã..." style="flex:1;min-width:160px;">
+        <input type="text" id="ovSearch" class="name-typed-highlight" placeholder="Lọc theo tên, mã..." style="flex:1;min-width:160px;">
         <select id="ovFilterMode" style="min-width:190px;">
           <option value="all">Tất cả 162 người</option>
           <option value="onleave">Chỉ người có nghỉ trong tháng</option>
@@ -1461,6 +1528,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <thead><tr id="overviewHeadRow"></tr></thead>
           <tbody id="overviewBody"></tbody>
         </table>
+      </div>
+      <div style="text-align:center;margin-top:8px;">
+        <button class="btn btn-ghost" id="btnToggleOverview" type="button" style="padding:6px 14px;font-size:12px;display:none;"></button>
       </div>
     </div>
   </section>
@@ -1515,7 +1585,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <select id="editShift">
           <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
           <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-          <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+          <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
         </select>
       </div>
       <div class="field small">
@@ -1529,7 +1599,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Công đoạn</label>
-      <input type="text" id="editStage">
+      <input type="text" id="editStage" autocomplete="off">
+      <div class="combo-list" id="editStageCombo" style="display:none;"></div>
     </div>
     <div class="field" style="margin-bottom:12px;">
       <label>Mác thuốc <span style="font-weight:400;color:var(--muted);">— tuỳ chọn, VD: SX NDT-3-16/1 lô 09/26-VN</span></label>
@@ -1538,7 +1609,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
     <div class="field" style="margin-bottom:8px;position:relative;">
       <label>➕ Thêm người vào nhóm này</label>
-      <input type="text" id="editAddPersonSearch" placeholder="Gõ tên/mã để thêm ngay vào nhóm..." autocomplete="off">
+      <input type="text" id="editAddPersonSearch" class="name-typed-highlight" placeholder="Gõ tên/mã để thêm ngay vào nhóm..." autocomplete="off">
       <div class="combo-list" id="editAddPersonCombo" style="display:none;"></div>
     </div>
     <p class="sub" id="editPeopleInfo" style="margin:6px 0 6px;"></p>
@@ -1557,7 +1628,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     <p class="sub" id="swapPersonInfo" style="margin-bottom:12px;"></p>
     <div class="field" style="margin-bottom:14px;">
       <label>Đổi thành người khác (gõ tên/mã để tìm)</label>
-      <input type="text" id="swapPersonSearch" placeholder="VD: Bảy, Z0074..." autocomplete="off">
+      <input type="text" id="swapPersonSearch" class="name-typed-highlight" placeholder="VD: Bảy, Z0074..." autocomplete="off">
       <div class="combo-list" id="swapPersonCombo" style="display:none;"></div>
     </div>
     <div class="modal-actions" style="justify-content:space-between;">
@@ -1583,7 +1654,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 <div class="modal-bg" id="confirmModal">
   <div class="modal">
     <h3 id="confirmModalTitle">Xác nhận</h3>
-    <p class="sub" id="confirmModalMsg" style="margin-bottom:0;"></p>
+    <p class="sub" id="confirmModalMsg" style="margin-bottom:0;white-space:pre-line;"></p>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnConfirmNo" type="button">Hủy</button>
       <button class="btn btn-primary" id="btnConfirmYes" type="button">Đồng ý</button>
@@ -1601,7 +1672,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 
     <div class="field" style="margin-bottom:14px;position:relative;">
       <label>Đổi thành người khác (gõ tên/mã để tìm)</label>
-      <input type="text" id="msActionSwapSearch" placeholder="VD: Bảy, Z0074..." autocomplete="off">
+      <input type="text" id="msActionSwapSearch" class="name-typed-highlight" placeholder="VD: Bảy, Z0074..." autocomplete="off">
       <div class="combo-list" id="msActionSwapCombo" style="display:none;"></div>
     </div>
 
@@ -1620,7 +1691,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <option value="">— Chọn Ca —</option>
         <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
         <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-        <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+        <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
       </select>
     </div>
     <div style="display:flex;justify-content:flex-end;margin-bottom:14px;">
@@ -1652,7 +1723,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <option value="">— Chọn Ca —</option>
           <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
           <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-          <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+          <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
         </select>
       </div>
     </div>
@@ -1690,7 +1761,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       </div>
       <div class="field" style="flex:1;min-width:130px;">
         <label>Tìm tên/mã</label>
-        <input type="text" id="notCheckedSearch" placeholder="Tìm tên/mã..." autocomplete="off">
+        <input type="text" id="notCheckedSearch" class="name-typed-highlight" placeholder="Tìm tên/mã..." autocomplete="off">
       </div>
     </div>
     <div class="field admin-only" style="margin-bottom:8px;">
@@ -1722,7 +1793,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <option value="">— Chọn Ca —</option>
           <option>Ca 1</option><option>Ca 2</option><option>Ca 3</option>
           <option>1/2 Ca 1</option><option>1/2 Ca 2</option><option>1/2 Ca 3</option>
-          <option>Hành chính</option><option>Nghỉ phép / Ốm</option>
+          <option>Hành chính</option><option>Hành chính (Sáng)</option><option>Hành chính (Chiều)</option><option>Nghỉ phép / Ốm</option>
         </select>
       </div>
     </div>
@@ -1762,7 +1833,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <button class="btn" id="btnEmpExportCsv" type="button" style="flex:1;">📥 Xuất CSV hiện tại</button>
     </div>
     <div class="field" style="margin-bottom:8px;">
-      <input type="text" id="empManageSearch" placeholder="Tìm theo tên hoặc mã..." autocomplete="off">
+      <input type="text" id="empManageSearch" class="name-typed-highlight" placeholder="Tìm theo tên hoặc mã..." autocomplete="off">
     </div>
     <div id="empManageList" style="max-height:300px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;margin-bottom:12px;"></div>
     <div class="row" style="margin-bottom:6px;gap:6px;">
@@ -1897,23 +1968,27 @@ const DEFAULT_EMPLOYEES = [{"stt": 1, "short": "Bảy", "full": "Lê Văn Bảy"
 let EMPLOYEES = DEFAULT_EMPLOYEES.slice();
 const BASE_STAGES = ["Khử Nước (Ống)", "Keo Hóa (Ống)", "Sấy - Bơm NN", "ĐH Trung Tâm", "Cắt (Ống)", "VCSP", "Tuyển Chọn", "Bốc NL", "Khử Nước (Lá)", "Keo hóa (Lá)", "Cán Tinh", "Cắt (Lá)", "Sấy (Cầu)", "Sàng Khô", "BDTB", "GT 1", "GT 2", "KSCL", "Trưởng ca (Lá)", "Trưởng ca (Ống)", "Thuần Hóa", "Trưởng ca (Cầu)", "VS (Ống)", "Nghiền TTH", "Rửa, Sàng Ướt", "Hỗn Lò, Đóng Hòm", "Tạo cầu", "Học hóa nổ", "Cán TTH", "Cán (Cầu)", "QBSK", "Phun hòm", "VS (Cầu)", "Xây", "Sàng phân loại", "Hỗn lò TTH", "Học kèm cặp (Cán tinh)", "Hỗn Lò, Đóng Hòm (Cầu)"];
 
-const SHIFT_LIST_ALL = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Nghỉ phép / Ốm'];
+const SHIFT_LIST_ALL = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Nghỉ phép / Ốm'];
 const SHIFT_COLORS = {
   'Ca 1': '#e0a63c', 'Ca 2': '#d9752e', 'Ca 3': '#4c6b85',
   '1/2 Ca 1': '#f0c98a', '1/2 Ca 2': '#f0b088', '1/2 Ca 3': '#8ea6bb',
-  'Hành chính': '#5e9b6f', 'Nghỉ phép / Ốm': '#a6473a'
+  'Hành chính': '#5e9b6f', 'Hành chính (Sáng)': '#7fb08f', 'Hành chính (Chiều)': '#3f7a52', 'Nghỉ phép / Ốm': '#a6473a'
 };
 const SHIFT_BG = {
   'Ca 1': '#faedd3', 'Ca 2': '#f7ddc8', 'Ca 3': '#dbe3ea',
   '1/2 Ca 1': '#fbf1de', '1/2 Ca 2': '#fbe8e0', '1/2 Ca 3': '#e7edf1',
-  'Hành chính': '#dfeee3', 'Nghỉ phép / Ốm': '#f3dcd9'
+  'Hành chính': '#dfeee3', 'Hành chính (Sáng)': '#e9f4ec', 'Hành chính (Chiều)': '#d3e6da', 'Nghỉ phép / Ốm': '#f3dcd9'
 };
 const SHIFT_ABBR = {
   'Ca 1':'C1','Ca 2':'C2','Ca 3':'C3','1/2 Ca 1':'½1','1/2 Ca 2':'½2','1/2 Ca 3':'½3',
-  'Hành chính':'HC','Nghỉ phép / Ốm':'N'
+  'Hành chính':'HC','Hành chính (Sáng)':'HCs','Hành chính (Chiều)':'HCc','Nghỉ phép / Ốm':'N'
 };
 const LEAVE_SHIFT = 'Nghỉ phép / Ốm';
-const LS_KEYS = { records:'attendance-records', stages:'custom-stages', images:'day-images', teams:'saved-teams', theme:'app-theme', batches:'custom-batches', employees:'custom-employees' };
+const ALL_SHIFT_OPTIONS = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Nghỉ phép / Ốm'];
+// Ca nửa buổi (Sáng/Chiều của Hành chính) mặc định tính 0.5 công — vẫn sửa tay được sau nếu cần
+const HALF_DAY_SHIFTS = new Set(['Hành chính (Sáng)','Hành chính (Chiều)']);
+function defaultMultFor(shift){ return HALF_DAY_SHIFTS.has(shift) ? 0.5 : 1; }
+const LS_KEYS = { records:'attendance-records', stages:'custom-stages', images:'day-images', teams:'saved-teams', theme:'app-theme', batches:'custom-batches', employees:'custom-employees', settings:'app-settings' };
 
 // ================= BỘ 8 THEME (giao diện màu) =================
 const THEMES = [
@@ -1951,7 +2026,16 @@ const state = {
   ovYear: null,
   ovMonth: null, // 1-12
   selectedJournalGroups: new Set(),
+  empListExpanded: false,
+  overviewExpanded: false,
+  personalLookupOpen: false,
+  rosterCollapsed: false,
+  rosterRowsExpanded: false,
+  settings: { personalExtraEnabled: false, personalInsightsEnabled: false },
 };
+const EMP_LIST_LIMIT = 25;
+const OVERVIEW_LIMIT = 25;
+const ROSTER_LIMIT = 25;
 
 function allStages(){ return [...BASE_STAGES, ...state.customStages]; }
 
@@ -1974,6 +2058,19 @@ function normalize(s){
   return (s||'').toString().toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
     .replace(/đ/g,'d').replace(/\s+/g,' ').trim();
+}
+function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Tô đỏ + to hơn phần chữ trong "text" khớp với "rawQuery" người dùng đang gõ (dùng normalize() nên không phân biệt dấu/hoa-thường)
+function highlightMatch(text, rawQuery){
+  const q = normalize(rawQuery).trim();
+  if(!q) return escapeHtml(text);
+  const norm = normalize(text);
+  const idx = norm.indexOf(q);
+  if(idx === -1 || idx + q.length > text.length) return escapeHtml(text);
+  const before = text.slice(0, idx);
+  const mid = text.slice(idx, idx + q.length);
+  const after = text.slice(idx + q.length);
+  return escapeHtml(before) + '<span class="match-hl">' + escapeHtml(mid) + '</span>' + escapeHtml(after);
 }
 function daysInMonth(y,m){ return new Date(y, m, 0).getDate(); } // m: 1-12
 function isoWeekStart(iso){
@@ -2253,6 +2350,7 @@ function loadState(){
   try{ const tm = localStorage.getItem(LS_KEYS.teams); if(tm) state.savedTeams = JSON.parse(tm); }catch(e){}
   try{ const b = localStorage.getItem(LS_KEYS.batches); if(b) state.customBatches = JSON.parse(b); }catch(e){}
   try{ const em = localStorage.getItem(LS_KEYS.employees); if(em){ const arr = JSON.parse(em); if(Array.isArray(arr) && arr.length) EMPLOYEES = arr; } }catch(e){}
+  try{ const st = localStorage.getItem(LS_KEYS.settings); if(st) Object.assign(state.settings, JSON.parse(st)); }catch(e){}
   // Lần đầu nâng cấp: "học" lại các mác thuốc đã từng gõ tay trong dữ liệu cũ, để không phải nhập lại
   if(!state.customBatches.length && state.records.length){
     const seen = new Set();
@@ -2263,7 +2361,114 @@ function loadState(){
     if(state.customBatches.length) saveBatches();
   }
 }
-function saveRecords(){ localStorage.setItem(LS_KEYS.records, JSON.stringify(state.records)); }
+function saveRecords(){ localStorage.setItem(LS_KEYS.records, JSON.stringify(state.records)); renderConflictPanel(); }
+function saveSettings(){ localStorage.setItem(LS_KEYS.settings, JSON.stringify(state.settings)); }
+
+// ================= CẢNH BÁO TRÙNG CA (1 người + 1 ngày + 1 CA nhưng bị gán 2 công đoạn khác nhau cùng lúc) =================
+// Gom nhóm theo (mã NV | ngày | ca). Nếu trong 1 nhóm có từ 2 công đoạn khác nhau trở lên
+// -> 1 người không thể làm 2 công đoạn cùng lúc trong cùng 1 ca -> lỗi cần xử lý tay.
+// LƯU Ý: 1 người làm nhiều CA khác nhau trong cùng 1 ngày (tăng ca 2-3 ca) là BÌNH THƯỜNG, không tính là trùng.
+function getShiftConflicts(){
+  const groups = {};
+  state.records.forEach(r=>{
+    const key = r.code + '|' + r.date + '|' + r.shift;
+    (groups[key] = groups[key] || []).push(r);
+  });
+  return Object.values(groups)
+    .filter(list => new Set(list.map(r=>r.stage)).size > 1)
+    .sort((a,b)=> (b[0].date||'').localeCompare(a[0].date||''));
+}
+function renderConflictPanel(){
+  const panel = document.getElementById('conflictPanel');
+  const body = document.getElementById('conflictPanelBody');
+  if(!panel || !body) return;
+  const groups = getShiftConflicts();
+  const countEl = document.getElementById('conflictCount');
+  if(countEl) countEl.textContent = groups.length;
+  panel.style.display = groups.length ? 'block' : 'none';
+  if(!groups.length){ body.innerHTML = ''; return; }
+  const stages = allStages();
+  body.innerHTML = groups.map(list=>{
+    const r0 = list[0];
+    const rows = list.map(r=>{
+      const stageOpts = stages.map(s=>`<option value="${s.replace(/"/g,'&quot;')}" ${s===r.stage?'selected':''}>${s}</option>`).join('');
+      const shiftOpts = ALL_SHIFT_OPTIONS.map(s=>`<option value="${s}" ${s===r.shift?'selected':''}>${s}</option>`).join('');
+      const meta = [r.time, r.batch].filter(Boolean).join(' · ');
+      return `<div class="conflict-row" data-rid="${r.id}">
+        <select data-conflict-stage="${r.id}" title="Sửa công đoạn">${stageOpts}</select>
+        <select data-conflict-shift="${r.id}" title="Chuyển sang ca khác (nếu thực ra đây là tăng ca)">${shiftOpts}</select>
+        <span class="cr-meta">${meta}</span>
+        <button type="button" class="btn-danger-sm" data-conflict-del="${r.id}">🗑 Xóa</button>
+      </div>`;
+    }).join('');
+    return `<div class="conflict-group">
+      <div class="cg-head">👤 ${r0.short} (${r0.code}) — ${fmtDate(r0.date)} — ${r0.shift} — đang bị gán ${list.length} công đoạn cùng lúc</div>
+      ${rows}
+    </div>`;
+  }).join('');
+  body.querySelectorAll('[data-conflict-stage]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const id = sel.getAttribute('data-conflict-stage');
+      const rec = state.records.find(r=>String(r.id)===String(id));
+      if(!rec) return;
+      rec.stage = sel.value;
+      saveRecords();
+      renderStats();
+      if(typeof renderRecords==='function') renderRecords();
+      showToast('Đã sửa công đoạn');
+    });
+  });
+  body.querySelectorAll('[data-conflict-shift]').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const id = sel.getAttribute('data-conflict-shift');
+      const rec = state.records.find(r=>String(r.id)===String(id));
+      if(!rec) return;
+      rec.shift = sel.value;
+      if(HALF_DAY_SHIFTS.has(sel.value) && (!rec.mult || rec.mult===1)) rec.mult = 0.5;
+      saveRecords();
+      renderStats();
+      if(typeof renderRecords==='function') renderRecords();
+      showToast('Đã chuyển sang ca khác');
+    });
+  });
+  body.querySelectorAll('[data-conflict-del]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = btn.getAttribute('data-conflict-del');
+      const ok = await customConfirm('Xóa lượt chấm công này?');
+      if(!ok) return;
+      state.records = state.records.filter(r=>String(r.id)!==String(id));
+      saveRecords();
+      renderStats();
+      if(typeof renderRecords==='function') renderRecords();
+      showToast('Đã xóa lượt chấm công');
+    });
+  });
+}
+// Kiểm tra TRƯỚC KHI LƯU: nếu các bản ghi sắp thêm (candidates) kết hợp với dữ liệu đã có
+// khiến 1 người bị gán 2 công đoạn khác nhau trong CÙNG 1 ca + CÙNG 1 ngày -> trả về danh sách cảnh báo.
+// candidates: [{code, short, date, shift, stage}]
+function findUpcomingShiftClashes(candidates){
+  const byKey = {};
+  state.records.forEach(r=>{
+    const key = r.code+'|'+r.date+'|'+r.shift;
+    (byKey[key] = byKey[key] || {short:r.short, stages:new Set()}).stages.add(r.stage);
+  });
+  candidates.forEach(c=>{
+    const exactDup = state.records.some(r=>r.code===c.code && r.date===c.date && r.shift===c.shift && r.stage===c.stage);
+    if(exactDup) return; // trùng hệt sẽ tự bị bỏ qua khi lưu, không tính là trùng ca
+    const key = c.code+'|'+c.date+'|'+c.shift;
+    if(!byKey[key]) byKey[key] = {short:c.short, stages:new Set()};
+    if(c.short) byKey[key].short = c.short;
+    byKey[key].stages.add(c.stage);
+  });
+  return Object.values(byKey).filter(v=>v.stages.size>1).map(v=>({ short:v.short, stages:[...v.stages] }));
+}
+document.getElementById('conflictPanelToggle').addEventListener('click', function(){
+  const body = document.getElementById('conflictPanelBody');
+  const opening = body.style.display === 'none';
+  body.style.display = opening ? 'block' : 'none';
+  this.classList.toggle('open', opening);
+});
 function saveStages(){ localStorage.setItem(LS_KEYS.stages, JSON.stringify(state.customStages)); }
 function saveImages(){ localStorage.setItem(LS_KEYS.images, JSON.stringify(state.dayImages)); }
 function saveTeams(){ localStorage.setItem(LS_KEYS.teams, JSON.stringify(state.savedTeams)); }
@@ -2314,11 +2519,12 @@ function positionComboFixed(inputEl, combo){
 function renderBatchComboFor(combo){
   const inputEl = combo.__batchInputEl;
   if(!inputEl) return;
-  const q = normalize(inputEl.value.trim());
+  const rawQ = inputEl.value.trim();
+  const q = normalize(rawQ);
   const list = [...state.customBatches].sort((a,b)=>a.localeCompare(b,'vi'));
   const matches = list.filter(b => !q || normalize(b).includes(q));
   combo.innerHTML = matches.length
-    ? matches.map(b=>`<div class="opt" data-pick="${b.replace(/"/g,'&quot;')}"><span>${b}</span></div>`).join('')
+    ? matches.map(b=>`<div class="opt" data-pick="${b.replace(/"/g,'&quot;')}"><span>${highlightMatch(b, rawQ)}</span></div>`).join('')
     : (list.length ? '<div class="empty">Không tìm thấy mác thuốc phù hợp</div>' : '<div class="empty">Chưa có mác thuốc nào được ghi nhớ — gõ rồi lưu để lần sau gợi ý</div>');
   positionComboFixed(inputEl, combo);
   combo.style.display = 'block';
@@ -2351,6 +2557,43 @@ wireBatchCombo('msDefaultBatch', 'msDefaultBatchCombo');
 wireBatchCombo('editBatch', 'editBatchCombo');
 wireBatchCombo('splitBatch', 'splitBatchCombo');
 wireBatchCombo('notCheckedBatch', 'notCheckedBatchCombo');
+
+// ================= NÚT ✕ ĐỎ XÓA NHANH — tự gắn cho mọi ô tìm kiếm / nhập chọn mác chưa có sẵn nút xóa =================
+function addQuickClearButton(id){
+  const inp = document.getElementById(id);
+  if(!inp || inp.closest('.input-wrapper')) return; // đã có wrapper/nút xóa riêng rồi thì bỏ qua, tránh gắn trùng
+  const wrap = document.createElement('div');
+  wrap.className = 'input-wrapper';
+  inp.parentNode.insertBefore(wrap, inp);
+  wrap.appendChild(inp);
+  ['flex','minWidth','maxWidth','width'].forEach(prop=>{
+    if(inp.style[prop]){ wrap.style[prop] = inp.style[prop]; inp.style[prop] = ''; }
+  });
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn-clear-input btn-clear-input-line';
+  btn.title = 'Xóa nhanh';
+  btn.textContent = '✕';
+  wrap.appendChild(btn);
+  const toggle = ()=>{ btn.style.display = inp.value ? 'flex' : 'none'; };
+  inp.addEventListener('input', toggle);
+  toggle();
+  btn.addEventListener('click', ()=>{
+    inp.value = '';
+    inp.dispatchEvent(new Event('input', {bubbles:true}));
+    inp.focus();
+  });
+}
+[
+  // Ô tìm kiếm tên/mã
+  'empSearch','personalSearchInput','ovSearch','statPerson','statStage','recordSearch',
+  'swapPersonSearch','msActionSwapSearch','editAddPersonSearch','notCheckedSearch',
+  'empManageSearch','stageManageSearch','batchManageSearch',
+  // Ô nhập/chọn mác thuốc còn lại chưa có nút xóa sẵn
+  'editBatch','splitBatch','notCheckedBatch','bulkEditBatch',
+  // Ô nhập/chọn công đoạn
+  'splitStage','notCheckedStage','bulkEditStage',
+].forEach(addQuickClearButton);
 
 // ================= CHUYỂN TAB =================
 function switchTab(tab){
@@ -2558,10 +2801,11 @@ const stageCombo = document.getElementById('stageCombo');
 const MAIN_SHIFTS_FOR_DOTS = ['Ca 1','Ca 2','Ca 3'];
 
 function renderStageCombo(){
-  const q = normalize(stageInput.value.trim());
+  const rawQ = stageInput.value.trim();
+  const q = normalize(rawQ);
   const matches = allStages().filter(s => !q || normalize(s).includes(q));
   stageCombo.innerHTML = matches.length
-    ? matches.map(s=>`<div class="opt" data-pick="${s.replace(/"/g,'&quot;')}"><span>${s}</span></div>`).join('')
+    ? matches.map(s=>`<div class="opt" data-pick="${s.replace(/"/g,'&quot;')}"><span>${highlightMatch(s, rawQ)}</span></div>`).join('')
     : '<div class="empty">Không tìm thấy — bấm "+ Thêm công đoạn" để tạo mới</div>';
   stageCombo.style.display = 'block';
   stageCombo.querySelectorAll('[data-pick]').forEach(opt=>{
@@ -2623,16 +2867,29 @@ const empSearch = document.getElementById('empSearch');
 const empListEl = document.getElementById('empList');
 
 function renderEmpList(){
-  const q = normalize(empSearch.value.trim());
-  const list = EMPLOYEES.filter(e => !q || normalize(e.short).includes(q) || normalize(e.full).includes(q) || normalize(e.code).includes(q));
-  empListEl.innerHTML = list.length ? list.map(e=>{
+  const rawQ = empSearch.value.trim();
+  const q = normalize(rawQ);
+  const fullList = EMPLOYEES.filter(e => !q || normalize(e.short).includes(q) || normalize(e.full).includes(q) || normalize(e.code).includes(q));
+  const toggleBtn = document.getElementById('btnToggleEmpList');
+  const shouldLimit = !q && !state.empListExpanded && fullList.length > EMP_LIST_LIMIT;
+  const list = shouldLimit ? fullList.slice(0, EMP_LIST_LIMIT) : fullList;
+
+  empListEl.innerHTML = list.length ? list.map((e,i)=>{
     const checked = state.selectedCodes.has(e.code);
     return `<label class="emp-row ${checked?'checked':''}" data-code="${e.code}">
+      <span class="emp-stt">${e.stt ?? (i+1)}</span>
       <input type="checkbox" ${checked?'checked':''}>
-      <span class="emp-code">${e.code}</span>
-      <span>${e.short}</span>
+      <span class="emp-code">${highlightMatch(e.code, rawQ)}</span>
+      <span>${highlightMatch(e.short, rawQ)}</span>
     </label>`;
   }).join('') : '<div class="empty-state">Không tìm thấy nhân sự phù hợp.</div>';
+
+  if(!q && fullList.length > EMP_LIST_LIMIT){
+    toggleBtn.style.display = 'inline-block';
+    toggleBtn.textContent = state.empListExpanded ? `🔼 Thu gọn (đang hiện ${fullList.length})` : `🔽 Hiện thêm (đang ẩn ${fullList.length - EMP_LIST_LIMIT} người)`;
+  } else {
+    toggleBtn.style.display = 'none';
+  }
 
   empListEl.querySelectorAll('.emp-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
@@ -2643,6 +2900,10 @@ function renderEmpList(){
     });
   });
 }
+document.getElementById('btnToggleEmpList').addEventListener('click', ()=>{
+  state.empListExpanded = !state.empListExpanded;
+  renderEmpList();
+});
 empSearch.addEventListener('input', renderEmpList);
 // Gõ tên/mã rồi bấm Enter -> tự tick người khớp và xóa ô để gõ tiếp người kế tiếp (điểm danh nhanh bằng bàn phím)
 empSearch.addEventListener('keydown', (e)=>{
@@ -3039,9 +3300,33 @@ function parseMultiStageBlock(text){
   const lines = text.split(/\r?\n/);
   const groups = [];
   const skippedLines = [];
+  // Ca / mác thuốc đang "có hiệu lực" theo các dòng tiêu đề gặp được trong lúc quét từ trên xuống,
+  // VD "II. CA 1" rồi "1. SX NDT-3-16/1 lô 09/26" — áp dụng cho các dòng công đoạn phía sau
+  // cho tới khi gặp tiêu đề Ca/mác thuốc khác. Không nhận diện được thì để trắng như cũ.
+  let ctxShift = '';
+  let ctxBatch = '';
   lines.forEach(rawLine=>{
     let line = rawLine.trim();
     if(!line) return;
+
+    // Dòng tiêu đề Ca, VD "II. CA 1", "III. CA 2" (có thể có số La Mã + dấu chấm đứng trước, có/không dấu ":" cuối dòng)
+    const caStripped = line.replace(/^[IVXLCDM]+\s*[\.\)]\s*/i, '').replace(/:\s*$/, '').trim();
+    const foundCaShift = SHIFT_LIST_ALL.find(s=>normalize(s)===normalize(caStripped));
+    if(foundCaShift){
+      ctxShift = foundCaShift;
+      ctxBatch = ''; // sang ca mới thì mác thuốc thường được liệt kê lại từ đầu — chờ dòng mác thuốc tiếp theo
+      skippedLines.push(line);
+      return;
+    }
+
+    // Dòng tiêu đề mác thuốc đánh số, VD "1. SX NDT-3-16/1 lô 09/26" (không có dấu ":" nên không lẫn với dòng công đoạn)
+    const batchHeaderMatch = line.match(/^\d+[\.\)]\s*(.+)$/);
+    if(batchHeaderMatch && line.indexOf(':') === -1){
+      ctxBatch = batchHeaderMatch[1].trim();
+      skippedLines.push(line);
+      return;
+    }
+
     const idx = line.indexOf(':');
     if(idx === -1){ skippedLines.push(line); return; }
 
@@ -3053,7 +3338,7 @@ function parseMultiStageBlock(text){
     const closeParens = (stagePart.match(/\)/g) || []).length;
     if(openParens > closeParens){ skippedLines.push(line); return; }
 
-    // Nhận diện ca làm ghi kèm trong tên công đoạn, VD "Bao gói đóng hòm (Ca 1)"
+    // Nhận diện ca làm ghi kèm trong tên công đoạn, VD "Bao gói đóng hòm (Ca 1)" — ưu tiên hơn ca đang có hiệu lực ở trên
     let suggestedShift = '';
     const shiftMatch = stagePart.match(/\(\s*((?:1\/2\s*)?Ca\s*\d+|Hành chính|Nghỉ phép\s*\/?\s*Ốm)\s*\)\s*$/i);
     if(shiftMatch){
@@ -3061,6 +3346,7 @@ function parseMultiStageBlock(text){
       if(foundShift) suggestedShift = foundShift;
       stagePart = stagePart.slice(0, shiftMatch.index).trim();
     }
+    if(!suggestedShift) suggestedShift = ctxShift;
     if(!stagePart){ skippedLines.push(line); return; }
 
     // Tách danh sách người theo dấu phẩy hoặc dấu +
@@ -3084,17 +3370,16 @@ function parseMultiStageBlock(text){
     });
 
     // Dòng chỉ có ghi chú (không nhận diện được người nào, kể cả "chưa rõ") và chưa từng có
-    // công đoạn cùng tên trước đó — coi như dòng ghi chú, không tạo công đoạn rỗng
-    const stageKey = normalize(stagePart);
-    const existingGroup = groups.find(g=>normalize(g.stageName)===stageKey);
+    // công đoạn cùng tên + cùng ca + cùng mác thuốc trước đó — coi như dòng ghi chú, không tạo công đoạn rỗng.
+    // Gộp theo cả ca & mác thuốc (chứ không chỉ tên công đoạn) để "Khử nước" ở Ca 1 và Ca 2 không bị lẫn vào nhau.
+    const stageKey = normalize(stagePart) + '||' + normalize(suggestedShift) + '||' + normalize(ctxBatch);
+    const existingGroup = groups.find(g=>g._key === stageKey);
     if(!existingGroup && matched.length === 0 && unresolved.length === 0){ skippedLines.push(line); return; }
 
     let group = existingGroup;
     if(!group){
-      group = { stageName: stagePart, suggestedShift, matched: [], unresolved: [], included:true, batch:'' };
+      group = { stageName: stagePart, suggestedShift, matched: [], unresolved: [], included:true, batch: ctxBatch, _key: stageKey };
       groups.push(group);
-    } else if(suggestedShift && !group.suggestedShift){
-      group.suggestedShift = suggestedShift;
     }
     matched.forEach(m=>{ if(!group.matched.some(x=>x.code===m.code)) group.matched.push(m); });
     unresolved.forEach(u=> group.unresolved.push(u));
@@ -3254,7 +3539,7 @@ document.getElementById('btnParseMultiStage').onclick = ()=>{
   const defBatch = document.getElementById('msDefaultBatch').value;
   groups.forEach(g=>{
     if(!g.suggestedShift && defShift) g.suggestedShift = defShift;
-    g.batch = defBatch || '';
+    if(!g.batch && defBatch) g.batch = defBatch;
     g.included = true;
   });
   msGroups = groups;
@@ -3281,8 +3566,9 @@ btnSaveMultiStage.onclick = async ()=>{
   const cards = [...multiStageResult.querySelectorAll('.multistage-card')];
   const missingShift = [];
   const noPeople = [];
-  let totalSaved = 0, stagesSaved = 0;
 
+  // ---- Bước 1: gom trước toàn bộ người/công đoạn SẮP lưu (chưa đụng vào dữ liệu thật) ----
+  const plan = [];
   cards.forEach(card=>{
     const idx = Number(card.dataset.idx);
     const group = msGroups[idx];
@@ -3291,28 +3577,54 @@ btnSaveMultiStage.onclick = async ()=>{
     const stageName = card.querySelector('.ms-stagename').value.trim();
     const shift = card.querySelector('.ms-shift').value;
     const batch = card.querySelector('.ms-batch').value.trim();
-    rememberBatch(batch);
     if(!stageName) return;
     if(!group.matched.length){ noPeople.push(stageName); return; }
     if(!shift){ missingShift.push(stageName); return; }
-
-    if(!allStages().some(s=>normalize(s)===normalize(stageName))) state.customStages.push(stageName);
-    let addedThisStage = 0;
     group.matched.forEach(m=>{
       const emp = EMPLOYEES.find(e=>e.code===m.code);
       if(!emp) return;
-      const dup = state.records.some(r=>r.date===date && r.shift===shift && r.stage===stageName && r.code===emp.code);
-      if(dup) return;
-      state.records.push({ id: Date.now()+Math.random(), date, shift, stage:stageName, code: emp.code, short: emp.short, full: emp.full, batch, time: nowHM(), mult: 1 });
-      addedThisStage++;
+      plan.push({ stageName, shift, batch, emp });
     });
-    if(addedThisStage>0){ totalSaved += addedThisStage; stagesSaved++; }
   });
 
   if(missingShift.length){
     const ok = await customConfirm(`Các công đoạn sau chưa chọn Ca nên sẽ bị bỏ qua: ${missingShift.join(', ')}. Vẫn lưu các công đoạn còn lại?`);
     if(!ok) return;
   }
+
+  // ---- Bước 2: cảnh báo TRƯỚC KHI LƯU — trùng hệt (dán 2 lần...) & trùng ca (2 công đoạn khác nhau, cùng 1 ca) ----
+  const isExactDup = p => state.records.some(r=>r.date===date && r.shift===p.shift && r.stage===p.stageName && r.code===p.emp.code);
+  const dupExact = plan.filter(isExactDup);
+  const candidates = plan.filter(p=>!isExactDup(p)).map(p=>({ code:p.emp.code, short:p.emp.short, date, shift:p.shift, stage:p.stageName }));
+  const clashes = findUpcomingShiftClashes(candidates);
+
+  if(dupExact.length || clashes.length){
+    let msg = '';
+    if(dupExact.length){
+      const names = [...new Set(dupExact.map(p=>p.emp.short))].join(', ');
+      msg += `🔁 ${dupExact.length} lượt TRÙNG HỆT (đã chấm y hệt trước đó — có thể do dán/lưu 2 lần): ${names}. Những lượt này sẽ tự động bỏ qua, không lưu lại.\n\n`;
+    }
+    if(clashes.length){
+      const names = clashes.map(c=>`${c.short} (${c.stages.join(' / ')})`).join(', ');
+      msg += `⚠️ ${clashes.length} người sẽ bị TRÙNG CA — cùng 1 ca nhưng có 2 công đoạn khác nhau: ${names}. Nếu không phải tăng ca thì đây là chấm nhầm; các trường hợp này vẫn được lưu nhưng sẽ đưa vào hộp "Trùng ca cần xử lý" để bạn sửa lại sau.\n\n`;
+    }
+    msg += 'Vẫn tiếp tục lưu?';
+    const ok2 = await customConfirm(msg);
+    if(!ok2) return;
+  }
+
+  // ---- Bước 3: lưu thật ----
+  let totalSaved = 0;
+  const stagesTouched = new Set();
+  plan.forEach(p=>{
+    if(isExactDup(p)) return;
+    if(!allStages().some(s=>normalize(s)===normalize(p.stageName))) state.customStages.push(p.stageName);
+    state.records.push({ id: Date.now()+Math.random(), date, shift:p.shift, stage:p.stageName, code:p.emp.code, short:p.emp.short, full:p.emp.full, batch:p.batch, time: nowHM(), mult: defaultMultFor(p.shift) });
+    totalSaved++;
+    stagesTouched.add(p.stageName);
+    rememberBatch(p.batch);
+  });
+  const stagesSaved = stagesTouched.size;
 
   saveStages(); saveRecords();
   renderStats(); renderRecords(); renderAnalytics(); renderShiftChips(); renderCurrentStage();
@@ -3325,6 +3637,7 @@ btnSaveMultiStage.onclick = async ()=>{
   }
 
   let msg = totalSaved > 0 ? `Đã lưu ${totalSaved} lượt cho ${stagesSaved} công đoạn` : 'Chưa lưu được công đoạn nào';
+  if(dupExact.length) msg += ` — đã tự bỏ qua ${dupExact.length} lượt trùng hệt`;
   if(missingShift.length) msg += ` — bỏ qua ${missingShift.length} công đoạn chưa chọn Ca`;
   if(noPeople.length) msg += ` — ${noPeople.length} công đoạn không có ai khớp`;
   showToast(msg, 3800);
@@ -3457,8 +3770,22 @@ document.getElementById('btnSave').onclick = async ()=>{
   });
   if(dupCodes.length){
     const names = dupCodes.map(c=>EMPLOYEES.find(e=>e.code===c)?.short || c).join(', ');
-    const ok = await customConfirm(`${dupCodes.length} người đã có lượt chấm trùng (${names}). Vẫn lưu tiếp cho những người còn lại?`);
+    const ok = await customConfirm(`${dupCodes.length} người đã có lượt chấm trùng hệt (${names}) — công đoạn/ca/ngày y hệt nhau rồi. Vẫn lưu tiếp cho những người còn lại?`);
     if(!ok) return;
+  }
+
+  // ⚠️ Cảnh báo TRÙNG CA: người sắp chấm đã có sẵn 1 công đoạn KHÁC trong cùng ca + cùng ngày này rồi
+  const candidates = [];
+  state.selectedCodes.forEach(code=>{
+    if(dupCodes.includes(code)) return;
+    const emp = EMPLOYEES.find(e=>e.code===code);
+    if(emp) candidates.push({ code: emp.code, short: emp.short, date, shift, stage });
+  });
+  const clashes = findUpcomingShiftClashes(candidates);
+  if(clashes.length){
+    const names = clashes.map(c=>`${c.short} (${c.stages.join(' / ')})`).join(', ');
+    const ok2 = await customConfirm(`⚠️ TRÙNG CA: ${clashes.length} người sẽ bị gán 2 công đoạn khác nhau trong CÙNG 1 ca — ${names}. Nếu không phải tăng ca thì đây là chấm nhầm. Vẫn lưu? (sẽ đưa vào hộp "Trùng ca cần xử lý" để sửa lại)`);
+    if(!ok2) return;
   }
 
   const batch = document.getElementById('batchInput').value.trim();
@@ -3469,7 +3796,7 @@ document.getElementById('btnSave').onclick = async ()=>{
     if(dupCodes.includes(code)) return;
     const emp = EMPLOYEES.find(e=>e.code===code);
     if(!emp) return;
-    state.records.push({ id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time, mult: 1 });
+    state.records.push({ id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time, mult: defaultMultFor(shift) });
     addedCount++;
   });
   saveRecords();
@@ -3715,6 +4042,7 @@ function wireStageTextCombo(inputId, comboId){
 }
 wireStageTextCombo('bulkEditStage', 'bulkEditStageCombo');
 wireBatchCombo('bulkEditBatch', 'bulkEditBatchCombo');
+wireStageTextCombo('editStage', 'editStageCombo');
 
 function renderRecords(){
   const body = document.getElementById('recordsBody');
@@ -3896,6 +4224,10 @@ function openEditModal(peopleList){
   editRecordModal.classList.add('show');
   }
 document.getElementById('btnCancelEdit').onclick = ()=> editRecordModal.classList.remove('show');
+document.getElementById('editShift').addEventListener('change', function(){
+  const multEl = document.getElementById('editMult');
+  if(HALF_DAY_SHIFTS.has(this.value) && (!multEl.value || parseFloat(multEl.value)===1)) multEl.value = 0.5;
+});
 
 editAddPersonSearch.addEventListener('input', ()=>{
   const q = normalize(editAddPersonSearch.value.trim());
@@ -3920,7 +4252,7 @@ editAddPersonSearch.addEventListener('input', ()=>{
       const time = document.getElementById('editTime').value;
       const dup = state.records.some(r=>r.date===date && r.shift===shift && r.stage===stage && r.code===code);
       if(dup && !(await customConfirm(`${emp.short} đã có lượt chấm trùng Ngày + Ca + Công đoạn này rồi. Vẫn thêm?`))) return;
-      const newRec = { id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time, mult: 1 };
+      const newRec = { id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time, mult: defaultMultFor(shift) };
       state.records.push(newRec);
       state.editingIds.push(newRec.id);
       saveRecords();
@@ -4340,7 +4672,7 @@ document.getElementById('btnConfirmNotChecked').onclick = ()=>{
     const emp = EMPLOYEES.find(e=>e.code===code);
     if(!emp){ skippedNoEmp++; return; }
     if(state.records.some(r=>r.date===date && r.shift===shift && r.stage===stage && r.code===code)){ dup++; return; }
-    state.records.push({ id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time: nowHM(), mult: 1 });
+    state.records.push({ id: Date.now()+Math.random(), date, shift, stage, code: emp.code, short: emp.short, full: emp.full, batch, time: nowHM(), mult: defaultMultFor(shift) });
     added++;
   });
   saveRecords(); saveStages();
@@ -4527,6 +4859,15 @@ function jumpToJournalForDate(iso, query, exactShift){
 }
 // ================= THỐNG KÊ =================
 document.getElementById('statDate').value = todayISO();
+document.getElementById('btnToggleRoster').addEventListener('click', function(){
+  state.rosterCollapsed = !state.rosterCollapsed;
+  document.getElementById('rosterSectionBody').style.display = state.rosterCollapsed ? 'none' : '';
+  this.textContent = state.rosterCollapsed ? '🔽 Mở rộng' : '🔼 Thu gọn';
+});
+document.getElementById('btnToggleRosterRows').addEventListener('click', ()=>{
+  state.rosterRowsExpanded = !state.rosterRowsExpanded;
+  renderAnalytics();
+});
 ['statPeriod','statDate','statPerson','statShift','statStage'].forEach(id=>{
   document.getElementById(id).addEventListener('input', renderAnalytics);
 });
@@ -4618,6 +4959,17 @@ function renderRosterChart(arr, period){
 
   const midHeaderCell = document.querySelector('.roster-table thead th:nth-child(3)');
   if(midHeaderCell) midHeaderCell.textContent = period === 'day' ? 'Có mặt' : 'Chấm công';
+
+  const rosterToggleBtn = document.getElementById('btnToggleRosterRows');
+  const rosterShouldLimit = !hasActiveFilter && !state.rosterRowsExpanded && employeesToShow.length > ROSTER_LIMIT;
+  const fullEmployeesToShow = employeesToShow;
+  if(rosterShouldLimit) employeesToShow = employeesToShow.slice(0, ROSTER_LIMIT);
+  if(!hasActiveFilter && fullEmployeesToShow.length > ROSTER_LIMIT){
+    rosterToggleBtn.style.display = 'inline-block';
+    rosterToggleBtn.textContent = state.rosterRowsExpanded ? `🔼 Thu gọn (đang hiện ${fullEmployeesToShow.length})` : `🔽 Hiện thêm (đang ẩn ${fullEmployeesToShow.length - ROSTER_LIMIT} người)`;
+  } else {
+    rosterToggleBtn.style.display = 'none';
+  }
 
   const body = document.getElementById('rosterTableBody');
   if(!employeesToShow.length){
@@ -4713,8 +5065,20 @@ function renderOverview(){
     list = list.filter(e=> !byEmployee.has(e.code));
   }
 
+  const ovToggleBtn = document.getElementById('btnToggleOverview');
+  const ovNoFilter = !q && mode === 'all';
+  const ovShouldLimit = ovNoFilter && !state.overviewExpanded && list.length > OVERVIEW_LIMIT;
+  const fullList = list;
+  if(ovShouldLimit) list = list.slice(0, OVERVIEW_LIMIT);
+  if(ovNoFilter && fullList.length > OVERVIEW_LIMIT){
+    ovToggleBtn.style.display = 'inline-block';
+    ovToggleBtn.textContent = state.overviewExpanded ? `🔼 Thu gọn (đang hiện ${fullList.length})` : `🔽 Hiện thêm (đang ẩn ${fullList.length - OVERVIEW_LIMIT} người)`;
+  } else {
+    ovToggleBtn.style.display = 'none';
+  }
+
   const headRow = document.getElementById('overviewHeadRow');
-  let headHtml = `<th class="ov-name-col">Họ tên (${list.length})</th>`;
+  let headHtml = `<th class="ov-name-col">STT · Họ tên (${fullList.length})</th>`;
   for(let d=1; d<=dim; d++){
     const isWeekend = new Date(y, m-1, d).getDay() === 0;
     headHtml += `<th class="${isWeekend?'weekend':''}">${d}</th>`;
@@ -4728,7 +5092,7 @@ function renderOverview(){
   if(!list.length){
     body.innerHTML = `<tr><td class="empty-state" colspan="${dim+3}">Không có ai khớp bộ lọc.</td></tr>`;
   } else {
-    body.innerHTML = list.map(e=>{
+    body.innerHTML = list.map((e,i)=>{
       const dayMap = byEmployee.get(e.code);
       let rowWorked = 0, rowLeave = 0, cells = '';
       for(let d=1; d<=dim; d++){
@@ -4766,7 +5130,7 @@ function renderOverview(){
       totalWorkedAll += rowWorked; totalLeaveAll += rowLeave;
       if(rowWorked || rowLeave) peopleWithDataCount++;
       return `<tr class="${(!rowWorked && !rowLeave) ? 'ov-row-dim':''}">
-        <td class="ov-name-col" data-name-code="${e.code}" style="cursor:pointer;" title="Bấm để xem toàn bộ công ca / công đoạn của ${e.short} trong Nhật ký"><b>${e.short}</b><small>${e.code}</small></td>
+        <td class="ov-name-col" data-name-code="${e.code}" style="cursor:pointer;" title="Bấm để xem toàn bộ công ca / công đoạn của ${e.short} trong Nhật ký"><b>${e.stt ?? (i+1)}. ${e.short}</b><small>${e.code}</small></td>
         ${cells}
         <td class="ov-summary">${rowWorked ? (Number.isInteger(rowWorked)?rowWorked:rowWorked.toFixed(2)) : '—'}</td>
         <td class="ov-summary leave">${rowLeave || '—'}</td>
@@ -4834,6 +5198,10 @@ document.getElementById('ovNextMonth').onclick = ()=>{ state.ovMonth++; if(state
 document.getElementById('ovTodayBtn').onclick = ()=>{ const d=new Date(); state.ovYear=d.getFullYear(); state.ovMonth=d.getMonth()+1; renderOverview(); };
 document.getElementById('ovSearch').addEventListener('input', renderOverview);
 document.getElementById('ovFilterMode').addEventListener('change', renderOverview);
+document.getElementById('btnToggleOverview').addEventListener('click', ()=>{
+  state.overviewExpanded = !state.overviewExpanded;
+  renderOverview();
+});
 // ================= ẢNH KẾ HOẠCH (giản lược, bỏ OCR để gọn — có thể thêm lại nếu cần) =================
 const dayTabsEl = document.getElementById('dayTabs');
 function renderDayTabs(){
@@ -4905,7 +5273,7 @@ const CHART_SHIFT_GROUPS = [
   { label:'Nghỉ',   abbr:'Nghỉ', match:['Nghỉ phép / Ốm'],                 color:'#D64545', bg:'#FCEBEB' },
   { label:'Ca 3',   abbr:'C3',   match:['Ca 3'],                           color:'#8B5CF6', bg:'#F3EEFE' },
   { label:'1/2 Ca', abbr:'1/2',  match:['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3'], color:'#D6479A', bg:'#FCEAF4' },
-  { label:'HC',     abbr:'HC',   match:['Hành chính'],                     color:'#2F6FED', bg:'#EAF1FE' },
+  { label:'HC',     abbr:'HC',   match:['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)'], color:'#2F6FED', bg:'#EAF1FE' },
 ];
 function renderShiftBarChart(containerEl, records){
   const total = records.length;
@@ -4995,6 +5363,19 @@ document.addEventListener('click', (e)=>{
   }
 });
 function renderPersonalTab(){ renderAggregateShiftChart(); renderPersonalReport(); }
+document.getElementById('btnTogglePersonalLookup').addEventListener('click', function(){
+  state.personalLookupOpen = !state.personalLookupOpen;
+  const body = document.getElementById('personalLookupBody');
+  body.style.display = state.personalLookupOpen ? 'block' : 'none';
+  this.textContent = state.personalLookupOpen ? '🔼 Thu gọn' : '🔽 Mở rộng';
+});
+document.getElementById('btnPersonalClear').addEventListener('click', ()=>{
+  state.personalCode = null;
+  document.getElementById('personalSearchInput').value = '';
+  document.getElementById('personalSuggest').style.display = 'none';
+  renderPersonalReport();
+  document.getElementById('personalSearchInput').focus();
+});
 
 function renderMiniCalendar(records, cursorDate){
   const today = new Date();
@@ -5023,6 +5404,153 @@ function renderMiniCalendar(records, cursorDate){
   }
   return `<div class="mini-cal">${html}</div>`;
 }
+
+// ================= HỘP MỞ RỘNG (bật/tắt bởi admin): xu hướng công 12 tháng gần nhất =================
+function computePersonMonthlyCong(code, monthsBack){
+  const now = new Date();
+  const months = [];
+  for(let i=monthsBack-1; i>=0; i--){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    months.push({ y:d.getFullYear(), m:d.getMonth()+1, label:`Th${d.getMonth()+1}` });
+  }
+  const recs = state.records.filter(r=>r.code===code && r.shift!==LEAVE_SHIFT);
+  return months.map(({y,m,label})=>{
+    const prefix = `${y}-${String(m).padStart(2,'0')}-`;
+    const congMap = new Map();
+    recs.forEach(r=>{
+      if(!r.date.startsWith(prefix)) return;
+      const key = r.date+'|'+r.shift;
+      const mult = r.mult || 1;
+      const cur = congMap.get(key);
+      if(cur === undefined || mult > cur) congMap.set(key, mult);
+    });
+    const total = [...congMap.values()].reduce((a,v)=>a+v, 0);
+    return { label, total };
+  });
+}
+function renderPersonalTrendBox(code){
+  const data = computePersonMonthlyCong(code, 12);
+  const max = Math.max(1, ...data.map(d=>d.total));
+  const bars = data.map(d=>`
+    <div class="trend-bar-col" title="${d.label}: ${d.total} công">
+      <span class="trend-bar-val">${d.total ? (Number.isInteger(d.total)?d.total:d.total.toFixed(1)) : ''}</span>
+      <div class="trend-bar-fill" style="height:${d.total ? Math.max(3, d.total/max*100) : 1}%;"></div>
+      <span class="trend-bar-label">${d.label}</span>
+    </div>`).join('');
+  return `<div class="trend-chart">${bars}</div>`;
+}
+function updatePersonalExtraToggleBtn(){
+  const btn = document.getElementById('btnTogglePersonalExtra');
+  if(!btn) return;
+  const on = !!state.settings.personalExtraEnabled;
+  btn.textContent = on ? '🟢 ĐANG BẬT — ai cũng thấy mục mới' : '⚪ ĐANG TẮT — chỉ admin xem thử';
+  btn.className = 'btn ' + (on ? 'btn-teal' : 'btn-ghost');
+}
+document.getElementById('btnTogglePersonalExtra').addEventListener('click', ()=>{
+  state.settings.personalExtraEnabled = !state.settings.personalExtraEnabled;
+  saveSettings();
+  updatePersonalExtraToggleBtn();
+  if(typeof renderPersonalReport === 'function') renderPersonalReport();
+  showToast(state.settings.personalExtraEnabled
+    ? '✅ Đã BẬT — nhớ "Lưu lên máy chủ" để mọi người thấy'
+    : '⚪ Đã TẮT cho người khác xem');
+});
+
+// ================= HỘP MỞ RỘNG (bật/tắt bởi admin): so trung bình / chuỗi ngày làm / cảnh báo vắng =================
+function parseISO(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
+function addDaysISO(iso, delta){ const dt = parseISO(iso); dt.setDate(dt.getDate()+delta); return isoOf(dt.getFullYear(), dt.getMonth(), dt.getDate()); }
+function isSundayISO(iso){ return parseISO(iso).getDay() === 0; }
+function fmtCong(n){ return (Math.round(n*10)/10).toString().replace(/\.0$/,''); }
+
+function computeCongForCode(code, periodPrefix){
+  const recs = state.records.filter(r=>r.code===code && r.shift!==LEAVE_SHIFT && (!periodPrefix || r.date.startsWith(periodPrefix)));
+  const map = new Map();
+  recs.forEach(r=>{
+    const key = r.date+'|'+r.shift;
+    const mult = r.mult || 1;
+    const cur = map.get(key);
+    if(cur === undefined || mult > cur) map.set(key, mult);
+  });
+  return [...map.values()].reduce((a,v)=>a+v, 0);
+}
+function computeAverageCong(periodPrefix){
+  let total = 0, count = 0;
+  EMPLOYEES.forEach(e=>{
+    const c = computeCongForCode(e.code, periodPrefix);
+    if(c > 0){ total += c; count++; }
+  });
+  return count ? total/count : 0;
+}
+function computeWorkStreak(code){
+  const workDates = new Set(state.records.filter(r=>r.code===code && r.shift!==LEAVE_SHIFT).map(r=>r.date));
+  if(!workDates.size) return { days:0, lastDate:null };
+  const lastDate = [...workDates].sort().pop();
+  let streak = 0, cursor = lastDate, guard = 0;
+  while(guard++ < 2000){
+    if(isSundayISO(cursor)){ cursor = addDaysISO(cursor, -1); continue; }
+    if(workDates.has(cursor)){ streak++; cursor = addDaysISO(cursor, -1); }
+    else break;
+  }
+  return { days: streak, lastDate };
+}
+function computeAbsenceAlert(code){
+  if(!state.records.length) return null;
+  const myDates = new Set(state.records.filter(r=>r.code===code).map(r=>r.date));
+  if(!myDates.size) return null;
+  let datasetMax = null;
+  state.records.forEach(r=>{ if(!datasetMax || r.date > datasetMax) datasetMax = r.date; });
+  const lastDateForPerson = [...myDates].sort().pop();
+  if(!datasetMax || lastDateForPerson >= datasetMax) return null;
+  let cursor = addDaysISO(lastDateForPerson, 1), missing = 0, guard = 0;
+  while(cursor <= datasetMax && guard++ < 2000){
+    if(!isSundayISO(cursor)) missing++;
+    cursor = addDaysISO(cursor, 1);
+  }
+  if(missing >= 3) return { days: missing, sinceDate: lastDateForPerson, untilDate: datasetMax };
+  return null;
+}
+function renderPersonalInsightsBox(code){
+  const periodPrefix = personalCursor.mode==='month' ? monthPrefix(personalCursor.value) : null;
+  const myCong = computeCongForCode(code, periodPrefix);
+  const avgCong = computeAverageCong(periodPrefix);
+  const diff = myCong - avgCong;
+  const periodLabel = periodPrefix ? monthLabel(personalCursor.value) : 'toàn bộ thời gian';
+  const compareLine = avgCong > 0
+    ? `<span style="color:${diff>=0?'var(--teal)':'var(--danger)'};">${diff>=0?'▲ Cao hơn':'▼ Thấp hơn'} trung bình <b>${fmtCong(Math.abs(diff))}</b> công (${diff>=0?'+':'-'}${Math.abs(diff/avgCong*100).toFixed(0)}%)</span>`
+    : `<span class="sub">Chưa đủ dữ liệu chung để so sánh.</span>`;
+  const streak = computeWorkStreak(code);
+  const absence = computeAbsenceAlert(code);
+  return `
+    <div style="display:flex;flex-direction:column;gap:6px;">
+      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
+        Công ${periodLabel}: <b>${fmtCong(myCong)}</b> — trung bình 162 người: <b>${fmtCong(avgCong)}</b><br>${compareLine}
+      </div>
+      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
+        🔥 Đang làm liên tục <b>${streak.days}</b> ngày${streak.days>0?` (không tính Chủ nhật, tính đến ${fmtDate(streak.lastDate)})`:''}
+      </div>
+      ${absence ? `
+      <div class="summary-chip" style="background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:8px 11px;font-size:12.5px;color:var(--danger);">
+        ⚠️ Vắng liên tục <b>${absence.days}</b> ngày (không tính Chủ nhật) — từ sau ${fmtDate(absence.sinceDate)} đến ${fmtDate(absence.untilDate)}
+      </div>` : ''}
+    </div>
+  `;
+}
+function updatePersonalInsightsToggleBtn(){
+  const btn = document.getElementById('btnTogglePersonalInsights');
+  if(!btn) return;
+  const on = !!state.settings.personalInsightsEnabled;
+  btn.textContent = on ? '🟢 ĐANG BẬT — ai cũng thấy mục mới' : '⚪ ĐANG TẮT — chỉ admin xem thử';
+  btn.className = 'btn ' + (on ? 'btn-teal' : 'btn-ghost');
+}
+document.getElementById('btnTogglePersonalInsights').addEventListener('click', ()=>{
+  state.settings.personalInsightsEnabled = !state.settings.personalInsightsEnabled;
+  saveSettings();
+  updatePersonalInsightsToggleBtn();
+  if(typeof renderPersonalReport === 'function') renderPersonalReport();
+  showToast(state.settings.personalInsightsEnabled
+    ? '✅ Đã BẬT — nhớ "Lưu lên máy chủ" để mọi người thấy'
+    : '⚪ Đã TẮT cho người khác xem');
+});
 
 function renderPersonalReport(){
   const area = document.getElementById('personalReportArea');
@@ -5060,6 +5588,24 @@ function renderPersonalReport(){
     ${topStages.length ? `
       <p class="sub" style="margin:10px 0 2px;">🏭 Công đoạn hay làm nhất:</p>
       <ul class="top-stage-list">${topStages.map(([s,c])=>`<li><span>${s}</span><b>${c}</b></li>`).join('')}</ul>
+    ` : ''}
+    ${(isAdminV4 || state.settings.personalInsightsEnabled) ? `
+      <div class="personal-extra-box">
+        <p class="sub" style="margin:0 0 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <span>📊 So mặt bằng chung &amp; nhịp làm việc</span>
+          ${(!state.settings.personalInsightsEnabled && isAdminV4) ? '<span style="font-size:10.5px;color:var(--danger);">🔒 admin xem thử — người khác chưa thấy</span>' : ''}
+        </p>
+        ${renderPersonalInsightsBox(state.personalCode)}
+      </div>
+    ` : ''}
+    ${(isAdminV4 || state.settings.personalExtraEnabled) ? `
+      <div class="personal-extra-box">
+        <p class="sub" style="margin:0 0 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+          <span>📈 Xu hướng công 12 tháng gần nhất</span>
+          ${(!state.settings.personalExtraEnabled && isAdminV4) ? '<span style="font-size:10.5px;color:var(--danger);">🔒 admin xem thử — người khác chưa thấy</span>' : ''}
+        </p>
+        ${renderPersonalTrendBox(state.personalCode)}
+      </div>
     ` : ''}
     <p class="sub" style="margin:12px 0 4px;">Chi tiết từng ngày:</p>
     <div style="overflow-x:auto;">
@@ -5145,6 +5691,7 @@ function buildGithubBackupData(){
     dayImages: state.dayImages,
     savedTeams: state.savedTeams,
     employees: EMPLOYEES,
+    settings: state.settings,
     exportAt: new Date().toISOString()
   };
 }
@@ -5304,8 +5851,11 @@ async function loadFromGithub(){
     if(data.dayImages) state.dayImages = data.dayImages;
     if(data.savedTeams) state.savedTeams = data.savedTeams;
     if(data.employees && Array.isArray(data.employees) && data.employees.length) EMPLOYEES = data.employees;
-    saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS();
+    if(data.settings) Object.assign(state.settings, data.settings);
+    saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
+    updatePersonalExtraToggleBtn();
+    if(typeof updatePersonalInsightsToggleBtn === 'function') updatePersonalInsightsToggleBtn();
     showToast('✅ Đã tải dữ liệu mới nhất!');
     logActivity('📥 Tải bản mới nhất từ máy chủ — thành công');
   }catch(e){
@@ -5341,10 +5891,13 @@ async function loadFromGithubSilent(){
     if(data.dayImages) state.dayImages = data.dayImages;
     if(data.savedTeams) state.savedTeams = data.savedTeams;
     if(data.employees && Array.isArray(data.employees) && data.employees.length) EMPLOYEES = data.employees;
-    saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS();
+    if(data.settings) Object.assign(state.settings, data.settings);
+    saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
     if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
     if(typeof renderAggregateShiftChart === 'function') renderAggregateShiftChart();
+    if(typeof updatePersonalExtraToggleBtn === 'function') updatePersonalExtraToggleBtn();
+    if(typeof updatePersonalInsightsToggleBtn === 'function') updatePersonalInsightsToggleBtn();
     if(label) label.textContent = '✅ Cập nhật lúc ' + fmtSyncClock(data.exportAt || new Date().toISOString());
     return true;
   }catch(e){
@@ -5732,7 +6285,7 @@ document.getElementById('btnGsPush').addEventListener('click', pushToGoogleSheet
 
 // ================= SAO LƯU / PHỤC HỒI (JSON — thay cho PWA/OCR để gọn) =================
 document.getElementById('btnBackup').onclick = ()=>{
-  const backupData = { customStages: state.customStages, customBatches: state.customBatches, records: state.records, dayImages: state.dayImages, savedTeams: state.savedTeams, employees: EMPLOYEES, exportAt: new Date().toISOString() };
+  const backupData = { customStages: state.customStages, customBatches: state.customBatches, records: state.records, dayImages: state.dayImages, savedTeams: state.savedTeams, employees: EMPLOYEES, settings: state.settings, exportAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(backupData, null, 2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -5758,7 +6311,8 @@ document.getElementById('restoreFileInput').addEventListener('change', (e)=>{
         if(data.dayImages) state.dayImages = data.dayImages;
         if(data.savedTeams) state.savedTeams = data.savedTeams;
         if(data.employees && Array.isArray(data.employees) && data.employees.length) EMPLOYEES = data.employees;
-        saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS();
+        if(data.settings) Object.assign(state.settings, data.settings);
+        saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
         renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
         showToast('Đã phục hồi dữ liệu');
         logActivity('📂 Phục hồi dữ liệu từ file sao lưu');
@@ -5794,9 +6348,12 @@ safeRun(renderSavedTeams, 'Tổ/nhóm quen thuộc');
 safeRun(()=>pickWorkDate(todayISO()), 'Ngày & Ca làm');
 safeRun(()=>{ const t=document.getElementById('entryTime'); if(t) t.value = nowHM(); }, 'Giờ chấm mặc định');
 safeRun(renderStats, 'Thống kê nhanh');
+safeRun(renderConflictPanel, 'Cảnh báo trùng ca');
 safeRun(renderDayTabs, 'Tab ảnh');
 safeRun(renderAnalytics, 'Bảng thống kê chi tiết (chỉ dùng khi admin mở tab Thống kê)');
 safeRun(renderPersonalTab, 'Tab Cá nhân (tab công khai mặc định)');
+safeRun(updatePersonalExtraToggleBtn, 'Công tắc mục mới tab Cá nhân');
+safeRun(updatePersonalInsightsToggleBtn, 'Công tắc nhận xét nhanh tab Cá nhân');
 </script>
 </body>
 </html>
