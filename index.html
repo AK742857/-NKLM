@@ -146,30 +146,30 @@
     padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:14px;background:#fdfdfb;color:var(--ink);
   }
   input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber);}
-  .btn{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:#fdfdfb;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
+  .btn{padding:10px 14px;border-radius:8px;border:1px solid var(--line);background:var(--input-bg);font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;}
   .btn:hover{filter:brightness(.98);}
   .btn-primary{background:var(--amber);color:#fff;border-color:var(--amber);}
   .btn-teal{background:var(--teal);color:#fff;border-color:var(--teal);}
-  .btn-ghost{background:#fdfdfb;}
+  .btn-ghost{background:var(--input-bg);}
   .btn-danger-sm{background:var(--danger-soft);color:var(--danger);border:none;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;}
   .btn-edit-sm{background:var(--teal-soft);color:var(--teal);border:none;padding:6px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin-right:4px;}
 
-  .combo-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:#fff;border:1px solid var(--line);border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.1);}
+  .combo-list{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:8px;max-height:220px;overflow-y:auto;box-shadow:0 8px 20px rgba(0,0,0,.1);}
   .combo-list .opt{padding:9px 12px;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;gap:8px;}
   .combo-list .opt:hover{background:var(--amber-soft);}
   .combo-list .empty{padding:9px 12px;font-size:13px;color:var(--muted);}
   .manage-tab-btn.active{background:var(--amber);color:#fff;border-color:var(--amber);}
 
   /* ================= Lịch mini ================= */
-  #workDateDisplay{cursor:pointer;background:#fdfdfb;}
-  .mini-calendar{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 26px rgba(0,0,0,.14);width:266px;}
+  #workDateDisplay{cursor:pointer;background:var(--input-bg);}
+  .mini-calendar{display:none;position:absolute;top:calc(100% + 4px);left:0;z-index:60;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 10px 26px rgba(0,0,0,.14);width:266px;}
   .mini-calendar.open{display:block;}
   .cal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:13px;}
-  .cal-nav{background:#efeee7;border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;}
-  .cal-nav:hover{background:#e6e4d9;}
+  .cal-nav{background:var(--input-bg);color:var(--ink);border:none;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:14px;}
+  .cal-nav:hover{background:var(--amber-soft);}
   .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:10px;color:var(--muted);margin-bottom:4px;text-transform:uppercase;}
   .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;}
-  .cal-cell{position:relative;height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-size:11.5px;cursor:pointer;background:#fafaf7;border:1px solid transparent;}
+  .cal-cell{position:relative;height:36px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:6px;font-size:11.5px;cursor:pointer;background:var(--panel-soft);border:1px solid transparent;}
   .cal-cell.empty{visibility:hidden;cursor:default;}
   .cal-cell:hover{background:var(--amber-soft);}
   .cal-cell span{font-weight:600;line-height:1;}
@@ -248,7 +248,7 @@
   .bulk-unresolved-row{background:var(--danger-soft);border-radius:8px;padding:8px 10px;margin-bottom:8px;}
   .bulk-unresolved-row .raw{font-size:12.5px;font-weight:600;color:var(--danger);margin-bottom:6px;}
   .bulk-cand-group{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
-  .bulk-cand-btn{background:#fff;border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;}
+  .bulk-cand-btn{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:6px;padding:5px 9px;font-size:12px;cursor:pointer;}
   .bulk-cand-btn:hover{border-color:var(--amber);background:var(--amber-soft);}
   .bulk-skip-btn{background:transparent;border:none;color:var(--muted);font-size:11.5px;text-decoration:underline;cursor:pointer;padding:5px 4px;}
   .bulk-manual-wrap{position:relative;margin-top:6px;width:100%;}
@@ -283,7 +283,7 @@
 
   /* ================= Thống kê ================= */
   .stats-mini{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
-  .mini-stat{background:#fafaf7;border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;}
+  .mini-stat{background:var(--panel-soft);border:1px solid var(--line);border-radius:8px;padding:10px;text-align:center;}
   .mini-stat span{display:block;font-size:10.5px;color:var(--muted);text-transform:uppercase;}
   .mini-stat b{font-size:17px;font-family:'IBM Plex Mono',monospace;}
   .ranking-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:13px;}
@@ -295,11 +295,11 @@
   .roster-table th{text-align:left;font-size:10.5px;text-transform:uppercase;color:var(--muted);padding:6px;border-bottom:2px solid var(--line);}
   .roster-table td{padding:6px;border-bottom:1px solid var(--line);}
   .roster-stt{color:var(--muted);font-family:'IBM Plex Mono',monospace;width:26px;}
-  .roster-bar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:#f1f0ea;min-width:60px;}
+  .roster-bar{display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--panel-soft);min-width:60px;}
   .roster-bar span{display:block;height:100%;}
   .roster-total{font-family:'IBM Plex Mono',monospace;text-align:right;cursor:pointer;}
   .roster-total:hover{text-decoration:underline;}
-  .day-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#2f9e63;box-shadow:0 0 0 3px #e2f4ea;}
+  .day-dot{display:inline-block;width:11px;height:11px;border-radius:50%;background:#2f9e63;box-shadow:0 0 0 3px var(--card);}
   .day-dash{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-weight:700;}
   .leave-hint{display:inline-block;margin-left:5px;font-size:10px;color:var(--danger);font-family:'IBM Plex Mono',monospace;}
   .legend-row{display:flex;flex-wrap:wrap;gap:10px;font-size:11.5px;color:var(--muted);margin-top:10px;}
@@ -310,8 +310,8 @@
 
   /* ================= TỔNG QUAN (grid 162 người x ngày) ================= */
   .overview-controls{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:10px;}
-  .overview-controls .month-nav{display:flex;align-items:center;gap:6px;background:#fafaf7;border:1px solid var(--line);border-radius:8px;padding:4px 6px;}
-  .overview-controls .month-nav button{border:none;background:#efeee7;border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:15px;}
+  .overview-controls .month-nav{display:flex;align-items:center;gap:6px;background:var(--panel-soft);border:1px solid var(--line);border-radius:8px;padding:4px 6px;}
+  .overview-controls .month-nav button{border:none;background:var(--input-bg);color:var(--ink);border-radius:6px;width:28px;height:28px;cursor:pointer;font-size:15px;}
   .overview-controls .month-nav b{font-size:13.5px;min-width:110px;text-align:center;}
   .overview-summary{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
   .overview-summary .mini-stat{flex:1;min-width:110px;}
@@ -331,16 +331,16 @@
   table.overview-table td.ov-name-col small{color:var(--muted);font-family:'IBM Plex Mono',monospace;font-size:9.5px;}
   td.ov-cell{width:26px;height:30px;cursor:pointer;font-weight:700;font-size:10.5px;}
   td.ov-cell:hover{outline:2px solid var(--amber);outline-offset:-2px;}
-  td.ov-cell.weekend{background:#f7f6f1;}
-  td.ov-summary{font-family:'IBM Plex Mono',monospace;font-weight:700;background:#fbfaf6;min-width:44px;}
+  td.ov-cell.weekend{background:var(--panel-soft);}
+  td.ov-summary{font-family:'IBM Plex Mono',monospace;font-weight:700;background:var(--panel-soft);min-width:44px;}
   td.ov-summary.leave{color:var(--danger);}
   tr.ov-row-dim td{opacity:.35;}
 
   /* ================= Ảnh ================= */
   .day-tabs{display:flex;gap:6px;overflow-x:auto;margin-bottom:10px;}
-  .day-tab{flex:none;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:#fafaf7;font-size:12.5px;font-weight:600;cursor:pointer;}
+  .day-tab{flex:none;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel-soft);color:var(--ink);font-size:12.5px;font-weight:600;cursor:pointer;}
   .day-tab.active{background:var(--amber);color:#fff;border-color:var(--amber);}
-  .img-viewport{border:1px dashed var(--line);border-radius:10px;overflow:auto;height:340px;background:#fafaf9;position:relative;}
+  .img-viewport{border:1px dashed var(--line);border-radius:10px;overflow:auto;height:340px;background:var(--panel-soft);position:relative;}
   .img-container{transform-origin:top left;}
   .img-container img{max-width:none;display:block;}
   .img-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:10px;}
@@ -965,7 +965,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .monthly-missing-dates{color:var(--muted);font-size:11.5px;margin-top:4px;display:flex;flex-wrap:wrap;gap:5px;}
   .mm-name-toggle{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px;}
   .mm-date-chip{border:1px solid var(--line);background:var(--card,#fff);border-radius:6px;padding:2px 7px;font-size:11px;color:var(--ink);font-family:inherit;cursor:pointer;line-height:1.6;}
-  .mm-date-chip.sunday{background:#fdeceb;border-color:#e5484d;color:#b42318;}
+  .mm-date-chip.sunday{background:var(--danger-soft);border-color:var(--danger);color:var(--danger);}
   .mm-date-chip.sel{background:var(--amber-soft,#fdeecb);border-color:var(--amber,#d99a1f);font-weight:700;color:var(--amber-dark,#8a5a00);}
   .seg-btn{flex:1;padding:9px 10px;border:1px solid var(--line);background:var(--card);color:var(--muted);font-size:12.5px;font-weight:600;border-radius:8px;cursor:pointer;text-align:center;}
   .seg-btn:hover{filter:brightness(0.98);}
@@ -975,30 +975,37 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .ms-suggest-item{padding:9px 12px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--line);}
   .ms-suggest-item:last-child{border-bottom:none;}
   .ms-suggest-item small{color:var(--muted);margin-left:4px;}
-  .shift-chart{margin:6px 0 4px;}
-  .shift-chart-row{display:flex;align-items:center;gap:8px;margin-bottom:9px;}
-  .shift-chart-label{width:54px;font-weight:700;font-size:13.5px;flex-shrink:0;}
-  .shift-chart-bar-wrap{flex:1;background:var(--bg);border-radius:9px;overflow:hidden;height:36px;}
-  .shift-chart-bar{height:100%;display:flex;align-items:center;justify-content:flex-end;padding-right:9px;color:#fff;font-weight:700;font-size:14px;border-radius:9px;min-width:38px;}
-  .shift-chart-pct{width:42px;text-align:right;font-weight:700;font-size:13px;flex-shrink:0;}
-  .shift-chart-total{text-align:center;margin-top:8px;font-size:13.5px;color:var(--muted);}
+  .shift-chart{margin:6px 0 2px;}
+  .shift-chart-row{display:flex;align-items:center;gap:7px;margin-bottom:7px;}
+  .shift-chart-label{width:46px;font-weight:700;font-size:12px;flex-shrink:0;color:var(--ink);}
+  .shift-chart-bar-wrap{flex:1;background:var(--panel-soft,var(--bg));border-radius:8px;overflow:hidden;height:26px;box-shadow:inset 0 1px 4px rgba(0,0,0,.08);}
+  .shift-chart-bar{
+    height:100%;display:flex;align-items:center;justify-content:flex-end;
+    padding-right:8px;font-weight:700;font-size:12px;border-radius:8px;min-width:30px;
+    transition:width .35s cubic-bezier(.4,0,.2,1);
+    box-shadow:0 3px 8px color-mix(in srgb, var(--amber-dark) 38%, transparent),
+               inset 0 1px 0 rgba(255,255,255,.30),
+               inset 0 -7px 10px rgba(0,0,0,.10);
+  }
+  .shift-chart-pct{width:34px;text-align:right;font-weight:700;font-size:11.5px;flex-shrink:0;color:var(--muted);}
+  .shift-chart-total{text-align:center;margin-top:6px;font-size:12px;color:var(--muted);}
   .stat-cards-row{display:flex;gap:10px;}
   .stat-card{flex:1;background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:14px 10px;text-align:center;}
   .stat-card-num{font-size:24px;font-weight:800;color:var(--ink);}
   .stat-card-label{font-size:12px;color:var(--muted);margin-top:2px;}
   .mini-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin:10px 0;max-width:340px;}
   .mini-cal-dow{font-size:10px;color:var(--muted);text-align:center;font-weight:600;padding-bottom:2px;}
-  .mini-cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;font-size:13px;font-weight:700;background:#fff;color:var(--ink);border:1.3px solid var(--line);}
+  .mini-cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;position:relative;font-size:13px;font-weight:700;background:var(--card);color:var(--ink);border:1.3px solid var(--line);}
   .mini-cal-day.worked{border-width:1.3px;}
   .mini-cal-day.today{box-shadow:0 0 0 2px currentColor inset;}
   .mini-cal-day.empty{visibility:hidden;border:none;}
   .mini-cal-badge{position:absolute;right:2px;bottom:2px;color:#fff;font-size:7px;font-weight:700;line-height:1;padding:1.5px 3px;border-radius:4px;letter-spacing:.01em;}
   .month-nav-row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;margin:8px 0;}
   .seg-toggle{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;}
-  .seg-toggle .seg-btn{font-family:inherit;font-size:12px;padding:6px 10px;border:none;background:#fff;color:var(--muted);cursor:pointer;}
+  .seg-toggle .seg-btn{font-family:inherit;font-size:12px;padding:6px 10px;border:none;background:var(--card);color:var(--muted);cursor:pointer;}
   .seg-toggle .seg-btn.active{background:var(--ink);color:#fff;}
   .month-nav{display:flex;align-items:center;gap:8px;font-size:13px;}
-  .month-nav button{border:1px solid var(--line);background:#fff;border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;color:var(--ink);}
+  .month-nav button{border:1px solid var(--line);background:var(--card);border-radius:7px;width:28px;height:28px;font-size:13px;cursor:pointer;color:var(--ink);}
   .month-nav span{font-weight:600;min-width:96px;text-align:center;}
   .last-work-banner{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:13px;margin-bottom:10px;}
   .top-stage-list{list-style:none;padding:0;margin:8px 0 0;}
@@ -4195,6 +4202,7 @@ function renderEditGroupPeopleList(){
         state.editingIds = state.editingIds.filter(x=>x!==id);
         saveRecords();
         renderStats(); renderRecords(); renderAnalytics();
+        if(state.personalCode) renderPersonalReport();
         renderEditGroupPeopleList();
         showToast(`Đã xóa ${rec.short} khỏi nhóm`);
       }
@@ -4251,6 +4259,7 @@ editAddPersonSearch.addEventListener('input', ()=>{
       state.editingIds.push(newRec.id);
       saveRecords();
       renderStats(); renderRecords(); renderAnalytics();
+      if(state.personalCode) renderPersonalReport();
       renderEditGroupPeopleList();
       editAddPersonSearch.value = '';
       editAddPersonCombo.style.display = 'none';
@@ -4278,6 +4287,7 @@ document.getElementById('btnConfirmEdit').onclick = ()=>{
   saveRecords(); saveStages();
   editRecordModal.classList.remove('show');
   renderStats(); renderRecords(); renderAnalytics();
+  if(state.personalCode) renderPersonalReport();
   showToast('Đã lưu thay đổi');
 };
 
@@ -5269,25 +5279,42 @@ const CHART_SHIFT_GROUPS = [
   { label:'1/2 Ca', abbr:'1/2',  match:['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3'], color:'#D6479A', bg:'#FCEAF4' },
   { label:'HC',     abbr:'HC',   match:['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)'], color:'#2F6FED', bg:'#EAF1FE' },
 ];
+// Thang màu 1 tông theo ĐÚNG màu của theme đang bật (dùng color-mix giữa --amber-dark và --amber-soft
+// của theme hiện tại), số càng lớn càng đậm, số càng bé càng nhạt — nên đổi theme là biểu đồ tự đổi màu đẹp theo,
+// không bị lệch tông như bảng màu cố định trước đây.
 function renderShiftBarChart(containerEl, records){
   const total = records.length;
   const rows = CHART_SHIFT_GROUPS
-    .map(g=>({ label:g.label, color:g.color, count: records.filter(r=>g.match.includes(r.shift)).length }))
+    .map(g=>({ label:g.label, count: records.filter(r=>g.match.includes(r.shift)).length }))
     .filter(r=>r.count>0)
     .sort((a,b)=>b.count-a.count);
   const max = Math.max(1, ...rows.map(r=>r.count));
   containerEl.innerHTML = `
     <div class="shift-chart">
-      ${rows.map(r=>`
+      ${rows.map(r=>{
+        const pct = Math.round((r.count/max)*100);
+        return `
         <div class="shift-chart-row">
           <div class="shift-chart-label">${r.label}</div>
           <div class="shift-chart-bar-wrap">
-            <div class="shift-chart-bar" style="width:${(r.count/max*100).toFixed(1)}%;background:${r.color};">${r.count}</div>
+            <div class="shift-chart-bar" data-pct="${pct}" style="width:${pct}%;background-color:color-mix(in srgb, var(--amber-dark) ${pct}%, var(--amber-soft) ${100-pct}%);">${r.count}</div>
           </div>
           <div class="shift-chart-pct">${total?Math.round(r.count/total*100):0}%</div>
-        </div>`).join('') || '<p class="sub">Chưa có dữ liệu.</p>'}
+        </div>`;
+      }).join('') || '<p class="sub">Chưa có dữ liệu.</p>'}
       <div class="shift-chart-total">📊 Tổng: <b>${total}</b> bản ghi</div>
     </div>`;
+  // Sau khi trình duyệt đã tính ra màu thật (color-mix) mới biết được nền đó sáng hay tối,
+  // để chọn màu chữ số tương phản tốt — tự động đúng với MỌI theme, không cần đoán trước.
+  requestAnimationFrame(()=>{
+    containerEl.querySelectorAll('.shift-chart-bar').forEach(bar=>{
+      const rgb = getComputedStyle(bar).backgroundColor.match(/[\d.]+/g);
+      if(!rgb) return;
+      const [r,g,b] = rgb.map(Number);
+      const luminance = (0.299*r + 0.587*g + 0.114*b) / 255;
+      bar.style.color = luminance > 0.6 ? 'var(--amber-dark)' : '#fff';
+    });
+  });
 }
 
 // ---- Điều hướng tháng dùng chung (Tất cả / Theo tháng + ◀ ▶) ----
@@ -5513,12 +5540,189 @@ function renderAbsenceAlertBox(code){
   </div>`;
 }
 
+// ================= NHÓM CA DÙNG CHUNG CHO CÁC BÁO CÁO CÁ NHÂN MỚI (Ca1/Ca2/Ca3/½ Ca/Hành chính/Nghỉ) =================
+const REPORT_SHIFT_GROUPS = [
+  { key:'ca1',   label:'☀️ Ca 1',              match:['Ca 1'] },
+  { key:'ca2',   label:'☁️ Ca 2',              match:['Ca 2'] },
+  { key:'ca3',   label:'🌙 Ca 3',              match:['Ca 3'] },
+  { key:'half',  label:'½ Ca',                match:['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3'] },
+  { key:'hc',    label:'🏢 Hành chính',        match:['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)'] },
+  { key:'leave', label:'🌙 Nghỉ phép / Ốm',    match:[LEAVE_SHIFT] },
+];
+const REPORT_GROUP_COLORS = { ca1:'#2F6FED', ca2:'#2E9F5A', ca3:'#8B5CF6', half:'#D6479A', hc:'#E0A63C' };
+// Tính tổng công theo từng nhóm ca cho 1 người trong 1 khoảng prefix ngày (VD "2026-09"), gộp theo (ngày+ca)
+// để 1 ca được chấm ở nhiều công đoạn không bị cộng trùng — giống cách tính "Tổng công" đang dùng trong app.
+function computeGroupSumsForPerson(code, prefix){
+  const recs = state.records.filter(r=>r.code===code && (!prefix || r.date.startsWith(prefix)));
+  const dayShiftMap = new Map();
+  recs.forEach(r=>{
+    const key = r.date+'|'+r.shift;
+    const mult = r.mult || 1;
+    const cur = dayShiftMap.get(key);
+    if(!cur || mult > cur.mult) dayShiftMap.set(key, {shift:r.shift, mult});
+  });
+  const sums = {}; REPORT_SHIFT_GROUPS.forEach(g=>sums[g.key]=0);
+  dayShiftMap.forEach(({shift,mult})=>{
+    const g = REPORT_SHIFT_GROUPS.find(g=>g.match.includes(shift));
+    if(g) sums[g.key] += mult;
+  });
+  sums.totalWork = REPORT_SHIFT_GROUPS.filter(g=>g.key!=='leave').reduce((a,g)=>a+sums[g.key],0);
+  return sums;
+}
+function computePersonYearMonthly(code, year){
+  const out = [];
+  for(let m=1;m<=12;m++) out.push(computeGroupSumsForPerson(code, `${year}-${String(m).padStart(2,'0')}`).totalWork);
+  return out;
+}
+
+// ---- Module: 📆 So sánh tháng (đầy đủ Ca1/Ca2/Ca3/½ Ca/Hành chính/Nghỉ) ----
+function renderMonthCompareBox(code){
+  const prevDateObj = new Date(personalCursor.value.getFullYear(), personalCursor.value.getMonth()-1, 1);
+  const cur = computeGroupSumsForPerson(code, monthPrefix(personalCursor.value));
+  const prev = computeGroupSumsForPerson(code, monthPrefix(prevDateObj));
+  const diffCell = (c,p)=>{
+    const d = c-p;
+    if(d===0) return `<span style="color:var(--muted);">—</span>`;
+    return `<span style="color:${d>0?'var(--teal)':'var(--danger)'};">${d>0?'▲':'▼'} ${fmtCong(Math.abs(d))}</span>`;
+  };
+  const rows = REPORT_SHIFT_GROUPS.filter(g=>cur[g.key] || prev[g.key]).map(g=>
+    `<tr><td>${g.label}</td><td style="text-align:right;">${fmtCong(prev[g.key])}</td><td style="text-align:right;">${fmtCong(cur[g.key])}</td><td style="text-align:right;">${diffCell(cur[g.key],prev[g.key])}</td></tr>`
+  ).join('');
+  return `<div style="overflow-x:auto;"><table class="roster-table">
+    <thead><tr><th>Loại ca</th><th style="text-align:right;">${monthLabel(prevDateObj)}</th><th style="text-align:right;">${monthLabel(personalCursor.value)}</th><th style="text-align:right;">±</th></tr></thead>
+    <tbody>
+      ${rows || `<tr><td colspan="4" style="text-align:center;color:var(--muted);">Chưa có dữ liệu 2 tháng này.</td></tr>`}
+      <tr style="font-weight:700;border-top:2px solid var(--line);"><td>Tổng công (không tính Nghỉ)</td><td style="text-align:right;">${fmtCong(prev.totalWork)}</td><td style="text-align:right;">${fmtCong(cur.totalWork)}</td><td style="text-align:right;">${diffCell(cur.totalWork,prev.totalWork)}</td></tr>
+    </tbody></table></div>`;
+}
+
+// ---- Module: 🥧 Cơ cấu ca làm việc (donut CSS, tháng đang xem) ----
+function renderShiftBreakdownBox(code){
+  const sums = computeGroupSumsForPerson(code, monthPrefix(personalCursor.value));
+  const groups = REPORT_SHIFT_GROUPS.filter(g=>g.key!=='leave' && sums[g.key]>0);
+  const total = groups.reduce((a,g)=>a+sums[g.key],0);
+  if(!total) return `<p class="sub" style="margin:0;">Chưa có dữ liệu ca làm việc trong ${monthLabel(personalCursor.value)}.</p>`;
+  let acc = 0;
+  const stops = groups.map(g=>{
+    const pct = sums[g.key]/total*100, start = acc; acc += pct;
+    return `${REPORT_GROUP_COLORS[g.key]} ${start}% ${acc}%`;
+  }).join(', ');
+  const legend = groups.map(g=>`<div style="display:flex;align-items:center;gap:7px;font-size:12.5px;margin-bottom:5px;">
+      <span style="width:11px;height:11px;border-radius:3px;background:${REPORT_GROUP_COLORS[g.key]};flex:none;"></span>
+      <span style="flex:1;">${g.label}</span><b>${Math.round(sums[g.key]/total*100)}%</b>
+      <span style="color:var(--muted);min-width:38px;text-align:right;">${fmtCong(sums[g.key])} công</span>
+    </div>`).join('');
+  return `<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+    <div style="width:104px;height:104px;border-radius:50%;background:conic-gradient(${stops});display:flex;align-items:center;justify-content:center;flex:none;">
+      <div style="width:60px;height:60px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;align-items:center;justify-content:center;">
+        <b style="font-size:15px;">${fmtCong(total)}</b><span style="font-size:9px;color:var(--muted);">CÔNG</span>
+      </div>
+    </div>
+    <div style="flex:1;min-width:170px;">${legend}</div>
+  </div>
+  <p class="sub" style="margin:8px 0 0;">Chỉ tính các ca làm việc (Ca 1/2/3, ½ Ca, Hành chính) — Nghỉ phép/Ốm không tính vào tỉ lệ này.</p>`;
+}
+
+// ---- Module: 📈 Xu hướng 2 năm (bar chart 12 tháng, so năm nay với năm trước) ----
+function renderTrend2YearsBox(code){
+  const curYear = personalCursor.value.getFullYear(), prevYear = curYear-1;
+  const dataCur = computePersonYearMonthly(code, curYear);
+  const dataPrev = computePersonYearMonthly(code, prevYear);
+  const max = Math.max(1, ...dataCur, ...dataPrev);
+  const cols = dataCur.map((v,i)=>{
+    const vp = dataPrev[i];
+    return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;">
+      <div style="display:flex;align-items:flex-end;gap:2px;height:90px;">
+        <div title="${prevYear}: ${fmtCong(vp)} công" style="width:7px;background:var(--line);border-radius:2px 2px 0 0;height:${vp?Math.max(2,vp/max*90):1}px;"></div>
+        <div title="${curYear}: ${fmtCong(v)} công" style="width:7px;background:var(--amber);border-radius:2px 2px 0 0;height:${v?Math.max(2,v/max*90):1}px;"></div>
+      </div>
+      <span style="font-size:9px;color:var(--muted);">T${i+1}</span>
+    </div>`;
+  }).join('');
+  return `<div style="display:flex;gap:2px;align-items:flex-end;">${cols}</div>
+    <div style="display:flex;gap:14px;margin-top:8px;font-size:11.5px;color:var(--muted);">
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--line);border-radius:2px;margin-right:4px;"></span>${prevYear}</span>
+      <span><span style="display:inline-block;width:10px;height:10px;background:var(--amber);border-radius:2px;margin-right:4px;"></span>${curYear}</span>
+    </div>`;
+}
+
+// ---- Module: 📋 Cùng kỳ 2 năm (bảng đối chiếu từng tháng + cộng dồn) ----
+function renderSameMonth2YearsBox(code){
+  const curYear = personalCursor.value.getFullYear(), prevYear = curYear-1;
+  const dataCur = computePersonYearMonthly(code, curYear);
+  const dataPrev = computePersonYearMonthly(code, prevYear);
+  const hasDataMonth = (y,m)=> state.records.some(r=>r.code===code && r.date.startsWith(`${y}-${String(m).padStart(2,'0')}`));
+  let rows = '';
+  for(let m=1;m<=12;m++){
+    const hCur = hasDataMonth(curYear,m), hPrev = hasDataMonth(prevYear,m);
+    const cCur = hCur ? fmtCong(dataCur[m-1]) : '—';
+    const cPrev = hPrev ? fmtCong(dataPrev[m-1]) : '—';
+    let diff = '—';
+    if(hCur && hPrev){
+      const d = dataCur[m-1]-dataPrev[m-1];
+      diff = d===0 ? '—' : `<span style="color:${d>0?'var(--teal)':'var(--danger)'};">${d>0?'▲':'▼'}${fmtCong(Math.abs(d))}</span>`;
+    }
+    rows += `<tr><td>${m}</td><td style="text-align:right;">${cPrev}</td><td style="text-align:right;">${cCur}</td><td style="text-align:right;">${diff}</td></tr>`;
+  }
+  const totalCur = dataCur.reduce((a,v)=>a+v,0), totalPrev = dataPrev.reduce((a,v)=>a+v,0);
+  return `<div style="overflow-x:auto;"><table class="roster-table"><thead><tr><th>Tháng</th><th style="text-align:right;">${prevYear}</th><th style="text-align:right;">${curYear}</th><th style="text-align:right;">±</th></tr></thead><tbody>${rows}</tbody></table></div>
+    <p class="sub" style="margin:6px 0 8px;">"—" nghĩa là chưa có dữ liệu tháng đó, không phải 0 công.</p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;">Cộng dồn ${prevYear}: <b>${fmtCong(totalPrev)}</b> công</div>
+      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:7px 11px;font-size:12px;">Cộng dồn ${curYear}: <b>${fmtCong(totalCur)}</b> công</div>
+    </div>`;
+}
+
+// ---- Module: 📌 Tổng hợp cả năm (tổng công, TB/tháng, top công đoạn năm) ----
+function renderYearSummaryBox(code){
+  const year = personalCursor.value.getFullYear();
+  const monthly = computePersonYearMonthly(code, year);
+  const total = monthly.reduce((a,v)=>a+v,0);
+  const monthsWithData = monthly.filter((v,i)=>state.records.some(r=>r.code===code && r.date.startsWith(`${year}-${String(i+1).padStart(2,'0')}`))).length;
+  const avg = monthsWithData ? total/monthsWithData : 0;
+  const stageCounts = {};
+  state.records.filter(r=>r.code===code && r.date.startsWith(String(year))).forEach(r=>{ stageCounts[r.stage]=(stageCounts[r.stage]||0)+1; });
+  const top = Object.entries(stageCounts).sort((a,b)=>b[1]-a[1]).slice(0,3);
+  return `<div class="stat-cards-row">
+      <div class="stat-card"><div class="stat-card-num">${fmtCong(total)}</div><div class="stat-card-label">Tổng công năm ${year}</div></div>
+      <div class="stat-card"><div class="stat-card-num">${fmtCong(avg)}</div><div class="stat-card-label">TB / tháng có dữ liệu</div></div>
+    </div>
+    ${top.length ? `<p class="sub" style="margin:10px 0 4px;">🏆 Công đoạn làm nhiều nhất năm ${year}:</p>
+    <ul class="top-stage-list">${top.map(([s,c])=>`<li><span>${s}</span><b>${c}</b></li>`).join('')}</ul>` : `<p class="sub" style="margin:10px 0 0;">Chưa có dữ liệu công đoạn trong năm.</p>`}`;
+}
+
+// ---- Module: 💡 Nhận xét nhanh (tự tổng hợp từ dữ liệu tháng đang xem) ----
+function renderQuickInsightsBox(code){
+  const curPrefix = monthPrefix(personalCursor.value);
+  const prevDateObj = new Date(personalCursor.value.getFullYear(), personalCursor.value.getMonth()-1, 1);
+  const cur = computeGroupSumsForPerson(code, curPrefix);
+  const prev = computeGroupSumsForPerson(code, monthPrefix(prevDateObj));
+  const lines = [];
+  const topGroup = REPORT_SHIFT_GROUPS.filter(g=>g.key!=='leave').map(g=>({label:g.label, v:cur[g.key]})).sort((a,b)=>b.v-a.v)[0];
+  if(topGroup && topGroup.v>0) lines.push(`<b>${topGroup.label}</b> đang chiếm nhiều nhất tháng này: <b>${fmtCong(topGroup.v)}</b> công.`);
+  const diff = cur.totalWork - prev.totalWork;
+  if(diff!==0) lines.push(`${diff>0?'📈 Tổng công tăng':'📉 Tổng công giảm'} <b>${fmtCong(Math.abs(diff))}</b> công so với tháng trước.`);
+  if(cur.leave>0) lines.push(`🌙 Có <b>${fmtCong(cur.leave)}</b> công nghỉ phép/ốm trong tháng này.`);
+  const stageCounts = {};
+  state.records.filter(r=>r.code===code && r.date.startsWith(curPrefix)).forEach(r=>{ stageCounts[r.stage]=(stageCounts[r.stage]||0)+1; });
+  const topStage = Object.entries(stageCounts).sort((a,b)=>b[1]-a[1])[0];
+  if(topStage) lines.push(`🏭 Công đoạn làm nhiều nhất tháng này: <b>${topStage[0]}</b> với ${topStage[1]} lượt.`);
+  if(!lines.length) return `<p class="sub" style="margin:0;">Chưa đủ dữ liệu để nhận xét.</p>`;
+  return `<div style="display:flex;flex-direction:column;gap:6px;font-size:12.5px;">${lines.map(l=>`<div>• ${l}</div>`).join('')}</div>`;
+}
+
 // ================= DANH SÁCH HẠNG MỤC CÓ THỂ BẬT/TẮT + SẮP XẾP CHO TAB CÁ NHÂN =================
 const PERSONAL_MODULES = [
   { id:'trend12m',     title:'📈 Xu hướng công 12 tháng',      desc:'Biểu đồ công theo từng tháng trong 12 tháng gần nhất.',            render: renderPersonalTrendBox },
   { id:'avgCompare',   title:'📊 So với trung bình 162 người',  desc:'So công của người này với trung bình chung trong kỳ đang xem.',    render: renderAvgCompareBox },
   { id:'workStreak',   title:'🔥 Chuỗi ngày làm liên tục',      desc:'Số ngày làm liên tiếp không nghỉ (không tính Chủ nhật).',          render: renderWorkStreakBox },
   { id:'absenceAlert', title:'⚠️ Cảnh báo vắng liên tục',       desc:'Cảnh báo khi vắng từ 3 ngày làm việc liên tiếp trở lên.',          render: renderAbsenceAlertBox },
+  { id:'monthCompare', title:'📆 So sánh tháng',                desc:'Đối chiếu số công theo từng loại ca (Ca 1/2/3, ½ Ca, Hành chính, Nghỉ) giữa tháng đang xem và tháng trước.', render: renderMonthCompareBox },
+  { id:'shiftBreakdown', title:'🥧 Cơ cấu ca làm việc',         desc:'Biểu đồ tỉ lệ % các loại ca trong tháng đang xem.',                render: renderShiftBreakdownBox },
+  { id:'trend2y',      title:'📈 Xu hướng 2 năm',               desc:'Biểu đồ cột so sánh công theo từng tháng giữa năm nay và năm trước.', render: renderTrend2YearsBox },
+  { id:'sameMonth2y',  title:'📋 Cùng kỳ 2 năm',                desc:'Bảng đối chiếu công từng tháng giữa 2 năm, kèm cộng dồn cả năm.',  render: renderSameMonth2YearsBox },
+  { id:'yearSummary',  title:'📌 Tổng hợp cả năm',              desc:'Tổng công cả năm, trung bình mỗi tháng có dữ liệu, và công đoạn làm nhiều nhất năm.', render: renderYearSummaryBox },
+  { id:'quickInsights',title:'💡 Nhận xét nhanh',               desc:'Vài dòng tự nhận xét dựa trên dữ liệu tháng đang xem.',            render: renderQuickInsightsBox },
 ];
 function getPersonalModulesState(){
   if(!Array.isArray(state.settings.personalModulesOrder) || !state.settings.personalModulesOrder.length){
@@ -5537,24 +5741,47 @@ function getPersonalModulesState(){
   PERSONAL_MODULES.forEach(m=>{ if(state.settings.personalModulesEnabled[m.id] === undefined) state.settings.personalModulesEnabled[m.id] = false; });
   return state.settings;
 }
+let pmPreviewExpandedId = null; // chỉ mở xem trước 1 mục tại 1 thời điểm, giống accordion
 function renderPersonalModulesAdminPanel(){
   getPersonalModulesState();
   const order = state.settings.personalModulesOrder;
+  // Dùng người đang chọn ở "Tra cứu công cá nhân" để xem trước cho thật; nếu chưa chọn ai thì tạm lấy người đầu danh sách làm mẫu.
+  const previewCode = state.personalCode || (EMPLOYEES[0] && EMPLOYEES[0].code) || null;
+  const previewEmp = previewCode ? EMPLOYEES.find(e=>e.code===previewCode) : null;
   return order.map((id, idx)=>{
     const m = PERSONAL_MODULES.find(x=>x.id===id);
     if(!m) return '';
     const on = !!state.settings.personalModulesEnabled[id];
+    const expanded = pmPreviewExpandedId === id;
+    let previewHtml = '';
+    if(expanded){
+      let content = '<p class="sub" style="margin:0;">Chưa có nhân viên nào trong danh sách để xem trước.</p>';
+      if(previewCode){
+        try{ content = m.render(previewCode); }
+        catch(e){ content = `<p class="sub" style="margin:0;color:var(--danger);">⚠️ Lỗi khi hiển thị: ${e.message}</p>`; }
+      }
+      const sampleNote = state.personalCode
+        ? `Xem thử với dữ liệu của: <b>${previewEmp ? previewEmp.short : previewCode}</b>`
+        : `Chưa chọn ai ở "Tra cứu công cá nhân" — tạm xem thử với: <b>${previewEmp ? previewEmp.short : previewCode}</b>`;
+      previewHtml = `<div class="pm-preview" style="padding:10px 6px 14px;border-top:1px dashed var(--line);margin-top:2px;">
+        <p class="sub" style="margin:0 0 8px;">${sampleNote}</p>
+        ${content}
+      </div>`;
+    }
     return `
-      <div class="pm-row" data-id="${id}" style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);">
-        <div style="display:flex;flex-direction:column;">
-          <button type="button" class="pm-up" ${idx===0?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===0?0.3:1};">▲</button>
-          <button type="button" class="pm-down" ${idx===order.length-1?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===order.length-1?0.3:1};">▼</button>
+      <div class="pm-row-wrap" data-id="${id}">
+        <div class="pm-row" data-id="${id}" style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:${expanded?'none':'1px solid var(--line)'};cursor:pointer;">
+          <div style="display:flex;flex-direction:column;">
+            <button type="button" class="pm-up" ${idx===0?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===0?0.3:1};">▲</button>
+            <button type="button" class="pm-down" ${idx===order.length-1?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===order.length-1?0.3:1};">▼</button>
+          </div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-weight:600;font-size:13px;">${m.title} <span class="chev" style="display:inline-block;color:var(--muted);font-size:11px;transition:transform .15s;transform:rotate(${expanded?180:0}deg);">▾</span></div>
+            <div class="sub" style="font-size:11px;margin-top:1px;">${m.desc}</div>
+          </div>
+          <button type="button" class="pm-toggle btn ${on?'btn-teal':'btn-ghost'}" style="min-width:78px;font-size:11.5px;padding:6px 8px;flex-shrink:0;">${on?'🟢 BẬT':'⚪ TẮT'}</button>
         </div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:600;font-size:13px;">${m.title}</div>
-          <div class="sub" style="font-size:11px;margin-top:1px;">${m.desc}</div>
-        </div>
-        <button type="button" class="pm-toggle btn ${on?'btn-teal':'btn-ghost'}" style="min-width:78px;font-size:11.5px;padding:6px 8px;flex-shrink:0;">${on?'🟢 BẬT':'⚪ TẮT'}</button>
+        ${previewHtml}
       </div>`;
   }).join('');
 }
@@ -5574,7 +5801,10 @@ document.getElementById('personalModulesPanelBody')?.addEventListener('click', (
     if(idx<order.length-1) [order[idx+1], order[idx]] = [order[idx], order[idx+1]];
   } else if(ev.target.classList.contains('pm-toggle')){
     state.settings.personalModulesEnabled[id] = !state.settings.personalModulesEnabled[id];
-  } else return;
+  } else {
+    // Bấm vào phần còn lại của dòng (tiêu đề/mô tả) -> mở/đóng xem trước nội dung mục này
+    pmPreviewExpandedId = (pmPreviewExpandedId === id) ? null : id;
+  }
   saveSettings();
   refreshPersonalModulesPanel();
   if(typeof renderPersonalReport === 'function') renderPersonalReport();
@@ -5619,7 +5849,7 @@ function renderPersonalReport(){
     ` : ''}
     ${(function(){
       getPersonalModulesState();
-      return state.settings.personalModulesOrder.map(id=>{
+      const items = state.settings.personalModulesOrder.map(id=>{
         const on = !!state.settings.personalModulesEnabled[id];
         if(!isAdminV4 && !on) return '';
         const m = PERSONAL_MODULES.find(x=>x.id===id);
@@ -5634,14 +5864,25 @@ function renderPersonalReport(){
           </div>
         `;
       }).join('');
+      if(!items.trim()) return '';
+      return `
+        <div style="margin:10px 0 4px;">
+          <button type="button" id="btnPersonalAnalysisToggle" class="btn btn-ghost" style="width:100%;text-align:left;">
+            📊 Phân tích thêm ${personalAnalysisExpanded ? '▴' : '▾'}
+          </button>
+          <div id="personalAnalysisBody" style="${personalAnalysisExpanded ? '' : 'display:none;'}margin-top:8px;">
+            ${items}
+          </div>
+        </div>
+      `;
     })()}
-    <p class="sub" style="margin:12px 0 4px;">Chi tiết từng ngày:</p>
+    <p class="sub" style="margin:12px 0 4px;">Chi tiết từng ngày:${isAdminV4 ? ' <span style="font-weight:400;">— bấm vào 1 dòng để sửa</span>' : ''}</p>
     <div style="overflow-x:auto;">
       <table class="roster-table">
-        <thead><tr><th>Ngày</th><th>Ca</th><th>Công đoạn</th><th>Mác thuốc</th></tr></thead>
+        <thead><tr><th style="width:30px;">#</th><th>Ngày</th><th>Ca</th><th>Công đoạn</th><th>Mác thuốc</th></tr></thead>
         <tbody>
-          ${records.map(r=>`<tr><td>${fmtDate(r.date)}</td><td>${r.shift||''}</td><td>${r.stage||''}</td><td style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.batch ? r.batch : '—'}</td></tr>`).join('')
-            || '<tr><td colspan="4" style="text-align:center;padding:14px;color:var(--muted);">Không có bản ghi trong kỳ đã chọn.</td></tr>'}
+          ${records.map((r,ri)=>`<tr class="${isAdminV4?'personal-editable-row':''}" data-id="${r.id}" ${isAdminV4?'style="cursor:pointer;" title="Bấm để sửa bản ghi này"':''}><td class="roster-stt">${ri+1}</td><td>${fmtDate(r.date)}</td><td>${r.shift||''}</td><td>${r.stage||''}</td><td style="font-size:11px;color:var(--muted);white-space:nowrap;">${r.batch ? r.batch : '—'}</td></tr>`).join('')
+            || '<tr><td colspan="5" style="text-align:center;padding:14px;color:var(--muted);">Không có bản ghi trong kỳ đã chọn.</td></tr>'}
         </tbody>
       </table>
     </div>
@@ -5649,9 +5890,23 @@ function renderPersonalReport(){
   const chartEl = document.getElementById('personalShiftChart');
   if(chartEl) renderShiftBarChart(chartEl, records);
 }
+let personalAnalysisExpanded = false;
 document.getElementById('personalReportArea').addEventListener('click', (e)=>{
   const cell = e.target.closest('.mini-cal-day[data-date]');
-  if(cell) showDayColleagues(cell.dataset.date);
+  if(cell){ showDayColleagues(cell.dataset.date); return; }
+  const toggleBtn = e.target.closest('#btnPersonalAnalysisToggle');
+  if(toggleBtn){
+    personalAnalysisExpanded = !personalAnalysisExpanded;
+    const body = document.getElementById('personalAnalysisBody');
+    if(body) body.style.display = personalAnalysisExpanded ? '' : 'none';
+    toggleBtn.textContent = `📊 Phân tích thêm ${personalAnalysisExpanded ? '▴' : '▾'}`;
+    return;
+  }
+  const editRow = e.target.closest('.personal-editable-row[data-id]');
+  if(editRow && isAdminV4){
+    const rec = state.records.find(x=>x.id === Number(editRow.dataset.id));
+    if(rec) openEditModal([rec]);
+  }
 });
 function showDayColleagues(iso){
   const recsAll = state.records.filter(r=>r.date===iso);
