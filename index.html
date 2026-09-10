@@ -1431,17 +1431,11 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 
   <!-- ============ TAB: CÁ NHÂN (tab công khai duy nhất) ============ -->
   <section class="tab-panel active" id="tab-personal">
-    <div class="panel admin-only" id="personalExtraTogglePanel">
-      <h2>🆕 Nội dung mới cho tab Cá nhân</h2>
-      <p class="sub">Bật để TẤT CẢ mọi người (không chỉ admin) thấy thêm mục "Xu hướng công 12 tháng" khi tra cứu công cá nhân. Tắt thì mọi người chỉ thấy đúng như bản gốc — chỉ admin xem thử được (kèm nhãn cảnh báo).</p>
-      <button type="button" class="btn" id="btnTogglePersonalExtra" style="min-width:250px;"></button>
-      <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
-    </div>
-    <div class="panel admin-only" id="personalInsightsTogglePanel">
-      <h2>🆕 Nhận xét nhanh cho tab Cá nhân</h2>
-      <p class="sub">Bật để TẤT CẢ mọi người thấy thêm 3 mục khi tra cứu công cá nhân: (1) so với công trung bình của 162 người, (2) chuỗi ngày làm liên tục không nghỉ, (3) cảnh báo khi vắng liên tục nhiều ngày. Tắt thì mọi người chỉ thấy đúng như bản gốc — chỉ admin xem thử được (kèm nhãn cảnh báo).</p>
-      <button type="button" class="btn" id="btnTogglePersonalInsights" style="min-width:250px;"></button>
-      <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
+    <div class="panel admin-only" id="personalModulesPanel">
+      <h2>🧩 Tuỳ chỉnh các mục hiển thị trong tab Cá nhân</h2>
+      <p class="sub">Bật/tắt và sắp xếp thứ tự các mục bên dưới — chỉ admin thấy thay đổi ngay để xem thử. Ưng ý thì bấm "⋯ Thêm → Lưu lên máy chủ" để mọi người cùng thấy. Tháng này bật 3 mục, tháng sau đổi ý bật mục khác đều được, không cần sửa code.</p>
+      <div id="personalModulesPanelBody"></div>
+      <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt hoặc đổi thứ tự, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
     </div>
     <div class="panel">
       <div class="stat-cards-row">
@@ -5439,23 +5433,6 @@ function renderPersonalTrendBox(code){
     </div>`).join('');
   return `<div class="trend-chart">${bars}</div>`;
 }
-function updatePersonalExtraToggleBtn(){
-  const btn = document.getElementById('btnTogglePersonalExtra');
-  if(!btn) return;
-  const on = !!state.settings.personalExtraEnabled;
-  btn.textContent = on ? '🟢 ĐANG BẬT — ai cũng thấy mục mới' : '⚪ ĐANG TẮT — chỉ admin xem thử';
-  btn.className = 'btn ' + (on ? 'btn-teal' : 'btn-ghost');
-}
-document.getElementById('btnTogglePersonalExtra').addEventListener('click', ()=>{
-  state.settings.personalExtraEnabled = !state.settings.personalExtraEnabled;
-  saveSettings();
-  updatePersonalExtraToggleBtn();
-  if(typeof renderPersonalReport === 'function') renderPersonalReport();
-  showToast(state.settings.personalExtraEnabled
-    ? '✅ Đã BẬT — nhớ "Lưu lên máy chủ" để mọi người thấy'
-    : '⚪ Đã TẮT cho người khác xem');
-});
-
 // ================= HỘP MỞ RỘNG (bật/tắt bởi admin): so trung bình / chuỗi ngày làm / cảnh báo vắng =================
 function parseISO(iso){ const [y,m,d] = iso.split('-').map(Number); return new Date(y, m-1, d); }
 function addDaysISO(iso, delta){ const dt = parseISO(iso); dt.setDate(dt.getDate()+delta); return isoOf(dt.getFullYear(), dt.getMonth(), dt.getDate()); }
@@ -5509,7 +5486,7 @@ function computeAbsenceAlert(code){
   if(missing >= 3) return { days: missing, sinceDate: lastDateForPerson, untilDate: datasetMax };
   return null;
 }
-function renderPersonalInsightsBox(code){
+function renderAvgCompareBox(code){
   const periodPrefix = personalCursor.mode==='month' ? monthPrefix(personalCursor.value) : null;
   const myCong = computeCongForCode(code, periodPrefix);
   const avgCong = computeAverageCong(periodPrefix);
@@ -5518,38 +5495,89 @@ function renderPersonalInsightsBox(code){
   const compareLine = avgCong > 0
     ? `<span style="color:${diff>=0?'var(--teal)':'var(--danger)'};">${diff>=0?'▲ Cao hơn':'▼ Thấp hơn'} trung bình <b>${fmtCong(Math.abs(diff))}</b> công (${diff>=0?'+':'-'}${Math.abs(diff/avgCong*100).toFixed(0)}%)</span>`
     : `<span class="sub">Chưa đủ dữ liệu chung để so sánh.</span>`;
+  return `<div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
+    Công ${periodLabel}: <b>${fmtCong(myCong)}</b> — trung bình 162 người: <b>${fmtCong(avgCong)}</b><br>${compareLine}
+  </div>`;
+}
+function renderWorkStreakBox(code){
   const streak = computeWorkStreak(code);
+  return `<div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
+    🔥 Đang làm liên tục <b>${streak.days}</b> ngày${streak.days>0?` (không tính Chủ nhật, tính đến ${fmtDate(streak.lastDate)})`:''}
+  </div>`;
+}
+function renderAbsenceAlertBox(code){
   const absence = computeAbsenceAlert(code);
-  return `
-    <div style="display:flex;flex-direction:column;gap:6px;">
-      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
-        Công ${periodLabel}: <b>${fmtCong(myCong)}</b> — trung bình 162 người: <b>${fmtCong(avgCong)}</b><br>${compareLine}
-      </div>
-      <div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
-        🔥 Đang làm liên tục <b>${streak.days}</b> ngày${streak.days>0?` (không tính Chủ nhật, tính đến ${fmtDate(streak.lastDate)})`:''}
-      </div>
-      ${absence ? `
-      <div class="summary-chip" style="background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:8px 11px;font-size:12.5px;color:var(--danger);">
-        ⚠️ Vắng liên tục <b>${absence.days}</b> ngày (không tính Chủ nhật) — từ sau ${fmtDate(absence.sinceDate)} đến ${fmtDate(absence.untilDate)}
-      </div>` : ''}
-    </div>
-  `;
+  if(!absence) return `<div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;color:var(--muted);">✅ Không có dấu hiệu vắng bất thường.</div>`;
+  return `<div class="summary-chip" style="background:var(--danger-soft);border:1px solid var(--danger);border-radius:10px;padding:8px 11px;font-size:12.5px;color:var(--danger);">
+    ⚠️ Vắng liên tục <b>${absence.days}</b> ngày (không tính Chủ nhật) — từ sau ${fmtDate(absence.sinceDate)} đến ${fmtDate(absence.untilDate)}
+  </div>`;
 }
-function updatePersonalInsightsToggleBtn(){
-  const btn = document.getElementById('btnTogglePersonalInsights');
-  if(!btn) return;
-  const on = !!state.settings.personalInsightsEnabled;
-  btn.textContent = on ? '🟢 ĐANG BẬT — ai cũng thấy mục mới' : '⚪ ĐANG TẮT — chỉ admin xem thử';
-  btn.className = 'btn ' + (on ? 'btn-teal' : 'btn-ghost');
+
+// ================= DANH SÁCH HẠNG MỤC CÓ THỂ BẬT/TẮT + SẮP XẾP CHO TAB CÁ NHÂN =================
+const PERSONAL_MODULES = [
+  { id:'trend12m',     title:'📈 Xu hướng công 12 tháng',      desc:'Biểu đồ công theo từng tháng trong 12 tháng gần nhất.',            render: renderPersonalTrendBox },
+  { id:'avgCompare',   title:'📊 So với trung bình 162 người',  desc:'So công của người này với trung bình chung trong kỳ đang xem.',    render: renderAvgCompareBox },
+  { id:'workStreak',   title:'🔥 Chuỗi ngày làm liên tục',      desc:'Số ngày làm liên tiếp không nghỉ (không tính Chủ nhật).',          render: renderWorkStreakBox },
+  { id:'absenceAlert', title:'⚠️ Cảnh báo vắng liên tục',       desc:'Cảnh báo khi vắng từ 3 ngày làm việc liên tiếp trở lên.',          render: renderAbsenceAlertBox },
+];
+function getPersonalModulesState(){
+  if(!Array.isArray(state.settings.personalModulesOrder) || !state.settings.personalModulesOrder.length){
+    state.settings.personalModulesOrder = PERSONAL_MODULES.map(m=>m.id);
+  }
+  PERSONAL_MODULES.forEach(m=>{ if(!state.settings.personalModulesOrder.includes(m.id)) state.settings.personalModulesOrder.push(m.id); });
+  if(!state.settings.personalModulesEnabled || typeof state.settings.personalModulesEnabled !== 'object'){
+    // Di trú từ 2 cờ cũ (nếu có) để không mất trạng thái đang bật của bản trước
+    state.settings.personalModulesEnabled = {
+      trend12m:     !!state.settings.personalExtraEnabled,
+      avgCompare:   !!state.settings.personalInsightsEnabled,
+      workStreak:   !!state.settings.personalInsightsEnabled,
+      absenceAlert: !!state.settings.personalInsightsEnabled,
+    };
+  }
+  PERSONAL_MODULES.forEach(m=>{ if(state.settings.personalModulesEnabled[m.id] === undefined) state.settings.personalModulesEnabled[m.id] = false; });
+  return state.settings;
 }
-document.getElementById('btnTogglePersonalInsights').addEventListener('click', ()=>{
-  state.settings.personalInsightsEnabled = !state.settings.personalInsightsEnabled;
+function renderPersonalModulesAdminPanel(){
+  getPersonalModulesState();
+  const order = state.settings.personalModulesOrder;
+  return order.map((id, idx)=>{
+    const m = PERSONAL_MODULES.find(x=>x.id===id);
+    if(!m) return '';
+    const on = !!state.settings.personalModulesEnabled[id];
+    return `
+      <div class="pm-row" data-id="${id}" style="display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--line);">
+        <div style="display:flex;flex-direction:column;">
+          <button type="button" class="pm-up" ${idx===0?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===0?0.3:1};">▲</button>
+          <button type="button" class="pm-down" ${idx===order.length-1?'disabled':''} style="border:none;background:none;cursor:pointer;font-size:12px;line-height:1.4;padding:1px 6px;opacity:${idx===order.length-1?0.3:1};">▼</button>
+        </div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-weight:600;font-size:13px;">${m.title}</div>
+          <div class="sub" style="font-size:11px;margin-top:1px;">${m.desc}</div>
+        </div>
+        <button type="button" class="pm-toggle btn ${on?'btn-teal':'btn-ghost'}" style="min-width:78px;font-size:11.5px;padding:6px 8px;flex-shrink:0;">${on?'🟢 BẬT':'⚪ TẮT'}</button>
+      </div>`;
+  }).join('');
+}
+function refreshPersonalModulesPanel(){
+  const body = document.getElementById('personalModulesPanelBody');
+  if(body) body.innerHTML = renderPersonalModulesAdminPanel();
+}
+document.getElementById('personalModulesPanelBody')?.addEventListener('click', (ev)=>{
+  const row = ev.target.closest('.pm-row');
+  if(!row) return;
+  const id = row.dataset.id;
+  const order = state.settings.personalModulesOrder;
+  const idx = order.indexOf(id);
+  if(ev.target.classList.contains('pm-up')){
+    if(idx>0) [order[idx-1], order[idx]] = [order[idx], order[idx-1]];
+  } else if(ev.target.classList.contains('pm-down')){
+    if(idx<order.length-1) [order[idx+1], order[idx]] = [order[idx], order[idx+1]];
+  } else if(ev.target.classList.contains('pm-toggle')){
+    state.settings.personalModulesEnabled[id] = !state.settings.personalModulesEnabled[id];
+  } else return;
   saveSettings();
-  updatePersonalInsightsToggleBtn();
+  refreshPersonalModulesPanel();
   if(typeof renderPersonalReport === 'function') renderPersonalReport();
-  showToast(state.settings.personalInsightsEnabled
-    ? '✅ Đã BẬT — nhớ "Lưu lên máy chủ" để mọi người thấy'
-    : '⚪ Đã TẮT cho người khác xem');
 });
 
 function renderPersonalReport(){
@@ -5589,24 +5617,24 @@ function renderPersonalReport(){
       <p class="sub" style="margin:10px 0 2px;">🏭 Công đoạn hay làm nhất:</p>
       <ul class="top-stage-list">${topStages.map(([s,c])=>`<li><span>${s}</span><b>${c}</b></li>`).join('')}</ul>
     ` : ''}
-    ${(isAdminV4 || state.settings.personalInsightsEnabled) ? `
-      <div class="personal-extra-box">
-        <p class="sub" style="margin:0 0 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <span>📊 So mặt bằng chung &amp; nhịp làm việc</span>
-          ${(!state.settings.personalInsightsEnabled && isAdminV4) ? '<span style="font-size:10.5px;color:var(--danger);">🔒 admin xem thử — người khác chưa thấy</span>' : ''}
-        </p>
-        ${renderPersonalInsightsBox(state.personalCode)}
-      </div>
-    ` : ''}
-    ${(isAdminV4 || state.settings.personalExtraEnabled) ? `
-      <div class="personal-extra-box">
-        <p class="sub" style="margin:0 0 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
-          <span>📈 Xu hướng công 12 tháng gần nhất</span>
-          ${(!state.settings.personalExtraEnabled && isAdminV4) ? '<span style="font-size:10.5px;color:var(--danger);">🔒 admin xem thử — người khác chưa thấy</span>' : ''}
-        </p>
-        ${renderPersonalTrendBox(state.personalCode)}
-      </div>
-    ` : ''}
+    ${(function(){
+      getPersonalModulesState();
+      return state.settings.personalModulesOrder.map(id=>{
+        const on = !!state.settings.personalModulesEnabled[id];
+        if(!isAdminV4 && !on) return '';
+        const m = PERSONAL_MODULES.find(x=>x.id===id);
+        if(!m) return '';
+        return `
+          <div class="personal-extra-box">
+            <p class="sub" style="margin:0 0 4px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+              <span>${m.title}</span>
+              ${(!on && isAdminV4) ? '<span style="font-size:10.5px;color:var(--danger);">🔒 admin xem thử — người khác chưa thấy</span>' : ''}
+            </p>
+            ${m.render(state.personalCode)}
+          </div>
+        `;
+      }).join('');
+    })()}
     <p class="sub" style="margin:12px 0 4px;">Chi tiết từng ngày:</p>
     <div style="overflow-x:auto;">
       <table class="roster-table">
@@ -5854,8 +5882,7 @@ async function loadFromGithub(){
     if(data.settings) Object.assign(state.settings, data.settings);
     saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
-    updatePersonalExtraToggleBtn();
-    if(typeof updatePersonalInsightsToggleBtn === 'function') updatePersonalInsightsToggleBtn();
+    refreshPersonalModulesPanel();
     showToast('✅ Đã tải dữ liệu mới nhất!');
     logActivity('📥 Tải bản mới nhất từ máy chủ — thành công');
   }catch(e){
@@ -5896,8 +5923,7 @@ async function loadFromGithubSilent(){
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
     if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
     if(typeof renderAggregateShiftChart === 'function') renderAggregateShiftChart();
-    if(typeof updatePersonalExtraToggleBtn === 'function') updatePersonalExtraToggleBtn();
-    if(typeof updatePersonalInsightsToggleBtn === 'function') updatePersonalInsightsToggleBtn();
+    if(typeof refreshPersonalModulesPanel === 'function') refreshPersonalModulesPanel();
     if(label) label.textContent = '✅ Cập nhật lúc ' + fmtSyncClock(data.exportAt || new Date().toISOString());
     return true;
   }catch(e){
@@ -6352,8 +6378,7 @@ safeRun(renderConflictPanel, 'Cảnh báo trùng ca');
 safeRun(renderDayTabs, 'Tab ảnh');
 safeRun(renderAnalytics, 'Bảng thống kê chi tiết (chỉ dùng khi admin mở tab Thống kê)');
 safeRun(renderPersonalTab, 'Tab Cá nhân (tab công khai mặc định)');
-safeRun(updatePersonalExtraToggleBtn, 'Công tắc mục mới tab Cá nhân');
-safeRun(updatePersonalInsightsToggleBtn, 'Công tắc nhận xét nhanh tab Cá nhân');
+safeRun(refreshPersonalModulesPanel, 'Bảng tuỳ chỉnh các mục tab Cá nhân');
 </script>
 </body>
 </html>
