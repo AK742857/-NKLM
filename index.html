@@ -95,11 +95,9 @@
   /* ================= TAB BAR (dính cố định ngay dưới topbar) ================= */
   nav.tabbar{
     position:sticky; top:48px; z-index:39;
-    display:flex; gap:2px; background:#e9e7de; overflow-x:auto;
+    display:flex; flex-wrap:wrap; gap:2px; background:#e9e7de;
     border-bottom:1px solid var(--line);
-    -ms-overflow-style:none; scrollbar-width:none;
   }
-  nav.tabbar::-webkit-scrollbar{display:none;}
   .tab-btn{
     flex:none; padding:11px 14px; font-size:13px; font-weight:600; color:var(--muted);
     background:transparent; border:none; border-bottom:3px solid transparent; cursor:pointer;
@@ -233,6 +231,8 @@
 
   /* ================= Dán danh sách nhiều người (nhận diện tự động) ================= */
   .bulk-paste-box{background:#fbfaf6;border:1px dashed var(--line);border-radius:10px;padding:12px 14px;margin:4px 0 14px;}
+  #bulkPasteBox{border:2px solid var(--amber);box-shadow:0 0 0 3px var(--amber-soft);background:#fffdf9;width:100%;transition:box-shadow .15s ease;}
+  #bulkPasteBox:focus-within{box-shadow:0 0 0 4px var(--amber-soft);}
   .bulk-counts{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin-top:8px;font-family:'IBM Plex Mono',monospace;}
   .bulk-counts b{color:var(--ink);}
   .bulk-counts .c-ok b{color:var(--teal);}
@@ -1098,6 +1098,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   <button class="tab-btn admin-only" data-tab="journal">📓 Nhật ký <span class="tab-badge" id="tabBadgeJournal" style="display:none;"></span></button>
   <button class="tab-btn admin-only" data-tab="stats">📊 Thống kê</button>
   <button class="tab-btn active" data-tab="personal">👤 Cá nhân</button>
+  <button class="tab-btn admin-only" data-tab="payroll">💰 Tính lương</button>
   <button class="tab-btn admin-only" data-tab="overview">🗓️ Tổng quan 162</button>
   <button class="tab-btn admin-only" data-tab="photos">🖼️ Ảnh kế hoạch</button>
 </nav>
@@ -1210,7 +1211,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
 
       <p class="sub" style="margin:2px 0 12px;">📑 Cần dán nhiều công đoạn cùng lúc? Sang tab <b>"Dán nhiều CĐ"</b> ở trên.</p>
 
-      <div class="accordion" id="accBulkSelect" data-fullscreen="1">
+      <div class="accordion" id="accBulkSelect">
         <button type="button" class="accordion-toggle">
           <span>👥 Chọn nhanh nhiều người <span style="font-weight:400;color:var(--muted);">— dán danh sách hoặc chọn theo tổ quen thuộc</span></span>
           <span class="chev">▾</span>
@@ -1500,6 +1501,59 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
   </section>
 
+  <!-- ============ TAB: TÍNH LƯƠNG (native — dùng chung state.records/EMPLOYEES/mult) ============ -->
+  <section class="tab-panel" id="tab-payroll">
+    <div class="panel">
+      <h2>💰 Tính lương</h2>
+      <p class="sub">Tự tính từ dữ liệu chấm công đã có — hệ số công (½ ca, nghỉ phép...) đã lưu sẵn ở mỗi lượt chấm, chỉ cần đơn giá là ra lương.</p>
+
+      <div class="accordion" id="accPayrollRates">
+        <button type="button" class="accordion-toggle">
+          <span>⚙️ Đơn giá lương <span style="font-weight:400;color:var(--muted);">— áp dụng chung cho tất cả</span></span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="accordion-body" style="display:none;">
+          <div class="row">
+            <div class="field small"><label>Ca 1 (đ/công)</label><input type="number" id="prCa1" step="1000" min="0"></div>
+            <div class="field small"><label>Ca 2 (đ/công)</label><input type="number" id="prCa2" step="1000" min="0"></div>
+            <div class="field small"><label>Ca 3 (đ/công)</label><input type="number" id="prCa3" step="1000" min="0"></div>
+            <div class="field small"><label>Hành chính (đ/công)</label><input type="number" id="prHC" step="1000" min="0"></div>
+          </div>
+          <div class="row">
+            <div class="field small"><label>Nghỉ phép có lương <span style="font-weight:400;color:var(--muted);">— để 0 nếu không trả</span></label><input type="number" id="prLeave" step="1000" min="0"></div>
+            <div class="field small"><label>OT (đ/giờ)</label><input type="number" id="prOT" step="1000" min="0"></div>
+            <div class="field small"><label>Tiền cơm (đ/suất)</label><input type="number" id="prRice" step="1000" min="0"></div>
+          </div>
+          <p class="sub" style="margin:2px 0 10px;">1 công = 1 ca đầy đủ (ca ½ tự tính ra 0.5 công theo hệ số đã lưu). Tiền cơm tính theo số ca thực đi làm (không tính nghỉ phép).</p>
+          <div style="display:flex;justify-content:flex-end;">
+            <button class="btn btn-primary" id="btnSavePayrollRates" type="button">💾 Lưu đơn giá</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <div class="field" style="position:relative;flex:1.4;min-width:200px;">
+          <label>Nhân viên</label>
+          <input type="text" id="payrollSearchInput" class="name-typed-highlight" placeholder="Tên hoặc mã NV..." autocomplete="off">
+          <div id="payrollSuggest" class="ms-suggest-list" style="display:none;"></div>
+        </div>
+        <div class="field small">
+          <label>Tháng</label>
+          <input type="month" id="payrollMonth">
+        </div>
+      </div>
+
+      <div id="payrollReportArea">
+        <p class="sub" id="payrollEmptyHint">👆 Chọn nhân viên và tháng để tính lương.</p>
+      </div>
+
+      <div style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px;">
+        <button type="button" class="btn btn-ghost" id="btnTogglePayrollAll" style="width:100%;text-align:left;">🔽 Xem bảng lương tất cả nhân viên trong tháng</button>
+        <div id="payrollAllArea" style="display:none;margin-top:10px;"></div>
+      </div>
+    </div>
+  </section>
+
   <!-- ============ TAB: TỔNG QUAN 162 NGƯỜI ============ -->
   <section class="tab-panel" id="tab-overview">
     <div class="panel">
@@ -1596,6 +1650,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <div class="field small">
         <label>Hệ số công <span style="font-weight:400;color:var(--muted);">— mặc định 1</span></label>
         <input type="number" id="editMult" value="1" min="0.25" max="5" step="0.25">
+      </div>
+      <div class="field small">
+        <label>Giờ OT <span style="font-weight:400;color:var(--muted);">— nếu có</span></label>
+        <input type="number" id="editOT" value="0" min="0" max="24" step="0.5">
       </div>
     </div>
     <div class="field" style="margin-bottom:12px;">
@@ -2023,6 +2081,7 @@ const state = {
   bulkRows: [],
   savedTeams: [],
   personalCode: null,
+  payrollCode: null,
   calMonthCursor: new Date(),
   ovYear: null,
   ovMonth: null, // 1-12
@@ -2324,7 +2383,9 @@ async function doLogin(){
     input.focus();
   }
 }
-function doLogout(){
+async function doLogout(){
+  const ok = await customConfirm('🔒 Bạn có chắc muốn ĐĂNG XUẤT không?\n\nSau khi đăng xuất, các tab quản trị (Nhập, Nhật ký, Thống kê, Tính lương, Tổng quan, Ảnh kế hoạch...) sẽ bị ẩn cho tới khi đăng nhập lại.');
+  if(!ok) return;
   logActivity('🔒 Đăng xuất');
   sessionStorage.removeItem('admin_logged_in');
   applyAccessMode();
@@ -2607,6 +2668,7 @@ function switchTab(tab){
   if(tab === 'overview') renderOverview();
   if(tab === 'photos') updateImageViewer();
   if(tab === 'multistage') initMultiStageTabIfEmpty();
+  if(tab === 'payroll') renderPayrollTab();
   window.scrollTo({top:0, behavior:'instant'});
 }
 document.getElementById('tabbar').addEventListener('click', (e)=>{
@@ -4219,6 +4281,7 @@ function openEditModal(peopleList){
   document.getElementById('editBatch').value = first.batch || '';
   document.getElementById('editTime').value = first.time || '';
   document.getElementById('editMult').value = first.mult || 1;
+  document.getElementById('editOT').value = first.otHours || 0;
   editAddPersonSearch.value = '';
   editAddPersonCombo.style.display = 'none';
   editAddPersonCombo.innerHTML = '';
@@ -4279,15 +4342,17 @@ document.getElementById('btnConfirmEdit').onclick = ()=>{
   rememberBatch(newBatch);
   const newTime = document.getElementById('editTime').value;
   const newMult = parseFloat(document.getElementById('editMult').value) || 1;
+  const newOT = parseFloat(document.getElementById('editOT').value) || 0;
   if(!newDate || !newStage){ showToast('Vui lòng nhập đủ ngày và công đoạn'); return; }
   state.records.forEach(r=>{
-    if(state.editingIds.includes(r.id)){ r.date=newDate; r.shift=newShift; r.stage=newStage; r.batch=newBatch; r.time=newTime; r.mult=newMult; }
+    if(state.editingIds.includes(r.id)){ r.date=newDate; r.shift=newShift; r.stage=newStage; r.batch=newBatch; r.time=newTime; r.mult=newMult; r.otHours=newOT; }
   });
   if(!allStages().some(s=>normalize(s)===normalize(newStage))) state.customStages.push(newStage);
   saveRecords(); saveStages();
   editRecordModal.classList.remove('show');
   renderStats(); renderRecords(); renderAnalytics();
   if(state.personalCode) renderPersonalReport();
+  if(document.getElementById('tab-payroll')?.classList.contains('active')) renderPayrollTab();
   showToast('Đã lưu thay đổi');
 };
 
@@ -6120,7 +6185,13 @@ async function loadFromGithub(){
   if(!ok) return;
   showToast('⏳ Đang tải bản mới nhất...', 4000);
   try{
-    const res = await fetch(SYNC_WORKER_URL + '/data?t=' + Date.now(), { cache: 'no-store' });
+    // Gửi kèm khoá đồng bộ (nếu có) để Worker trả về dữ liệu ĐẦY ĐỦ, gồm cả đơn giá lương
+    // (state.settings.payrollRates). Người chưa đăng nhập/không có khoá sẽ chỉ nhận bản đã
+    // được Worker lược bỏ đơn giá lương — xem worker.js phần handleRead().
+    const res = await fetch(SYNC_WORKER_URL + '/data?t=' + Date.now(), {
+      cache: 'no-store',
+      headers: GITHUB_TOKEN ? { 'X-Sync-Key': GITHUB_TOKEN } : {}
+    });
     if(!res.ok){
       await customAlert('❌ Chưa tìm thấy dữ liệu (hoặc chưa từng "Lưu lên máy chủ" lần nào).');
       logActivity('❌ Tải bản mới nhất thất bại: HTTP ' + res.status);
@@ -6441,6 +6512,254 @@ function exportStatsCSV(){
   showToast('✅ Đã xuất CSV');
 }
 document.getElementById('btnExportStatsCsv').addEventListener('click', exportStatsCSV);
+
+// ================= TÍNH LƯƠNG (native — dùng chung state.records/EMPLOYEES/mult, không cần iframe) =================
+function money(n){ return Math.round(n||0).toLocaleString('vi-VN') + 'đ'; }
+
+// LƯU Ý BẢO MẬT: KHÔNG đặt số tiền thật làm giá trị mặc định ở đây — file này chạy trên
+// hosting công khai (GitHub Pages), ai "View Source" cũng đọc được các số viết cứng trong code.
+// Mặc định để 0; đơn giá thật chỉ tồn tại trong state.settings.payrollRates, vốn chỉ có trên
+// máy admin (localStorage) hoặc trong bản đồng bộ ĐẦY ĐỦ mà Worker chỉ trả khi có đúng khoá
+// X-Sync-Key (xem worker.js). Người chưa đăng nhập/không có khoá sẽ luôn thấy 0đ, không suy ra được giá thật.
+function getPayrollRates(){
+  const d = state.settings.payrollRates || {};
+  return {
+    ca1: d.ca1 ?? 0,
+    ca2: d.ca2 ?? 0,
+    ca3: d.ca3 ?? 0,
+    hc:  d.hc  ?? 0,
+    leave: d.leave ?? 0,
+    ot:  d.ot  ?? 0,
+    rice: d.rice ?? 0,
+  };
+}
+function fillPayrollRatesForm(){
+  const r = getPayrollRates();
+  document.getElementById('prCa1').value = r.ca1;
+  document.getElementById('prCa2').value = r.ca2;
+  document.getElementById('prCa3').value = r.ca3;
+  document.getElementById('prHC').value = r.hc;
+  document.getElementById('prLeave').value = r.leave;
+  document.getElementById('prOT').value = r.ot;
+  document.getElementById('prRice').value = r.rice;
+}
+document.getElementById('btnSavePayrollRates').addEventListener('click', ()=>{
+  state.settings.payrollRates = {
+    ca1: parseFloat(document.getElementById('prCa1').value) || 0,
+    ca2: parseFloat(document.getElementById('prCa2').value) || 0,
+    ca3: parseFloat(document.getElementById('prCa3').value) || 0,
+    hc:  parseFloat(document.getElementById('prHC').value) || 0,
+    leave: parseFloat(document.getElementById('prLeave').value) || 0,
+    ot:  parseFloat(document.getElementById('prOT').value) || 0,
+    rice: parseFloat(document.getElementById('prRice').value) || 0,
+  };
+  saveSettings();
+  showToast('💾 Đã lưu đơn giá lương');
+  renderPayrollReport();
+  if(document.getElementById('payrollAllArea').style.display !== 'none') renderPayrollAllTable();
+});
+
+// Quy về 1 trong 5 loại gốc để tra đơn giá — ca ½ vẫn tính đúng theo LOẠI ca gốc của nó (½ Ca 3 vẫn theo giá Ca 3),
+// khác với nhóm "½ Ca" gộp chung dùng ở tab Cá nhân.
+function payrollBaseType(shift){
+  if(shift === 'Ca 1' || shift === '1/2 Ca 1') return 'ca1';
+  if(shift === 'Ca 2' || shift === '1/2 Ca 2') return 'ca2';
+  if(shift === 'Ca 3' || shift === '1/2 Ca 3') return 'ca3';
+  if(shift === LEAVE_SHIFT) return 'leave';
+  return 'hc'; // Hành chính / Hành chính (Sáng/Chiều) và các ca khác mặc định theo giá Hành chính
+}
+const PAYROLL_BASE_LABEL = { ca1:'Ca 1', ca2:'Ca 2', ca3:'Ca 3', hc:'Hành chính', leave:'Nghỉ phép' };
+
+// Tính chi tiết lương 1 người trong 1 tháng (prefix dạng "2026-09").
+// Gộp theo (ngày + ca) giống cách tính "Tổng công" ở Thống Kê/Cá nhân — tránh cộng trùng khi
+// 1 ca được chấm ở nhiều công đoạn khác nhau (chỉ lấy hệ số công / giờ OT lớn nhất trong nhóm đó).
+function computePayrollDetail(code, monthPrefix){
+  const rates = getPayrollRates();
+  const recs = state.records.filter(r=>r.code===code && r.date && r.date.startsWith(monthPrefix));
+  const dayShiftMap = new Map();
+  recs.forEach(r=>{
+    const key = r.date+'|'+r.shift;
+    const mult = r.mult != null ? r.mult : (r.shift===LEAVE_SHIFT ? 0 : 1);
+    const ot = r.otHours || 0;
+    let row = dayShiftMap.get(key);
+    if(!row){ row = { date:r.date, shift:r.shift, mult, ot, stages:[r.stage] }; dayShiftMap.set(key, row); }
+    else {
+      if(mult > row.mult) row.mult = mult;
+      if(ot > row.ot) row.ot = ot;
+      if(row.stages.indexOf(r.stage) === -1) row.stages.push(r.stage);
+    }
+  });
+  const rows = [...dayShiftMap.values()].sort((a,b)=>a.date.localeCompare(b.date));
+  let workPay = 0, otPay = 0, riceCount = 0;
+  const byType = { ca1:0, ca2:0, ca3:0, hc:0, leave:0 };
+  rows.forEach(row=>{
+    const base = payrollBaseType(row.shift);
+    const rate = base === 'leave' ? rates.leave : rates[base];
+    row.base = base;
+    row.pay = (row.mult||0) * rate;
+    row.otPay = (row.ot||0) * rates.ot;
+    workPay += row.pay;
+    otPay += row.otPay;
+    byType[base] += (row.mult||0);
+    if(base !== 'leave') riceCount++;
+  });
+  const ricePay = riceCount * rates.rice;
+  const totalPay = workPay + otPay + ricePay;
+  return { rows, byType, workPay, otPay, otHoursTotal: rows.reduce((a,r)=>a+(r.ot||0),0), riceCount, ricePay, totalPay, rates };
+}
+
+function renderPayrollSuggest(q){
+  const box = document.getElementById('payrollSuggest');
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const nq = normalize(q);
+  const results = EMPLOYEES.filter(e=>normalize(e.short).includes(nq) || normalize(e.full).includes(nq) || normalize(e.code).includes(nq)).slice(0,8);
+  if(!results.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML = results.map(e=>`<div class="ms-suggest-item" data-code="${e.code}">${e.short} <small>${e.full} · ${e.code}</small></div>`).join('');
+  box.style.display = 'block';
+}
+document.getElementById('payrollSearchInput').addEventListener('input', (e)=> renderPayrollSuggest(e.target.value.trim()));
+document.getElementById('payrollSuggest').addEventListener('click', (e)=>{
+  const item = e.target.closest('.ms-suggest-item');
+  if(!item) return;
+  state.payrollCode = item.dataset.code;
+  const emp = EMPLOYEES.find(x=>x.code===state.payrollCode);
+  document.getElementById('payrollSearchInput').value = emp ? `${emp.short} (${emp.code})` : state.payrollCode;
+  document.getElementById('payrollSuggest').style.display = 'none';
+  renderPayrollReport();
+});
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('#payrollSearchInput') && !e.target.closest('#payrollSuggest')){
+    const box = document.getElementById('payrollSuggest');
+    if(box) box.style.display = 'none';
+  }
+});
+document.getElementById('payrollMonth').addEventListener('change', renderPayrollReport);
+
+function renderPayrollReport(){
+  const area = document.getElementById('payrollReportArea');
+  const monthVal = document.getElementById('payrollMonth').value; // "YYYY-MM"
+  if(!state.payrollCode || !monthVal){
+    area.innerHTML = '<p class="sub" id="payrollEmptyHint">👆 Chọn nhân viên và tháng để tính lương.</p>';
+    return;
+  }
+  const emp = EMPLOYEES.find(e=>e.code===state.payrollCode);
+  const d = computePayrollDetail(state.payrollCode, monthVal);
+  const rows = d.rows;
+  area.innerHTML = `
+    <div id="payrollExportArea">
+      <div style="margin-bottom:10px;">
+        <b style="font-size:15px;">${emp ? emp.full : state.payrollCode}</b>
+        <span class="sub" style="margin-left:6px;">${emp ? emp.code : ''} — Tháng ${monthVal.split('-')[1]}/${monthVal.split('-')[0]}</span>
+      </div>
+      <div class="stat-cards-row" style="flex-wrap:wrap;">
+        <div class="stat-card"><div class="stat-card-num">${fmtCong(d.byType.ca1+d.byType.ca2+d.byType.ca3+d.byType.hc)}</div><div class="stat-card-label">Tổng công</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="font-size:17px;">${money(d.workPay)}</div><div class="stat-card-label">Tiền công</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="font-size:17px;">${money(d.otPay)}</div><div class="stat-card-label">Tiền OT (${fmtCong(d.otHoursTotal)}h)</div></div>
+        <div class="stat-card"><div class="stat-card-num" style="font-size:17px;">${money(d.ricePay)}</div><div class="stat-card-label">Tiền cơm (${d.riceCount} suất)</div></div>
+      </div>
+      <div class="last-work-banner" style="margin-top:10px;background:var(--amber-soft);border-color:var(--amber);">
+        💰 <b>TỔNG LƯƠNG THÁNG:</b> <span style="font-size:16px;font-weight:800;">${money(d.totalPay)}</span>
+      </div>
+      <p class="sub" style="margin:12px 0 4px;">Chi tiết theo ngày:${isAdminV4 ? ' <span style="font-weight:400;">— bấm 1 dòng để sửa hệ số công / giờ OT</span>' : ''}</p>
+      <div style="overflow-x:auto;">
+        <table class="roster-table">
+          <thead><tr><th style="width:30px;">#</th><th>Ngày</th><th>Ca</th><th style="text-align:right;">Công</th><th style="text-align:right;">OT (h)</th><th style="text-align:right;">Thành tiền</th></tr></thead>
+          <tbody>
+            ${rows.map((r,i)=>`<tr class="${isAdminV4?'payroll-editable-row':''}" data-date="${r.date}" data-shift="${r.shift}" ${isAdminV4?'style="cursor:pointer;" title="Bấm để sửa"':''}>
+              <td class="roster-stt">${i+1}</td><td>${fmtDate(r.date)}</td><td>${r.shift}</td>
+              <td style="text-align:right;">${fmtCong(r.mult)}</td>
+              <td style="text-align:right;">${r.ot ? fmtCong(r.ot) : '—'}</td>
+              <td style="text-align:right;">${money(r.pay + r.otPay)}</td>
+            </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:14px;color:var(--muted);">Không có bản ghi trong tháng này.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="btnExportPayrollPdf" type="button">📄 Xuất PDF</button>
+      <button class="btn" id="btnExportPayrollImg" type="button">🖼️ Xuất ảnh</button>
+    </div>
+  `;
+  area.querySelectorAll('.payroll-editable-row').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      const recs = state.records.filter(r=>r.code===state.payrollCode && r.date===tr.dataset.date && r.shift===tr.dataset.shift);
+      if(recs.length) openEditModal(recs);
+    });
+  });
+  document.getElementById('btnExportPayrollPdf')?.addEventListener('click', (e)=> exportElementToPdf('payrollExportArea', `Luong_${emp?emp.short:state.payrollCode}_${monthVal}.pdf`, e.currentTarget));
+  document.getElementById('btnExportPayrollImg')?.addEventListener('click', (e)=> exportElementToImg('payrollExportArea', `Luong_${emp?emp.short:state.payrollCode}_${monthVal}.png`, e.currentTarget));
+}
+
+function renderPayrollAllTable(){
+  const area = document.getElementById('payrollAllArea');
+  const monthVal = document.getElementById('payrollMonth').value;
+  if(!monthVal){ area.innerHTML = '<p class="sub">Chọn tháng ở trên trước đã.</p>'; return; }
+  const list = EMPLOYEES.map(e=>{
+    const d = computePayrollDetail(e.code, monthVal);
+    return { emp:e, ...d };
+  }).filter(x=>x.rows.length > 0).sort((a,b)=>normalize(a.emp.short).localeCompare(normalize(b.emp.short)));
+  const grandTotal = list.reduce((a,x)=>a+x.totalPay,0);
+  area.innerHTML = `
+    <div id="payrollAllExportArea">
+      <p class="sub" style="margin:0 0 8px;">Tháng ${monthVal.split('-')[1]}/${monthVal.split('-')[0]} — ${list.length} người có dữ liệu. Bấm 1 dòng để xem chi tiết ở trên.</p>
+      <div style="overflow-x:auto;">
+        <table class="roster-table">
+          <thead><tr><th style="width:30px;">#</th><th>Tên</th><th style="text-align:right;">Công</th><th style="text-align:right;">Tiền công</th><th style="text-align:right;">OT</th><th style="text-align:right;">Cơm</th><th style="text-align:right;">Tổng lương</th></tr></thead>
+          <tbody>
+            ${list.map((x,i)=>`<tr class="payroll-all-row" data-code="${x.emp.code}" style="cursor:pointer;" title="Bấm để xem chi tiết">
+              <td class="roster-stt">${i+1}</td><td>${x.emp.short}</td>
+              <td style="text-align:right;">${fmtCong(x.byType.ca1+x.byType.ca2+x.byType.ca3+x.byType.hc)}</td>
+              <td style="text-align:right;">${money(x.workPay)}</td>
+              <td style="text-align:right;">${money(x.otPay)}</td>
+              <td style="text-align:right;">${money(x.ricePay)}</td>
+              <td style="text-align:right;font-weight:700;">${money(x.totalPay)}</td>
+            </tr>`).join('') || '<tr><td colspan="7" style="text-align:center;padding:14px;color:var(--muted);">Chưa có ai có dữ liệu trong tháng này.</td></tr>'}
+          </tbody>
+          <tfoot><tr style="font-weight:800;border-top:2px solid var(--line);"><td colspan="6" style="padding:8px 6px;">TỔNG CỘNG (${list.length} người)</td><td style="text-align:right;padding:8px 6px;">${money(grandTotal)}</td></tr></tfoot>
+        </table>
+      </div>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="btnExportPayrollAllPdf" type="button">📄 Xuất PDF</button>
+      <button class="btn" id="btnExportPayrollAllImg" type="button">🖼️ Xuất ảnh</button>
+    </div>
+  `;
+  area.querySelectorAll('.payroll-all-row').forEach(tr=>{
+    tr.addEventListener('click', ()=>{
+      state.payrollCode = tr.dataset.code;
+      const emp = EMPLOYEES.find(x=>x.code===state.payrollCode);
+      document.getElementById('payrollSearchInput').value = emp ? `${emp.short} (${emp.code})` : state.payrollCode;
+      renderPayrollReport();
+      window.scrollTo({top:0, behavior:'smooth'});
+    });
+  });
+  document.getElementById('btnExportPayrollAllPdf')?.addEventListener('click', (e)=> exportElementToPdf('payrollAllExportArea', `BangLuong_TatCa_${monthVal}.pdf`, e.currentTarget));
+  document.getElementById('btnExportPayrollAllImg')?.addEventListener('click', (e)=> exportElementToImg('payrollAllExportArea', `BangLuong_TatCa_${monthVal}.png`, e.currentTarget));
+}
+document.getElementById('btnTogglePayrollAll').addEventListener('click', function(){
+  const area = document.getElementById('payrollAllArea');
+  const opening = area.style.display === 'none';
+  area.style.display = opening ? 'block' : 'none';
+  this.textContent = opening ? '🔼 Ẩn bảng lương tất cả nhân viên' : '🔽 Xem bảng lương tất cả nhân viên trong tháng';
+  if(opening) renderPayrollAllTable();
+});
+
+function renderPayrollTab(){
+  fillPayrollRatesForm();
+  const monthEl = document.getElementById('payrollMonth');
+  if(!monthEl.value){
+    const d = new Date();
+    monthEl.value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+  if(!state.payrollCode && state.personalCode){
+    state.payrollCode = state.personalCode;
+    const emp = EMPLOYEES.find(e=>e.code===state.payrollCode);
+    document.getElementById('payrollSearchInput').value = emp ? `${emp.short} (${emp.code})` : state.payrollCode;
+  }
+  renderPayrollReport();
+  if(document.getElementById('payrollAllArea').style.display !== 'none' && document.getElementById('payrollAllArea').innerHTML.trim()) renderPayrollAllTable();
+}
+
 
 // ================= GOOGLE SHEETS SYNC (DỰ PHÒNG — mặc định TẮT, chỉ chạy khi bật + có link Apps Script) =================
 const GS_ENABLED_KEY = 'v4_gsheets_enabled';
