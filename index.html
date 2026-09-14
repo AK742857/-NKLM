@@ -4,8 +4,19 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <title>Chấm Công Theo Công Đoạn — V4 PRO USA</title>
+
+<!-- ===== PWA / Add to Home Screen (iOS) ===== -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a2332">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chấm Công">
+<link rel="apple-touch-icon" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -1048,12 +1059,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .extra-box-num{display:inline-flex;align-items:center;justify-content:center;min-width:17px;height:17px;padding:0 4px;border-radius:5px;background:var(--ink);color:#fff;font-size:10px;font-weight:700;margin-right:5px;}
   .pm-num-badge{display:inline-flex;align-items:center;justify-content:center;min-width:20px;height:20px;padding:0 5px;border-radius:6px;background:var(--ink);color:#fff;font-size:11px;font-weight:700;flex:none;}
   .pm-num-badge.off{background:var(--line);color:var(--muted);}
-  .price-preset-row{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;}
-  .price-preset-btn{font-family:inherit;font-size:11px;padding:4px 9px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap;}
-  .price-preset-btn:hover{background:var(--amber-soft);}
-  .price-preset-btn.empty{color:var(--muted);font-style:italic;}
-  .price-preset-btn .ppe{margin-left:3px;opacity:.55;font-size:10px;}
-  .price-preset-btn .ppe:hover{opacity:1;}
+  .price-chip-row{display:flex;gap:4px;margin-top:5px;flex-wrap:wrap;min-height:22px;}
+  .price-chip-row .price-chip{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:4px 9px;border-radius:14px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;white-space:nowrap;}
+  .price-chip-row .price-chip:hover{background:var(--amber-soft);border-color:var(--amber);}
+  .price-chip-row .price-chip-hint{font-size:10.5px;color:var(--muted);font-style:italic;align-self:center;}
   .trend-chart{display:flex;align-items:flex-end;gap:4px;height:120px;padding:14px 2px 0;}
   .trend-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;min-width:0;}
   .trend-bar-fill{width:70%;background:var(--amber);border-radius:4px 4px 0 0;min-height:2px;transition:height .2s ease;}
@@ -1067,6 +1076,24 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
   .auth-chip:not(.is-admin):hover{background:rgba(211,71,60,.34)!important;}
   .auth-chip.is-admin{background:rgba(58,150,101,.28)!important;border:1px solid rgba(90,190,135,.7)!important;color:#d8f5e6!important;}
   .auth-chip.is-admin:hover{background:rgba(58,150,101,.4)!important;}
+
+/* ===== TRUNG TÂM BIỂU ĐỒ ===== */
+.chart-panel h2{margin-bottom:5px;}
+.chart-bars{display:flex;flex-direction:column;gap:7px;}
+.chart-bar-row{display:grid;grid-template-columns:minmax(110px,180px) 1fr 48px;gap:8px;align-items:center;font-size:12px;}
+.chart-bar-track{height:22px;background:var(--panel-soft);border:1px solid var(--line);border-radius:7px;overflow:hidden;}
+.chart-bar-fill{height:100%;min-width:2px;border-radius:6px;background:linear-gradient(90deg,var(--amber),var(--amber-dark));display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-weight:800;color:#fff;font-size:11px;box-sizing:border-box;}
+.chart-value{text-align:right;font-weight:800;}
+.chart-scroll{overflow-x:auto;}
+.attendance-heatmap-wrap{overflow:auto;max-height:620px;border:1px solid var(--line);border-radius:10px;background:var(--panel);}
+.heatmap{border-collapse:separate;border-spacing:2px;min-width:max-content;font-size:9px;}
+.heatmap th{position:sticky;top:0;z-index:3;background:var(--panel);color:var(--muted);padding:4px 3px;white-space:nowrap;}
+.heatmap th.person-head{left:0;z-index:5;min-width:105px;text-align:left;}
+.heatmap td.person-name{position:sticky;left:0;z-index:2;background:var(--panel);padding:4px 6px;white-space:nowrap;border-right:1px solid var(--line);font-size:10.5px;}
+.heat-cell{width:19px;height:19px;border-radius:4px;background:var(--panel-soft);border:1px solid var(--line);text-align:center;cursor:default;}
+.heat-cell.work{background:var(--amber);border-color:var(--amber-dark);color:#fff;font-weight:800;}
+.heat-cell.half{background:var(--amber-soft);border-color:var(--amber);color:var(--amber-dark);}
+.chart-empty{padding:14px;text-align:center;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -1160,6 +1187,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <div class="theme-menu-title">Các mục khác</div>
       <button class="more-menu-item tab-more-item" type="button" data-tab="entry">📝 Nhập</button>
       <button class="more-menu-item tab-more-item" type="button" data-tab="stats">📊 Thống kê</button>
+      <button class="more-menu-item tab-more-item" type="button" data-tab="charts">📈 Biểu đồ</button>
       <button class="more-menu-item tab-more-item" type="button" data-tab="payroll">💰 Tính lương</button>
       <button class="more-menu-item tab-more-item" type="button" data-tab="overview">🗓️ Tổng quan 162</button>
       <button class="more-menu-item tab-more-item" type="button" data-tab="photos">🖼️ Ảnh kế hoạch</button>
@@ -1395,6 +1423,23 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         <button class="btn btn-primary" id="btnSaveMultiStage" type="button" style="display:none;min-width:250px;">✓ Lưu các công đoạn đã chọn</button>
       </div>
     </div>
+
+    <div class="panel">
+      <h2>📥 Nhập chấm công từ máy chấm công (vân tay / khuôn mặt / QR)</h2>
+      <p class="sub" style="margin-bottom:10px;">Xuất file từ phần mềm đi kèm máy chấm công ra <b style="font-style:normal;">CSV</b> (nếu máy chỉ xuất được Excel .xlsx, mở file đó rồi "Save As" → chọn CSV UTF-8), rồi chọn file bên dưới. App sẽ tự dò cột Mã NV / Ngày / Giờ, đoán Ca dựa theo khung giờ cấu hình, và cho bạn <b style="font-style:normal;">xem trước trước khi lưu thật</b> — chưa hiểu đúng file của máy nào thì cứ thử, thấy dò sai thì báo lại để mình chỉnh tiếp cho đúng máy đó.</p>
+
+      <h3 style="font-size:13px;margin:0 0 8px;">⚙️ Khung giờ nhận diện ca (dựa theo giờ quẹt sớm nhất trong ngày)</h3>
+      <div class="row" style="gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <div class="field small"><label>Ca 1 vào lúc</label><input type="time" id="shiftTimeCa1"></div>
+        <div class="field small"><label>Ca 2 vào lúc</label><input type="time" id="shiftTimeCa2"></div>
+        <div class="field small"><label>Ca 3 vào lúc</label><input type="time" id="shiftTimeCa3"></div>
+        <div class="field small"><label>Hành chính vào lúc</label><input type="time" id="shiftTimeHC"></div>
+      </div>
+
+      <label class="btn btn-teal" style="cursor:pointer;">📂 Chọn file chấm công (.csv)<input type="file" id="attMachineFileInput" accept=".csv,.txt" style="display:none;"></label>
+
+      <div id="attMachineImportResult" style="margin-top:14px;"></div>
+    </div>
   </section>
 
   <!-- ============ TAB: NHẬT KÝ ============ -->
@@ -1490,6 +1535,25 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <div id="stageRanking"></div>
 
       <h3 style="font-size:13.5px;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>🎯 Tốp ca đông nhất</span>
+        <span class="sub" style="font-weight:400;">Ca nào tập trung nhiều lượt chấm công nhất</span>
+      </h3>
+      <div id="shiftRanking"></div>
+      <div id="shiftBalanceBox"></div>
+
+      <h3 style="font-size:13.5px;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>🏆 Tốp nhiều công nhất</span>
+        <span class="sub" style="font-weight:400;">10 người có tổng công quy đổi cao nhất kỳ đang lọc</span>
+      </h3>
+      <div id="workloadRanking"></div>
+
+      <h3 style="font-size:13.5px;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <span>📅 Chuyên cần</span>
+        <span class="sub" style="font-weight:400;">Tỷ lệ ngày có công trên số ngày đã qua trong kỳ</span>
+      </h3>
+      <div id="attendanceRanking"></div>
+
+      <h3 style="font-size:13.5px;margin:18px 0 8px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
         <span>Bảng chấm công theo người (162 người)</span>
         <button type="button" class="btn btn-ghost" id="btnToggleRoster" style="padding:4px 10px;font-size:11.5px;">🔼 Thu gọn</button>
       </h3>
@@ -1509,6 +1573,62 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
     </div>
   </section>
 
+  <!-- ============ TAB: BIỂU ĐỒ ============ -->
+  <section class="tab-panel" id="tab-charts">
+    <div class="panel">
+      <h2>📈 Trung tâm biểu đồ</h2>
+      <p class="sub">Gom các biểu đồ trực quan đang có và bổ sung các góc nhìn còn thiếu. Dữ liệu lấy trực tiếp từ chấm công hiện tại, không thay đổi cách tính công.</p>
+      <div class="month-nav-row">
+        <div class="seg-toggle" id="chartRangeToggle">
+          <button type="button" class="seg-btn active" data-range="month">Theo tháng</button>
+          <button type="button" class="seg-btn" data-range="all">Tất cả</button>
+        </div>
+        <div class="month-nav" id="chartMonthNav">
+          <button type="button" id="chartMonthPrev">◀</button>
+          <span id="chartMonthLabel"></span>
+          <button type="button" id="chartMonthNext">▶</button>
+        </div>
+      </div>
+      <div class="stats-mini" id="chartMini"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>📊 Phân bố ca làm việc</h2>
+      <p class="sub">Biểu đồ ca đang có được đưa về đây để toàn bộ phần trực quan nằm cùng một nơi.</p>
+      <div id="aggregateShiftChart"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>👥 Nhân sự đi làm / vắng theo ngày</h2>
+      <p class="sub">Mỗi ngày hiển thị số người có ít nhất một ca làm việc và số người còn lại trong 162 người.</p>
+      <div id="chartDailyAttendance"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>🏭 Nhân sự theo công đoạn</h2>
+      <p class="sub">Cho biết công đoạn nào đang có nhiều người tham gia nhất trong kỳ xem.</p>
+      <div id="chartStagePeople"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>⚖️ Cân bằng nhân sự giữa các ca</h2>
+      <p class="sub">So sánh Ca 1, Ca 2 và Ca 3 theo số người; phần cảnh báo lệch tải hiện tại vẫn được giữ nguyên.</p>
+      <div id="chartShiftPeople"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>💯 Phân bố tổng công của 162 người</h2>
+      <p class="sub">Không chỉ nhìn Top 10: biểu đồ này cho thấy toàn bộ nhóm nhân sự theo mức tổng công quy đổi.</p>
+      <div id="chartWorkDistribution"></div>
+    </div>
+
+    <div class="panel chart-panel">
+      <h2>🟩 Heatmap 162 người × ngày</h2>
+      <p class="sub">Mỗi ô là một người trong một ngày. Có công = ô có dữ liệu; nghỉ phép/ốm không được tính là ngày đi làm.</p>
+      <div id="chartHeatmap" class="attendance-heatmap-wrap"></div>
+    </div>
+  </section>
+
   <!-- ============ TAB: CÁ NHÂN (tab công khai duy nhất) ============ -->
   <section class="tab-panel active" id="tab-personal">
     <div class="panel admin-only" id="personalModulesPanel">
@@ -1516,25 +1636,16 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <p class="sub">Bật/tắt và sắp xếp thứ tự các mục bên dưới — số ở đầu mỗi dòng là thứ tự hiển thị thật (chỉ đếm các mục đang BẬT). Các mục đã bật sẽ nằm gọn trong nút "🔽 Mở rộng" ở khối "Tra cứu công cá nhân" bên dưới — mỗi mục còn có nút ẩn/hiện riêng. Chỉ admin thấy thay đổi ngay để xem thử. Ưng ý thì bấm "⋯ Thêm → Lưu lên máy chủ" để mọi người cùng thấy. Tháng này bật 3 mục, tháng sau đổi ý bật mục khác đều được, không cần sửa code.</p>
       <div id="personalModulesPanelBody"></div>
       <p class="sub" style="margin-top:8px;">⚠️ Sau khi bật/tắt hoặc đổi thứ tự, nhớ vào "⋯ Thêm → Lưu lên máy chủ" để mọi người thấy thay đổi.</p>
-    </div>
-    <div class="panel">
-      <div class="stat-cards-row">
-        <div class="stat-card"><div class="stat-card-num" id="statCardTotalRecords">0</div><div class="stat-card-label">Tổng bản ghi</div></div>
-        <div class="stat-card"><div class="stat-card-num" id="statCardTotalEmp">0</div><div class="stat-card-label">Nhân viên</div></div>
-      </div>
-      <div class="month-nav-row">
-        <div class="seg-toggle" id="aggRangeToggle">
-          <button type="button" class="seg-btn active" data-range="all">Tất cả</button>
-          <button type="button" class="seg-btn" data-range="month">Theo tháng</button>
+
+      <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--line);">
+        <h3 style="font-size:13px;margin:0 0 6px;">🗓️ Quota phép năm mặc định</h3>
+        <p class="sub" style="margin:0 0 8px;">Số ngày phép/năm áp dụng chung cho tất cả — dùng cho mục "Phép năm còn lại" ở trên.</p>
+        <div class="field" style="max-width:220px;">
+          <label>Số ngày phép / năm</label>
+          <input type="number" id="leaveQuotaInput" min="0" step="1" style="width:100%;">
         </div>
-        <div class="month-nav" id="aggMonthNav" style="display:none;">
-          <button type="button" id="aggMonthPrev">◀</button>
-          <span id="aggMonthLabel"></span>
-          <button type="button" id="aggMonthNext">▶</button>
-        </div>
+        <p class="sub" style="margin-top:6px;font-size:11.5px;">Muốn set riêng cho 1 người khác quota chung (VD làm lâu năm được nhiều phép hơn)? Vào "👤 Tra cứu công cá nhân" bên dưới, chọn người đó rồi bấm nút "✏️ Sửa phép riêng" cạnh mục "Phép năm còn lại".</p>
       </div>
-      <h2 style="margin-top:12px;">📊 Phân bố ca làm việc</h2>
-      <div id="aggregateShiftChart"></div>
     </div>
     <div class="panel">
       <h2>
@@ -1543,7 +1654,23 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
       <p class="sub">Gõ tên hoặc mã NV để xem các ngày đã chấm công của người đó.</p>
 
       <div id="personalLookupBody">
-        <div class="field" style="margin-bottom:10px;">
+        <!-- Chỉ hiện khi KHÔNG phải Admin và thiết bị này CHƯA xác nhận là ai — chặn xem lung tung công người khác -->
+        <div id="personalViewerGate" class="field" style="display:none;margin-bottom:10px;background:var(--panel-soft);border:1px solid var(--line);border-radius:10px;padding:12px;">
+          <label style="display:flex;align-items:center;gap:6px;">🔒 Xác nhận bạn là ai để xem đúng công của mình</label>
+          <p class="sub" style="margin:2px 0 8px;font-size:12px;">Chỉ hỏi 1 lần trên thiết bị này. Sau khi chọn, thiết bị này sẽ chỉ hiện công của đúng người đó.</p>
+          <div class="input-wrapper">
+            <input type="text" id="viewerGateSearchInput" class="name-typed-highlight" placeholder="Gõ tên hoặc mã NV của bạn..." autocomplete="off">
+            <div id="viewerGateSuggest" class="ms-suggest-list" style="display:none;"></div>
+          </div>
+        </div>
+
+        <!-- Chỉ hiện khi KHÔNG phải Admin và ĐÃ xác nhận danh tính trên thiết bị này -->
+        <div id="personalViewerLockedBar" style="display:none;margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+          <span class="sub" style="margin:0;">🔒 Đang xem công của <b id="viewerLockedName"></b></span>
+          <button type="button" class="btn btn-ghost" id="btnViewerChangePerson" style="padding:4px 10px;font-size:11.5px;">Không phải bạn? Đổi người</button>
+        </div>
+
+        <div id="personalFreeSearchBlock" class="field" style="margin-bottom:10px;">
           <label>Tìm nhân viên</label>
           <div class="input-wrapper">
             <input type="text" id="personalSearchInput" class="name-typed-highlight" placeholder="Tên hoặc mã NV..." autocomplete="off">
@@ -1585,31 +1712,19 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <div class="row">
             <div class="field small">
               <label>Ca 1 (đ/công)</label><input type="number" id="prCa1" step="1000" min="0">
-              <div class="price-preset-row" data-field="ca1">
-                <button type="button" class="price-preset-btn" data-slot="0">— <span class="ppe" title="Sửa mức giá A">✎</span></button>
-                <button type="button" class="price-preset-btn" data-slot="1">— <span class="ppe" title="Sửa mức giá B">✎</span></button>
-              </div>
+              <div class="price-chip-row" data-field="ca1"></div>
             </div>
             <div class="field small">
               <label>Ca 2 (đ/công)</label><input type="number" id="prCa2" step="1000" min="0">
-              <div class="price-preset-row" data-field="ca2">
-                <button type="button" class="price-preset-btn" data-slot="0">— <span class="ppe" title="Sửa mức giá A">✎</span></button>
-                <button type="button" class="price-preset-btn" data-slot="1">— <span class="ppe" title="Sửa mức giá B">✎</span></button>
-              </div>
+              <div class="price-chip-row" data-field="ca2"></div>
             </div>
             <div class="field small">
               <label>Ca 3 (đ/công)</label><input type="number" id="prCa3" step="1000" min="0">
-              <div class="price-preset-row" data-field="ca3">
-                <button type="button" class="price-preset-btn" data-slot="0">— <span class="ppe" title="Sửa mức giá A">✎</span></button>
-                <button type="button" class="price-preset-btn" data-slot="1">— <span class="ppe" title="Sửa mức giá B">✎</span></button>
-              </div>
+              <div class="price-chip-row" data-field="ca3"></div>
             </div>
             <div class="field small">
               <label>Hành chính (đ/công)</label><input type="number" id="prHC" step="1000" min="0">
-              <div class="price-preset-row" data-field="hc">
-                <button type="button" class="price-preset-btn" data-slot="0">— <span class="ppe" title="Sửa mức giá A">✎</span></button>
-                <button type="button" class="price-preset-btn" data-slot="1">— <span class="ppe" title="Sửa mức giá B">✎</span></button>
-              </div>
+              <div class="price-chip-row" data-field="hc"></div>
             </div>
           </div>
           <div class="row">
@@ -1668,6 +1783,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
         </select>
       </div>
 
+      <h3 style="font-size:12.5px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;">📊 Nổi bật tháng này</h3>
+      <div class="overview-summary" id="overviewHighlights" style="margin-bottom:10px;"></div>
+      <h3 style="font-size:12.5px;margin:0 0 6px;color:var(--muted);text-transform:uppercase;">Bảng chi tiết theo ngày</h3>
       <div class="overview-summary" id="overviewSummary"></div>
       <div class="legend-row" id="overviewLegend"></div>
 
@@ -1676,6 +1794,9 @@ input:focus-visible, select:focus-visible, textarea:focus-visible,
           <thead><tr id="overviewHeadRow"></tr></thead>
           <tbody id="overviewBody"></tbody>
         </table>
+      </div>
+      <div style="display:flex;justify-content:center;gap:8px;margin-top:10px;">
+        <button class="btn" id="btnExportOverviewExcel" type="button">📊 Xuất Excel</button>
       </div>
       <div style="text-align:center;margin-top:8px;">
         <button class="btn btn-ghost" id="btnToggleOverview" type="button" style="padding:6px 14px;font-size:12px;display:none;"></button>
@@ -2120,23 +2241,30 @@ const DEFAULT_EMPLOYEES = [{"stt": 1, "short": "Bảy", "full": "Lê Văn Bảy"
 let EMPLOYEES = DEFAULT_EMPLOYEES.slice();
 const BASE_STAGES = ["Khử Nước (Ống)", "Keo Hóa (Ống)", "Sấy - Bơm NN", "ĐH Trung Tâm", "Cắt (Ống)", "VCSP", "Tuyển Chọn", "Bốc NL", "Khử Nước (Lá)", "Keo hóa (Lá)", "Cán Tinh", "Cắt (Lá)", "Sấy (Cầu)", "Sàng Khô", "BDTB", "GT 1", "GT 2", "KSCL", "Trưởng ca (Lá)", "Trưởng ca (Ống)", "Thuần Hóa", "Trưởng ca (Cầu)", "VS (Ống)", "Nghiền TTH", "Rửa, Sàng Ướt", "Hỗn Lò, Đóng Hòm", "Tạo cầu", "Học hóa nổ", "Cán TTH", "Cán (Cầu)", "QBSK", "Phun hòm", "VS (Cầu)", "Xây", "Sàng phân loại", "Hỗn lò TTH", "Học kèm cặp (Cán tinh)", "Hỗn Lò, Đóng Hòm (Cầu)"];
 
-const SHIFT_LIST_ALL = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Nghỉ phép / Ốm'];
+const SHIFT_LIST_ALL = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Học / Họp','Nghỉ phép / Ốm'];
 const SHIFT_COLORS = {
   'Ca 1': '#e0a63c', 'Ca 2': '#d9752e', 'Ca 3': '#4c6b85',
   '1/2 Ca 1': '#f0c98a', '1/2 Ca 2': '#f0b088', '1/2 Ca 3': '#8ea6bb',
-  'Hành chính': '#5e9b6f', 'Hành chính (Sáng)': '#7fb08f', 'Hành chính (Chiều)': '#3f7a52', 'Nghỉ phép / Ốm': '#a6473a'
+  'Hành chính': '#5e9b6f', 'Hành chính (Sáng)': '#7fb08f', 'Hành chính (Chiều)': '#3f7a52',
+  'Học / Họp': '#6c5b9e', 'Nghỉ phép / Ốm': '#a6473a'
 };
 const SHIFT_BG = {
   'Ca 1': '#faedd3', 'Ca 2': '#f7ddc8', 'Ca 3': '#dbe3ea',
   '1/2 Ca 1': '#fbf1de', '1/2 Ca 2': '#fbe8e0', '1/2 Ca 3': '#e7edf1',
-  'Hành chính': '#dfeee3', 'Hành chính (Sáng)': '#e9f4ec', 'Hành chính (Chiều)': '#d3e6da', 'Nghỉ phép / Ốm': '#f3dcd9'
+  'Hành chính': '#dfeee3', 'Hành chính (Sáng)': '#e9f4ec', 'Hành chính (Chiều)': '#d3e6da',
+  'Học / Họp': '#e6e1f2', 'Nghỉ phép / Ốm': '#f3dcd9'
 };
 const SHIFT_ABBR = {
   'Ca 1':'C1','Ca 2':'C2','Ca 3':'C3','1/2 Ca 1':'½1','1/2 Ca 2':'½2','1/2 Ca 3':'½3',
-  'Hành chính':'HC','Hành chính (Sáng)':'HCs','Hành chính (Chiều)':'HCc','Nghỉ phép / Ốm':'N'
+  'Hành chính':'HC','Hành chính (Sáng)':'HCs','Hành chính (Chiều)':'HCc','Học / Họp':'HH','Nghỉ phép / Ốm':'N'
 };
 const LEAVE_SHIFT = 'Nghỉ phép / Ốm';
-const ALL_SHIFT_OPTIONS = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Nghỉ phép / Ốm'];
+// Ca "Học / Họp" (đào tạo/họp) KHÁC với Nghỉ phép/Ốm: người này vẫn có mặt tại xưởng, chỉ không đứng
+// công đoạn sản xuất — nên KHÔNG dùng LEAVE_SHIFT cho ca này. Nhờ vậy mọi chỗ tính "vắng mặt", "chuyên cần",
+// "chuỗi ngày làm liên tục" (vốn chỉ loại trừ đúng LEAVE_SHIFT) sẽ tự động coi ca này là NGÀY CÓ MẶT bình
+// thường, không cần sửa thêm chỗ nào khác. Về lương, payrollBaseType() không có nhánh riêng cho ca này nên
+// sẽ tự rơi vào mức "Hành chính" (mặc định trả công như đi làm hành chính bình thường).
+const ALL_SHIFT_OPTIONS = ['Ca 1','Ca 2','Ca 3','1/2 Ca 1','1/2 Ca 2','1/2 Ca 3','Hành chính','Hành chính (Sáng)','Hành chính (Chiều)','Học / Họp','Nghỉ phép / Ốm'];
 // Ca nửa buổi (Sáng/Chiều của Hành chính) mặc định tính 0.5 công — vẫn sửa tay được sau nếu cần
 const HALF_DAY_SHIFTS = new Set(['Hành chính (Sáng)','Hành chính (Chiều)']);
 function defaultMultFor(shift){ return HALF_DAY_SHIFTS.has(shift) ? 0.5 : 1; }
@@ -2183,7 +2311,7 @@ const state = {
   overviewExpanded: false,
   rosterCollapsed: false,
   rosterRowsExpanded: false,
-  settings: { personalExtraEnabled: false, personalInsightsEnabled: false },
+  settings: { personalExtraEnabled: false, personalInsightsEnabled: false, leaveQuotaPerYear: 12, leaveQuotaOverrides: {}, shiftTimeRanges: { ca1:'06:00', ca2:'14:00', ca3:'22:00', hc:'07:30' } },
 };
 const EMP_LIST_LIMIT = 25;
 const OVERVIEW_LIMIT = 25;
@@ -2484,6 +2612,7 @@ function applyAccessMode(){
     if(!isAdminV4 && !THEMES.find(t=>t.id===curTheme && t.public)){ curTheme = 'titan'; applyTheme('titan', {toast:false}); }
     renderThemeOptions(curTheme);
   }
+  if(typeof applyViewerModeUI === 'function') applyViewerModeUI();
 }
 
 function openLoginGate(){
@@ -2805,7 +2934,7 @@ function addQuickClearButton(id){
 ].forEach(addQuickClearButton);
 
 // ================= CHUYỂN TAB =================
-const TAB_MORE_LABELS = {entry:'📝 Nhập', stats:'📊 Thống kê', payroll:'💰 Tính lương', overview:'🗓️ Tổng quan 162', photos:'🖼️ Ảnh kế hoạch'};
+const TAB_MORE_LABELS = {entry:'📝 Nhập', stats:'📊 Thống kê', charts:'📈 Biểu đồ', payroll:'💰 Tính lương', overview:'🗓️ Tổng quan 162', photos:'🖼️ Ảnh kế hoạch'};
 function switchTab(tab){
   state.activeTab = tab;
   if(typeof closeAppSearch === 'function' && document.getElementById('appSearchBar').style.display !== 'none') closeAppSearch();
@@ -2819,6 +2948,7 @@ function switchTab(tab){
   }
   if(tab === 'journal') renderRecords();
   if(tab === 'stats') renderAnalytics();
+  if(tab === 'charts') renderChartsHub();
   if(tab === 'personal') renderPersonalTab();
   if(tab === 'overview') renderOverview();
   if(tab === 'photos') updateImageViewer();
@@ -5484,6 +5614,151 @@ function renderAnalytics(){
   document.getElementById('stageRanking').innerHTML = stageRows.length ? stageRows.slice(0,8).map((x,i)=>`<div class="ranking-row"><span class="rank-no">${i+1}</span><div><b>${x[0]}</b><div class="rank-bar"><i style="width:${x[1]/maxS*100}%"></i></div></div><strong>${x[1]}</strong></div>`).join('') : '<div class="empty-state">Chưa có dữ liệu</div>';
 
   renderRosterChart(arr, period);
+  renderShiftRanking(arr);
+  renderWorkloadRanking(arr);
+  renderAttendanceRanking(arr, fromDate, toDate);
+}
+
+// ================= TỐP CA ĐÔNG NHẤT =================
+// Xếp hạng các ca theo số lượt chấm công + số người tham gia trong kỳ đang lọc.
+// Tham khảo cách các nhà máy Nhật/Đức hay làm: bảng "Andon" trực quan cho biết ca nào đang
+// tải nặng nhất để điều phối nhân lực kịp thời, thay vì chỉ nhìn tổng số chung chung.
+function renderShiftRanking(arr){
+  const el = document.getElementById('shiftRanking');
+  if(!el) return;
+  const bucket = new Map(); // shift -> { count, people:Set }
+  arr.forEach(r=>{
+    if(!bucket.has(r.shift)) bucket.set(r.shift, { count:0, people:new Set() });
+    const o = bucket.get(r.shift);
+    o.count++; o.people.add(r.code);
+  });
+  const rows = [...bucket.entries()].map(([shift,o])=>({ shift, count:o.count, people:o.people.size })).sort((a,b)=>b.count-a.count);
+  const max = rows[0]?.count || 1;
+  el.innerHTML = rows.length ? rows.slice(0,8).map((r,i)=>`
+    <div class="ranking-row">
+      <span class="rank-no">${i+1}</span>
+      <div>
+        <b>${r.shift}</b> <span class="sub" style="font-size:11px;">· ${r.people} người</span>
+        <div class="rank-bar"><i style="width:${r.count/max*100}%;background:${SHIFT_COLORS[r.shift]||'var(--amber)'}"></i></div>
+      </div>
+      <strong>${r.count}</strong>
+    </div>`).join('') : '<div class="empty-state">Chưa có dữ liệu</div>';
+
+  renderShiftBalance(rows);
+}
+
+// ================= ĐỘ LỆCH TẢI GIỮA CÁC CA (kiểu bảng Andon của Nhật) =================
+// Chỉ so giữa Ca 1/Ca 2/Ca 3 (ca chính, bản chất giống nhau), bỏ qua Hành chính/½ Ca/Nghỉ
+// vì khác bản chất công việc, so vào sẽ không có ý nghĩa điều phối nhân lực.
+function renderShiftBalance(rows){
+  const el = document.getElementById('shiftBalanceBox');
+  if(!el) return;
+  const mainShifts = rows.filter(r=>['Ca 1','Ca 2','Ca 3'].includes(r.shift) && r.count>0);
+  if(mainShifts.length < 2){ el.innerHTML = ''; return; }
+
+  const sorted = [...mainShifts].sort((a,b)=>b.count-a.count);
+  const top = sorted[0], bottom = sorted[sorted.length-1];
+  const ratio = bottom.count>0 ? (top.count/bottom.count) : Infinity;
+  const gapPct = top.count>0 ? Math.round((top.count-bottom.count)/top.count*100) : 0;
+
+  let level, msg;
+  if(gapPct >= 40){
+    level = 'danger';
+    msg = `🔴 Mất cân đối rõ rệt: <b>${top.shift}</b> (${top.count} lượt) đang tải gấp <b>${ratio.toFixed(1)}×</b> so với <b>${bottom.shift}</b> (${bottom.count} lượt) — chênh ${gapPct}%. Nên cân nhắc điều chuyển bớt người từ ca đông sang ca vắng.`;
+  } else if(gapPct >= 20){
+    level = 'warn';
+    msg = `🟡 Có lệch nhẹ giữa các ca: <b>${top.shift}</b> đang đông hơn <b>${bottom.shift}</b> khoảng ${gapPct}%. Nên theo dõi thêm.`;
+  } else {
+    level = 'ok';
+    msg = `✅ Tải giữa các ca khá đều nhau (chênh ${gapPct}%).`;
+  }
+  const bg = level==='danger' ? 'var(--danger-soft)' : level==='warn' ? 'var(--amber-soft)' : 'var(--teal-soft)';
+  const bd = level==='danger' ? 'var(--danger)' : level==='warn' ? 'var(--amber)' : 'var(--teal)';
+  const col = level==='danger' ? 'var(--danger)' : level==='warn' ? 'var(--amber-dark)' : 'var(--teal)';
+  el.innerHTML = `<div style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:8px 11px;font-size:12.5px;color:${col};margin-top:8px;">⚖️ ${msg}</div>`;
+}
+
+// ================= TỐP NHIỀU CÔNG NHẤT =================
+// Gộp công theo (người + ngày + ca) giống hệt cách tính "Tổng công" ở statsMini,
+// tránh cộng trùng khi 1 ca được chấm ở nhiều công đoạn. Kiểu bảng vinh danh sản lượng
+// (productivity leaderboard) là cách các nhà máy Mỹ hay dùng để tạo động lực thi đua lành mạnh.
+function renderWorkloadRanking(arr){
+  const el = document.getElementById('workloadRanking');
+  if(!el) return;
+  const seenShiftPerDay = new Map();
+  const perPerson = new Map(); // code -> tong cong
+  arr.forEach(r=>{
+    if(r.shift === LEAVE_SHIFT) return;
+    const mult = r.mult || 1;
+    const dayKey = `${r.code}|${r.date}|${r.shift}`;
+    const prev = seenShiftPerDay.get(dayKey);
+    if(prev !== undefined){
+      if(mult > prev){ perPerson.set(r.code, (perPerson.get(r.code)||0) - prev + mult); seenShiftPerDay.set(dayKey, mult); }
+      return;
+    }
+    seenShiftPerDay.set(dayKey, mult);
+    perPerson.set(r.code, (perPerson.get(r.code)||0) + mult);
+  });
+  const rows = [...perPerson.entries()]
+    .map(([code,total])=>({ code, total, emp: EMPLOYEES.find(e=>e.code===code) }))
+    .filter(r=>r.emp)
+    .sort((a,b)=>b.total-a.total)
+    .slice(0,10);
+  const max = rows[0]?.total || 1;
+  el.innerHTML = rows.length ? rows.map((r,i)=>`
+    <div class="ranking-row">
+      <span class="rank-no">${i+1}</span>
+      <div>
+        <b>${r.emp.short}</b> <span class="sub" style="font-size:11px;">· ${r.emp.code}</span>
+        <div class="rank-bar"><i style="width:${r.total/max*100}%"></i></div>
+      </div>
+      <strong>${Number.isInteger(r.total)?r.total:r.total.toFixed(2)}</strong>
+    </div>`).join('') : '<div class="empty-state">Chưa có dữ liệu</div>';
+}
+
+// ================= CHUYÊN CẦN =================
+// Tỷ lệ = số ngày có công (không tính Nghỉ phép/Ốm) / số ngày cả xưởng có phát sinh chấm công
+// trong kỳ đang lọc. Cách làm này gần với chỉ số "attendance rate" mà các công ty Đức hay dùng
+// (báo cáo Arbeitszeit minh bạch theo ngày công thực tế) — không dùng số ngày lịch cứng vì xưởng
+// có thể không làm cả 7 ngày/tuần. Hiển thị cả Top chuyên cần cao nhất và nhóm cần nhắc nhở
+// (thấp nhất), theo tinh thần bảng Kaizen của Nhật: nêu vấn đề sớm, minh bạch, không quy chụp.
+function renderAttendanceRanking(arr, fromDate, toDate){
+  const el = document.getElementById('attendanceRanking');
+  if(!el) return;
+  const today = todayISO();
+  const cutoff = toDate > today ? today : toDate;
+  const totalWorkDays = new Set(arr.filter(r=>r.date <= cutoff).map(r=>r.date)).size;
+  if(!totalWorkDays){ el.innerHTML = '<div class="empty-state">Chưa có dữ liệu</div>'; return; }
+
+  const perPerson = new Map(); // code -> Set(ngay co cong)
+  arr.forEach(r=>{
+    if(r.shift === LEAVE_SHIFT || r.date > cutoff) return;
+    if(!perPerson.has(r.code)) perPerson.set(r.code, new Set());
+    perPerson.get(r.code).add(r.date);
+  });
+
+  const rows = [...perPerson.entries()]
+    .map(([code,days])=>({ code, days: days.size, rate: days.size/totalWorkDays, emp: EMPLOYEES.find(e=>e.code===code) }))
+    .filter(r=>r.emp);
+  if(!rows.length){ el.innerHTML = '<div class="empty-state">Chưa có dữ liệu</div>'; return; }
+
+  const topRows = [...rows].sort((a,b)=>b.rate-a.rate || b.days-a.days).slice(0,5);
+  const lowRows = [...rows].sort((a,b)=>a.rate-b.rate || a.days-b.days).slice(0,5);
+  const rowHtml = (r,i)=>`
+    <div class="ranking-row">
+      <span class="rank-no">${i+1}</span>
+      <div>
+        <b>${r.emp.short}</b> <span class="sub" style="font-size:11px;">· ${r.days}/${totalWorkDays} ngày</span>
+        <div class="rank-bar"><i style="width:${Math.round(r.rate*100)}%;background:${r.rate>=0.9?'#2E9F5A':(r.rate>=0.7?'var(--amber)':'#D64545')}"></i></div>
+      </div>
+      <strong>${Math.round(r.rate*100)}%</strong>
+    </div>`;
+  el.innerHTML = `
+    <div class="sub" style="font-size:11.5px;margin-bottom:4px;">🟢 Chuyên cần cao nhất</div>
+    ${topRows.map(rowHtml).join('')}
+    <div class="sub" style="font-size:11.5px;margin:12px 0 4px;">🔴 Cần nhắc nhở (thấp nhất)</div>
+    ${lowRows.map(rowHtml).join('')}
+  `;
 }
 
 function renderRosterChart(arr, period){
@@ -5589,6 +5864,120 @@ function openLeaveDetail(code, arr){
 }
 document.getElementById('btnCloseLeaveDetail').onclick = () => document.getElementById('leaveDetailModal').classList.remove('show');
 // ================= TỔNG QUAN 162 NGƯỜI (ai làm ca nào, nghỉ ngày nào — xem linh hoạt) =================
+// ================= NỔI BẬT THÁNG NÀY (dashboard KPI kiểu Mỹ, tổng hợp trên TOÀN BỘ 162 người =================
+// — không phụ thuộc ô tìm kiếm/lọc đang chọn ở trên, để số liệu luôn ổn định làm mốc so sánh) =================
+function sumWorkedLeaveForRecords(records){
+  const dayMap = new Map(); // code|date -> {shiftMult:Map, hasLeave:bool}
+  records.forEach(r=>{
+    const key = r.code+'|'+r.date;
+    if(!dayMap.has(key)) dayMap.set(key, { shiftMult:new Map(), hasLeave:false });
+    const o = dayMap.get(key);
+    if(r.shift === LEAVE_SHIFT){ o.hasLeave = true; return; }
+    const mult = r.mult || 1;
+    const cur = o.shiftMult.get(r.shift);
+    if(cur === undefined || mult > cur) o.shiftMult.set(r.shift, mult);
+  });
+  let totalWorked = 0, totalLeave = 0;
+  dayMap.forEach(o=>{
+    const workSum = [...o.shiftMult.values()].reduce((a,mm)=>a+mm, 0);
+    if(workSum > 0) totalWorked += workSum;
+    else if(o.hasLeave) totalLeave++;
+  });
+  return { totalWorked, totalLeave };
+}
+
+function renderOverviewHighlights(y, m, monthRecords){
+  const el = document.getElementById('overviewHighlights');
+  if(!el) return;
+  if(!monthRecords.length){ el.innerHTML = ''; return; }
+
+  // 1) Tổng công tháng này, so với tháng trước (kiểu KPI dashboard Mỹ: luôn có mũi tên so sánh)
+  const cur = sumWorkedLeaveForRecords(monthRecords);
+  let py = y, pm = m - 1; if(pm < 1){ pm = 12; py = y - 1; }
+  const prevPrefix = `${py}-${String(pm).padStart(2,'0')}-`;
+  const prev = sumWorkedLeaveForRecords(state.records.filter(r=>r.date.startsWith(prevPrefix)));
+  const diffPct = prev.totalWorked > 0 ? ((cur.totalWorked - prev.totalWorked) / prev.totalWorked * 100) : null;
+  const arrowHtml = diffPct === null ? '' : (diffPct >= 0
+    ? `<span style="color:var(--teal);">▲ ${diffPct.toFixed(0)}%</span> so tháng trước`
+    : `<span style="color:var(--danger);">▼ ${Math.abs(diffPct).toFixed(0)}%</span> so tháng trước`);
+
+  // 2) Ca đông nhất tháng
+  const shiftBucket = new Map();
+  monthRecords.forEach(r=>{
+    if(!shiftBucket.has(r.shift)) shiftBucket.set(r.shift, { count:0, people:new Set() });
+    const o = shiftBucket.get(r.shift); o.count++; o.people.add(r.code);
+  });
+  const topShift = [...shiftBucket.entries()].map(([shift,o])=>({shift,count:o.count,people:o.people.size})).sort((a,b)=>b.count-a.count)[0];
+
+  // 3) 🏆 Người nhiều công nhất tháng (Employee of the Month, tinh thần bảng vinh danh của Mỹ)
+  const seenShiftPerDay = new Map();
+  const perPersonWorked = new Map();
+  monthRecords.forEach(r=>{
+    if(r.shift === LEAVE_SHIFT) return;
+    const mult = r.mult || 1;
+    const dayKey = `${r.code}|${r.date}|${r.shift}`;
+    const prevMult = seenShiftPerDay.get(dayKey);
+    if(prevMult !== undefined){
+      if(mult > prevMult){ perPersonWorked.set(r.code, (perPersonWorked.get(r.code)||0) - prevMult + mult); seenShiftPerDay.set(dayKey, mult); }
+      return;
+    }
+    seenShiftPerDay.set(dayKey, mult);
+    perPersonWorked.set(r.code, (perPersonWorked.get(r.code)||0) + mult);
+  });
+  const topPerson = [...perPersonWorked.entries()]
+    .map(([code,total])=>({ code, total, emp: EMPLOYEES.find(e=>e.code===code) }))
+    .filter(x=>x.emp).sort((a,b)=>b.total-a.total)[0];
+
+  // 4) 📅 Chuyên cần trung bình toàn xưởng tháng này (trên số ngày xưởng đã thực sự phát sinh chấm công)
+  const today = todayISO();
+  const isCurrentMonth = today.startsWith(`${y}-${String(m).padStart(2,'0')}`);
+  const cutoff = isCurrentMonth ? today : `${y}-${String(m).padStart(2,'0')}-31`;
+  const cutMonthRecords = monthRecords.filter(r=>r.date <= cutoff);
+  const workingDays = new Set(cutMonthRecords.map(r=>r.date)).size;
+  let avgRate = null;
+  if(workingDays > 0){
+    const perPersonDays = new Map();
+    cutMonthRecords.forEach(r=>{
+      if(r.shift === LEAVE_SHIFT) return;
+      if(!perPersonDays.has(r.code)) perPersonDays.set(r.code, new Set());
+      perPersonDays.get(r.code).add(r.date);
+    });
+    const rates = EMPLOYEES.map(e => (perPersonDays.get(e.code)?.size || 0) / workingDays);
+    avgRate = rates.reduce((a,b)=>a+b, 0) / (rates.length || 1);
+  }
+
+  // 5) ⚠️ Số người chưa chấm công ngày nào trong tháng
+  const codesWithData = new Set(monthRecords.map(r=>r.code));
+  const noEntryCount = EMPLOYEES.filter(e=>!codesWithData.has(e.code)).length;
+
+  el.innerHTML = `
+    <div class="mini-stat">
+      <span>Tổng công tháng</span>
+      <b>${Number.isInteger(cur.totalWorked)?cur.totalWorked:cur.totalWorked.toFixed(1)}</b>
+      ${arrowHtml ? `<div style="font-size:11px;margin-top:2px;">${arrowHtml}</div>` : ''}
+    </div>
+    <div class="mini-stat">
+      <span>📅 Chuyên cần TB</span>
+      <b>${avgRate!==null ? Math.round(avgRate*100)+'%' : '—'}</b>
+    </div>
+    <div class="mini-stat">
+      <span>🎯 Ca đông nhất</span>
+      <b>${topShift ? topShift.shift : '—'}</b>
+      ${topShift ? `<div style="font-size:11px;margin-top:2px;">${topShift.count} lượt · ${topShift.people} người</div>` : ''}
+    </div>
+    <div class="mini-stat">
+      <span>🏆 Nhiều công nhất</span>
+      <b>${topPerson ? topPerson.emp.short : '—'}</b>
+      ${topPerson ? `<div style="font-size:11px;margin-top:2px;">${Number.isInteger(topPerson.total)?topPerson.total:topPerson.total.toFixed(1)} công</div>` : ''}
+    </div>
+    <div class="mini-stat">
+      <span>⚠️ Chưa chấm công</span>
+      <b style="color:${noEntryCount>0?'var(--danger)':'inherit'};">${noEntryCount}</b>
+      <div style="font-size:11px;margin-top:2px;">/ ${EMPLOYEES.length} người</div>
+    </div>
+  `;
+}
+
 function renderOverview(){
   if(state.ovYear === null){
     const d = new Date();
@@ -5612,6 +6001,8 @@ function renderOverview(){
     if(!dayMap.has(day)) dayMap.set(day, []);
     dayMap.get(day).push(r);
   });
+
+  renderOverviewHighlights(y, m, monthRecords);
 
   let list = EMPLOYEES;
   if(q) list = list.filter(e=>normalize(e.short).includes(q)||normalize(e.full).includes(q)||normalize(e.code).includes(q));
@@ -5835,6 +6226,7 @@ const CHART_SHIFT_GROUPS = [
   { label:'Ca 3',   abbr:'C3',   match:['Ca 3'],                           color:'#8B5CF6', bg:'#F3EEFE' },
   { label:'1/2 Ca', abbr:'1/2',  match:['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3'], color:'#D6479A', bg:'#FCEAF4' },
   { label:'HC',     abbr:'HC',   match:['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)'], color:'#2F6FED', bg:'#EAF1FE' },
+  { label:'Học/Họp',abbr:'HH',   match:['Học / Họp'],                      color:'#6c5b9e', bg:'#EEEAF7' },
 ];
 // Thang màu 1 tông theo ĐÚNG màu của theme đang bật (dùng color-mix giữa --amber-dark và --amber-soft
 // của theme hiện tại), số càng lớn càng đậm, số càng bé càng nhạt — nên đổi theme là biểu đồ tự đổi màu đẹp theo,
@@ -5898,21 +6290,100 @@ function wireRangeNav({toggleId, prevId, nextId, labelId, navId, cursor, onChang
     setLabel(); onChange();
   });
 }
-const aggCursor = { value: new Date(), mode: 'all' };
 const personalCursor = { value: new Date(), mode: 'month' };
 
 function renderAggregateShiftChart(){
   const el = document.getElementById('aggregateShiftChart');
   if(!el) return;
   let records = state.records;
-  if(aggCursor.mode === 'month'){ const mp = monthPrefix(aggCursor.value); records = records.filter(r=>r.date && r.date.startsWith(mp)); }
+  if(personalCursor.mode === 'month'){ const mp = monthPrefix(personalCursor.value); records = records.filter(r=>r.date && r.date.startsWith(mp)); }
   renderShiftBarChart(el, records);
   const cardTotal = document.getElementById('statCardTotalRecords');
   const cardEmp = document.getElementById('statCardTotalEmp');
   if(cardTotal) cardTotal.textContent = records.length.toLocaleString('vi-VN');
   if(cardEmp) cardEmp.textContent = (EMPLOYEES.length || new Set(state.records.map(r=>r.code)).size).toLocaleString('vi-VN');
 }
-wireRangeNav({ toggleId:'aggRangeToggle', prevId:'aggMonthPrev', nextId:'aggMonthNext', labelId:'aggMonthLabel', navId:'aggMonthNav', cursor:aggCursor, onChange:renderAggregateShiftChart });
+
+// ================= TRUNG TÂM BIỂU ĐỒ =================
+const chartCursor = { value:new Date(), mode:'month' };
+function chartMonthRange(){
+  const y=chartCursor.value.getFullYear(), m=chartCursor.value.getMonth();
+  return {from:isoOf(y,m+1,1), to:isoOf(y,m+1,daysInMonth(y,m+1))};
+}
+function chartFilteredRecords(){
+  if(chartCursor.mode==='all') return state.records.slice();
+  const rg=chartMonthRange();
+  return state.records.filter(r=>r.date>=rg.from && r.date<=rg.to);
+}
+function renderSimpleBars(el, rows, suffix=''){
+  if(!el) return;
+  if(!rows.length){el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>';return;}
+  const max=Math.max(1,...rows.map(x=>x.value));
+  el.innerHTML='<div class="chart-bars">'+rows.map(x=>`<div class="chart-bar-row"><div title="${String(x.label).replace(/"/g,'&quot;')}"><b>${x.label}</b></div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(2,x.value/max*100)}%">${x.value>0?x.value:''}</div></div><div class="chart-value">${x.value}${suffix}</div></div>`).join('')+'</div>';
+}
+function renderDailyAttendanceChart(records){
+  const el=document.getElementById('chartDailyAttendance'); if(!el)return;
+  const byDay=new Map();
+  records.forEach(r=>{ if(r.shift===LEAVE_SHIFT)return; if(!byDay.has(r.date))byDay.set(r.date,new Set()); byDay.get(r.date).add(r.code); });
+  let dates=[];
+  if(chartCursor.mode==='month'){ const rg=chartMonthRange(); let d=new Date(rg.from+'T00:00:00'); const end=new Date(rg.to+'T00:00:00'); while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth()+1,d.getDate()));d.setDate(d.getDate()+1);} }
+  else dates=[...byDay.keys()].sort();
+  if(!dates.length){el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>';return;}
+  const rows=dates.map(date=>{const n=byDay.get(date)?.size||0;return {date,n,abs:Math.max(0,(EMPLOYEES.length||162)-n)};});
+  const max=EMPLOYEES.length||162;
+  el.innerHTML=`<div class="chart-scroll"><div class="chart-bars">${rows.map(r=>{const pct=r.n/max*100;const d=r.date.slice(8)+'/'+r.date.slice(5,7);return `<div class="chart-bar-row"><div><b>${d}</b></div><div class="chart-bar-track"><div class="chart-bar-fill" style="width:${Math.max(1,pct)}%">${r.n}</div></div><div class="chart-value">${r.n}/${max}</div></div>`}).join('')}</div></div>`;
+}
+function renderStagePeopleChart(records){
+  const el=document.getElementById('chartStagePeople'); if(!el)return;
+  const map=new Map(); records.forEach(r=>{if(r.shift===LEAVE_SHIFT)return;if(!map.has(r.stage))map.set(r.stage,new Set());map.get(r.stage).add(r.code);});
+  const rows=[...map.entries()].map(([label,set])=>({label,value:set.size})).sort((a,b)=>b.value-a.value).slice(0,15);
+  renderSimpleBars(el,rows,' người');
+}
+function renderShiftPeopleChart(records){
+  const el=document.getElementById('chartShiftPeople'); if(!el)return;
+  const groups=[['Ca 1',['Ca 1']],['Ca 2',['Ca 2']],['Ca 3',['Ca 3']],['1/2 Ca',['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3']],['Hành chính',['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)']]];
+  const rows=groups.map(([label,matches])=>{const set=new Set(records.filter(r=>matches.includes(r.shift)).map(r=>r.code));return {label,value:set.size};}).filter(x=>x.value);
+  renderSimpleBars(el,rows,' người');
+}
+function renderWorkDistributionChart(records){
+  const el=document.getElementById('chartWorkDistribution'); if(!el)return;
+  const per=new Map();
+  records.forEach(r=>{if(r.shift===LEAVE_SHIFT)return;const k=`${r.code}|${r.date}|${r.shift}`,m=r.mult||1;const prev=per.get(k);if(prev===undefined)per.set(k,m);else if(m>prev)per.set(k,m);});
+  const totals=new Map(); per.forEach((m,k)=>{const code=k.split('|')[0];totals.set(code,(totals.get(code)||0)+m);});
+  const buckets=[{label:'0 công',min:0,max:0},{label:'0.5–9.5',min:.01,max:9.5},{label:'10–19.5',min:10,max:19.5},{label:'20–24.5',min:20,max:24.5},{label:'25–26',min:25,max:26},{label:'>26',min:26.0001,max:Infinity}];
+  const rows=buckets.map(b=>({label:b.label,value:EMPLOYEES.filter(e=>{const v=totals.get(e.code)||0;return v>=b.min&&v<=b.max;}).length})).filter(x=>x.value);
+  renderSimpleBars(el,rows,' người');
+}
+function renderAttendanceHeatmap(records){
+  const el=document.getElementById('chartHeatmap'); if(!el)return;
+  let dates=[];
+  if(chartCursor.mode==='month'){const rg=chartMonthRange();let d=new Date(rg.from+'T00:00:00');const end=new Date(rg.to+'T00:00:00');while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth()+1,d.getDate()));d.setDate(d.getDate()+1);}}
+  else dates=[...new Set(records.map(r=>r.date))].sort();
+  if(!dates.length){el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>';return;}
+  const worked=new Map();
+  records.forEach(r=>{if(r.shift===LEAVE_SHIFT)return;const k=`${r.code}|${r.date}`;worked.set(k,(worked.get(k)||0)+(r.mult||1));});
+  const people=EMPLOYEES.length?EMPLOYEES:([...new Map(records.map(r=>[r.code,{code:r.code,short:r.short||r.code}])).values()]);
+  const head=dates.map(d=>`<th title="${d}">${d.slice(8)}</th>`).join('');
+  const body=people.map((e,i)=>{const cells=dates.map(d=>{const v=worked.get(`${e.code}|${d}`)||0;const cls=v>=1?'work':(v>0?'half':'');return `<td class="heat-cell ${cls}" title="${e.short||e.code} · ${d} · ${v?((Number.isInteger(v)?v:v.toFixed(1))+' công'):'Không có công'}">${v?'✓':''}</td>`;}).join('');return `<tr><td class="person-name">${i+1}. ${e.short||e.full||e.code}</td>${cells}</tr>`;}).join('');
+  el.innerHTML=`<table class="heatmap"><thead><tr><th class="person-head">Nhân sự</th>${head}</tr></thead><tbody>${body}</tbody></table>`;
+}
+function renderChartsHub(){
+  const label=document.getElementById('chartMonthLabel'); if(label)label.textContent=monthLabel(chartCursor.value);
+  const nav=document.getElementById('chartMonthNav'); if(nav)nav.style.display=chartCursor.mode==='month'?'':'none';
+  const records=chartFilteredRecords();
+  const totalPeople=new Set(records.filter(r=>r.shift!==LEAVE_SHIFT).map(r=>r.code)).size;
+  const congMap=new Map();records.forEach(r=>{if(r.shift===LEAVE_SHIFT)return;const k=`${r.code}|${r.date}|${r.shift}`,m=r.mult||1,p=congMap.get(k);if(p===undefined||m>p)congMap.set(k,m);});
+  const totalCong=[...congMap.values()].reduce((a,b)=>a+b,0);
+  const mini=document.getElementById('chartMini');if(mini)mini.innerHTML=`<div class="mini-stat"><span>Bản ghi</span><b>${records.length}</b></div><div class="mini-stat"><span>Người có công</span><b>${totalPeople}</b></div><div class="mini-stat"><span>Tổng công</span><b>${Number.isInteger(totalCong)?totalCong:totalCong.toFixed(2)}</b></div><div class="mini-stat"><span>Nhân sự</span><b>${EMPLOYEES.length||162}</b></div>`;
+  renderShiftBarChart(document.getElementById('aggregateShiftChart'),records);
+  renderDailyAttendanceChart(records);renderStagePeopleChart(records);renderShiftPeopleChart(records);renderWorkDistributionChart(records);renderAttendanceHeatmap(records);
+}
+(function initChartsHub(){
+  const toggle=document.getElementById('chartRangeToggle');
+  if(toggle)toggle.querySelectorAll('.seg-btn').forEach(btn=>btn.addEventListener('click',()=>{toggle.querySelectorAll('.seg-btn').forEach(b=>b.classList.toggle('active',b===btn));chartCursor.mode=btn.dataset.range;renderChartsHub();}));
+  document.getElementById('chartMonthPrev')?.addEventListener('click',()=>{chartCursor.value=new Date(chartCursor.value.getFullYear(),chartCursor.value.getMonth()-1,1);renderChartsHub();});
+  document.getElementById('chartMonthNext')?.addEventListener('click',()=>{chartCursor.value=new Date(chartCursor.value.getFullYear(),chartCursor.value.getMonth()+1,1);renderChartsHub();});
+})();
 
 // ================= TAB CÁ NHÂN (công khai — chỉ Ngày/Ca/Công đoạn, không hiện Mác/Giờ) =================
 function renderPersonalSuggest(q){
@@ -5941,7 +6412,7 @@ document.addEventListener('click', (e)=>{
     if(box) box.style.display = 'none';
   }
 });
-function renderPersonalTab(){ renderAggregateShiftChart(); renderPersonalReport(); }
+function renderPersonalTab(){ applyViewerModeUI(); renderAggregateShiftChart(); renderPersonalReport(); }
 document.getElementById('btnPersonalClear').addEventListener('click', ()=>{
   state.personalCode = null;
   document.getElementById('personalSearchInput').value = '';
@@ -5949,6 +6420,84 @@ document.getElementById('btnPersonalClear').addEventListener('click', ()=>{
   renderPersonalReport();
   document.getElementById('personalSearchInput').focus();
 });
+
+// ================= CHẾ ĐỘ XEM RIÊNG CHO TỪNG NHÂN VIÊN (chỉ áp dụng khi KHÔNG đăng nhập Admin) =================
+// Lưu ý quan trọng: đây là lớp chặn ở GIAO DIỆN để tránh việc lướt xem lung tung công của người khác trên
+// điện thoại/máy tính dùng chung — KHÔNG phải là bảo mật tuyệt đối (ai rành kỹ thuật vẫn có thể xem mã nguồn
+// để lấy dữ liệu). Với nhu cầu bảo mật cao hơn (VD: xem cả lương), nên cân nhắc thêm mã PIN riêng từng người.
+const VIEWER_LOCK_KEY = 'employee_viewer_code_v1';
+function getViewerCode(){ try{ return sessionStorage.getItem(VIEWER_LOCK_KEY) || null; }catch(e){ return null; } }
+function setViewerCode(code){ try{ sessionStorage.setItem(VIEWER_LOCK_KEY, code); }catch(e){} }
+function clearViewerCode(){ try{ sessionStorage.removeItem(VIEWER_LOCK_KEY); }catch(e){} }
+
+function renderViewerGateSuggest(q){
+  const box = document.getElementById('viewerGateSuggest');
+  if(!box) return;
+  if(!q){ box.style.display='none'; box.innerHTML=''; return; }
+  const nq = normalize(q);
+  const results = EMPLOYEES.filter(e=>normalize(e.short).includes(nq) || normalize(e.full).includes(nq) || normalize(e.code).includes(nq)).slice(0,8);
+  if(!results.length){ box.style.display='none'; box.innerHTML=''; return; }
+  box.innerHTML = results.map(e=>`<div class="ms-suggest-item" data-code="${e.code}">${highlightMatch(e.short, q)} <small>${highlightMatch(e.full, q)} · ${highlightMatch(e.code, q)}</small></div>`).join('');
+  box.style.display = 'block';
+}
+const viewerGateInput = document.getElementById('viewerGateSearchInput');
+if(viewerGateInput){
+  viewerGateInput.addEventListener('input', (e)=> renderViewerGateSuggest(e.target.value.trim()));
+  document.getElementById('viewerGateSuggest').addEventListener('click', (e)=>{
+    const item = e.target.closest('.ms-suggest-item');
+    if(!item) return;
+    setViewerCode(item.dataset.code);
+    logActivity('🔒 Xác nhận danh tính xem công cá nhân: ' + item.dataset.code);
+    viewerGateInput.value = '';
+    document.getElementById('viewerGateSuggest').style.display = 'none';
+    applyViewerModeUI();
+    renderPersonalReport();
+  });
+  document.addEventListener('click', (e)=>{
+    if(!e.target.closest('#viewerGateSearchInput') && !e.target.closest('#viewerGateSuggest')){
+      const box = document.getElementById('viewerGateSuggest');
+      if(box) box.style.display = 'none';
+    }
+  });
+}
+document.getElementById('btnViewerChangePerson')?.addEventListener('click', async ()=>{
+  const ok = await customConfirm('Đổi người xem trên thiết bị này? Bạn sẽ cần chọn lại đúng tên mình.');
+  if(!ok) return;
+  clearViewerCode();
+  state.personalCode = null;
+  applyViewerModeUI();
+  renderPersonalReport();
+});
+
+function applyViewerModeUI(){
+  const gate = document.getElementById('personalViewerGate');
+  const lockedBar = document.getElementById('personalViewerLockedBar');
+  const freeSearchBlock = document.getElementById('personalFreeSearchBlock');
+  if(!gate || !lockedBar || !freeSearchBlock) return;
+
+  if(isAdminV4){
+    gate.style.display = 'none';
+    lockedBar.style.display = 'none';
+    freeSearchBlock.style.display = '';
+    return;
+  }
+
+  const vCode = getViewerCode();
+  const emp = vCode ? EMPLOYEES.find(e=>e.code===vCode) : null;
+  if(!vCode || !emp){
+    if(vCode && !emp) clearViewerCode(); // mã đã lưu không còn tồn tại (VD nhân viên bị xoá) => hỏi lại
+    gate.style.display = '';
+    lockedBar.style.display = 'none';
+    freeSearchBlock.style.display = 'none';
+    state.personalCode = null;
+  } else {
+    gate.style.display = 'none';
+    freeSearchBlock.style.display = 'none';
+    lockedBar.style.display = 'flex';
+    document.getElementById('viewerLockedName').textContent = `${emp.short} (${emp.code})`;
+    state.personalCode = vCode;
+  }
+}
 
 function renderMiniCalendar(records, cursorDate){
   const today = new Date();
@@ -6080,8 +6629,14 @@ function renderAvgCompareBox(code){
 }
 function renderWorkStreakBox(code){
   const streak = computeWorkStreak(code);
+  // Mốc thi đua kiểu Mỹ (gamification) — càng làm liên tục lâu càng có huy hiệu cao hơn,
+  // tạo động lực nhẹ nhàng, không áp lực (khác với cảnh báo quá tải bên dưới).
+  let milestone = '';
+  if(streak.days >= 20) milestone = ' 🏅 Cực bền bỉ!';
+  else if(streak.days >= 12) milestone = ' 🎯 Rất tốt!';
+  else if(streak.days >= 6) milestone = ' 👍 Đang lên phong độ!';
   return `<div class="summary-chip" style="background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 11px;font-size:12.5px;">
-    🔥 Đang làm liên tục <b>${streak.days}</b> ngày${streak.days>0?` (không tính Chủ nhật, tính đến ${fmtDate(streak.lastDate)})`:''}
+    🔥 Đang làm liên tục <b>${streak.days}</b> ngày${streak.days>0?` (không tính Chủ nhật, tính đến ${fmtDate(streak.lastDate)})`:''}<b>${milestone}</b>
   </div>`;
 }
 function renderAbsenceAlertBox(code){
@@ -6092,6 +6647,95 @@ function renderAbsenceAlertBox(code){
   </div>`;
 }
 
+// ================= CẢNH BÁO LÀM LIÊN TỤC QUÁ LÂU (tinh thần Arbeitszeitgesetz của Đức) =================
+// Luật Đức yêu cầu tối thiểu 1 ngày nghỉ/tuần (tối đa ~6 ngày làm liên tục). Dùng lại đúng
+// chuỗi ngày làm liên tục đã tính ở computeWorkStreak, chỉ khác cách đọc: đây là CẢNH BÁO
+// bảo vệ sức khoẻ người lao động, không phải thi đua — nên tách riêng module, không gộp
+// chung với "Chuỗi ngày làm liên tục" ở trên để không gây hiểu nhầm 2 việc khác nhau.
+function computeOverworkStatus(code){
+  const streak = computeWorkStreak(code);
+  const days = streak.days;
+  if(days >= 12) return { level:'danger', days,
+    msg:`Đang làm liên tục <b>${days}</b> ngày không có ngày nghỉ trọn vẹn — vượt xa mức khuyến nghị quốc tế (tối đa khoảng 6 ngày làm liên tục/tuần). Nên sắp xếp nghỉ bù sớm để đảm bảo sức khoẻ.` };
+  if(days >= 6) return { level:'warn', days,
+    msg:`Đã làm liên tục <b>${days}</b> ngày, sắp chạm ngưỡng khuyến nghị nên bố trí nghỉ (thường là 1 ngày nghỉ sau mỗi 6 ngày làm).` };
+  return { level:'ok', days, msg:`Nhịp làm việc ổn định, đang làm liên tục ${days} ngày.` };
+}
+function renderOverworkAlertBox(code){
+  const s = computeOverworkStatus(code);
+  const bg = s.level==='danger' ? 'var(--danger-soft)' : s.level==='warn' ? 'var(--amber-soft)' : 'var(--teal-soft)';
+  const bd = s.level==='danger' ? 'var(--danger)' : s.level==='warn' ? 'var(--amber)' : 'var(--teal)';
+  const col = s.level==='danger' ? 'var(--danger)' : s.level==='warn' ? 'var(--amber-dark)' : 'var(--teal)';
+  const icon = s.level==='danger' ? '🔴' : s.level==='warn' ? '🟡' : '✅';
+  return `<div class="summary-chip" style="background:${bg};border:1px solid ${bd};border-radius:10px;padding:8px 11px;font-size:12.5px;color:${col};">${icon} ${s.msg}</div>`;
+}
+
+// ================= PHÉP NĂM (QUOTA NGHỈ PHÉP) — tinh thần Urlaubsanspruch của Đức: mỗi người có
+// hạn mức phép/năm rõ ràng, dùng bao nhiêu trừ bấy nhiêu, luôn biết còn lại bao nhiêu ngày. =================
+// Quota mặc định áp dụng cho TẤT CẢ (state.settings.leaveQuotaPerYear), admin có thể chỉnh riêng cho
+// từng người qua state.settings.leaveQuotaOverrides = { [code]: soNgay } khi cần (VD người làm lâu năm
+// được nhiều phép hơn). Số ngày ĐÃ DÙNG tính theo số NGÀY LỊCH (distinct ngày) có ca "Nghỉ phép / Ốm",
+// không cộng dồn hệ số — vì phép tính theo ngày, không theo công quy đổi.
+function getLeaveQuotaForEmployee(code){
+  getPersonalModulesState(); // đảm bảo đã có default
+  const override = state.settings.leaveQuotaOverrides[code];
+  return (typeof override === 'number' && override >= 0) ? override : (state.settings.leaveQuotaPerYear || 0);
+}
+function computeLeaveQuotaUsage(code, year){
+  const y = year || new Date().getFullYear();
+  const prefix = `${y}-`;
+  const usedDays = new Set(
+    state.records.filter(r=>r.code===code && r.shift===LEAVE_SHIFT && r.date.startsWith(prefix)).map(r=>r.date)
+  ).size;
+  const quota = getLeaveQuotaForEmployee(code);
+  return { year:y, quota, used:usedDays, remain: Math.max(0, quota - usedDays), over: Math.max(0, usedDays - quota) };
+}
+function renderLeaveQuotaBox(code){
+  const q = computeLeaveQuotaUsage(code);
+  const pct = q.quota > 0 ? Math.min(100, Math.round(q.used / q.quota * 100)) : 0;
+  let level;
+  if(q.over > 0) level = 'danger';
+  else if(q.quota > 0 && q.remain <= Math.max(1, Math.round(q.quota * 0.15))) level = 'warn';
+  else level = 'ok';
+  const bd = level==='danger' ? 'var(--danger)' : level==='warn' ? 'var(--amber)' : 'var(--line)';
+  const barColor = level==='danger' ? 'var(--danger)' : level==='warn' ? 'var(--amber)' : 'var(--teal)';
+  const statusLine = q.over > 0
+    ? `⚠️ Đã dùng vượt <b>${q.over}</b> ngày so với quota ${q.quota} ngày/năm ${q.year}.`
+    : `Còn lại <b>${q.remain}</b> / ${q.quota} ngày phép năm ${q.year}.`;
+  const isOverride = state.settings.leaveQuotaOverrides && state.settings.leaveQuotaOverrides[code] !== undefined;
+  const editBtn = isAdminV4
+    ? `<button type="button" class="btn btn-ghost" data-action="edit-leave-quota" data-code="${code}" style="padding:2px 8px;font-size:11px;margin-left:6px;">✏️ Sửa phép riêng${isOverride?' (đang riêng)':''}</button>`
+    : '';
+  return `<div class="summary-chip" style="background:var(--bg);border:1px solid ${bd};border-radius:10px;padding:8px 11px;font-size:12.5px;">
+    🗓️ Đã dùng <b>${q.used}</b> ngày phép. ${statusLine}${editBtn}
+    <div class="rank-bar" style="margin-top:6px;"><i style="width:${pct}%;background:${barColor};"></i></div>
+  </div>`;
+}
+document.addEventListener('click', async (e)=>{
+  const btn = e.target.closest('[data-action="edit-leave-quota"]');
+  if(!btn) return;
+  const code = btn.dataset.code;
+  getPersonalModulesState();
+  const cur = state.settings.leaveQuotaOverrides[code];
+  const defQuota = state.settings.leaveQuotaPerYear || 0;
+  const res = await customPrompt(
+    `Số ngày phép riêng cho người này (mặc định chung đang là ${defQuota} ngày/năm).\nĐể trống để dùng lại mức mặc định chung.`,
+    cur !== undefined ? String(cur) : ''
+  );
+  if(res === null) return; // bấm Hủy
+  if(res === ''){
+    delete state.settings.leaveQuotaOverrides[code];
+    showToast('↩️ Đã dùng lại quota mặc định chung cho người này');
+  } else {
+    const num = parseFloat(res);
+    if(isNaN(num) || num < 0){ showToast('⚠️ Số ngày không hợp lệ'); return; }
+    state.settings.leaveQuotaOverrides[code] = num;
+    showToast(`💾 Đã đặt quota riêng: ${num} ngày/năm`);
+  }
+  saveSettings();
+  if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
+});
+
 // ================= NHÓM CA DÙNG CHUNG CHO CÁC BÁO CÁO CÁ NHÂN MỚI (Ca1/Ca2/Ca3/½ Ca/Hành chính/Nghỉ) =================
 const REPORT_SHIFT_GROUPS = [
   { key:'ca1',   label:'☀️ Ca 1',              match:['Ca 1'] },
@@ -6099,9 +6743,10 @@ const REPORT_SHIFT_GROUPS = [
   { key:'ca3',   label:'🌙 Ca 3',              match:['Ca 3'] },
   { key:'half',  label:'½ Ca',                match:['1/2 Ca 1','1/2 Ca 2','1/2 Ca 3'] },
   { key:'hc',    label:'🏢 Hành chính',        match:['Hành chính','Hành chính (Sáng)','Hành chính (Chiều)'] },
+  { key:'training', label:'📘 Học / Họp',      match:['Học / Họp'] },
   { key:'leave', label:'🌙 Nghỉ phép / Ốm',    match:[LEAVE_SHIFT] },
 ];
-const REPORT_GROUP_COLORS = { ca1:'#2F6FED', ca2:'#2E9F5A', ca3:'#8B5CF6', half:'#D6479A', hc:'#E0A63C' };
+const REPORT_GROUP_COLORS = { ca1:'#2F6FED', ca2:'#2E9F5A', ca3:'#8B5CF6', half:'#D6479A', hc:'#E0A63C', training:'#6c5b9e' };
 // Tính tổng công theo từng nhóm ca cho 1 người trong 1 khoảng prefix ngày (VD "2026-09"), gộp theo (ngày+ca)
 // để 1 ca được chấm ở nhiều công đoạn không bị cộng trùng — giống cách tính "Tổng công" đang dùng trong app.
 function computeGroupSumsForPerson(code, prefix){
@@ -6269,6 +6914,8 @@ const PERSONAL_MODULES = [
   { id:'avgCompare',   title:'📊 So với trung bình 162 người',  desc:'So công của người này với trung bình chung trong kỳ đang xem.',    render: renderAvgCompareBox },
   { id:'workStreak',   title:'🔥 Chuỗi ngày làm liên tục',      desc:'Số ngày làm liên tiếp không nghỉ (không tính Chủ nhật).',          render: renderWorkStreakBox },
   { id:'absenceAlert', title:'⚠️ Cảnh báo vắng liên tục',       desc:'Cảnh báo khi vắng từ 3 ngày làm việc liên tiếp trở lên.',          render: renderAbsenceAlertBox },
+  { id:'overworkAlert',title:'🛡️ Cảnh báo làm liên tục quá lâu', desc:'Cảnh báo khi làm liên tục nhiều ngày không có ngày nghỉ trọn vẹn (khuyến nghị tối đa ~6 ngày/tuần).', render: renderOverworkAlertBox },
+  { id:'leaveQuota',   title:'🗓️ Phép năm còn lại',            desc:'Số ngày phép đã dùng / quota phép năm, còn lại bao nhiêu ngày.',    render: renderLeaveQuotaBox },
   { id:'monthCompare', title:'📆 So sánh tháng',                desc:'Đối chiếu số công theo từng loại ca (Ca 1/2/3, ½ Ca, Hành chính, Nghỉ) giữa tháng đang xem và tháng trước.', render: renderMonthCompareBox },
   { id:'shiftBreakdown', title:'🥧 Cơ cấu ca làm việc',         desc:'Biểu đồ tỉ lệ % các loại ca trong tháng đang xem.',                render: renderShiftBreakdownBox },
   { id:'trend2y',      title:'📈 Xu hướng 2 năm',               desc:'Biểu đồ cột so sánh công theo từng tháng giữa năm nay và năm trước.', render: renderTrend2YearsBox },
@@ -6277,6 +6924,11 @@ const PERSONAL_MODULES = [
   { id:'quickInsights',title:'💡 Nhận xét nhanh',               desc:'Vài dòng tự nhận xét dựa trên dữ liệu tháng đang xem.',            render: renderQuickInsightsBox },
 ];
 function getPersonalModulesState(){
+  if(state.settings.leaveQuotaPerYear === undefined) state.settings.leaveQuotaPerYear = 12;
+  if(!state.settings.leaveQuotaOverrides || typeof state.settings.leaveQuotaOverrides !== 'object') state.settings.leaveQuotaOverrides = {};
+  if(!state.settings.shiftTimeRanges || typeof state.settings.shiftTimeRanges !== 'object'){
+    state.settings.shiftTimeRanges = { ca1:'06:00', ca2:'14:00', ca3:'22:00', hc:'07:30' };
+  }
   if(!Array.isArray(state.settings.personalModulesOrder) || !state.settings.personalModulesOrder.length){
     state.settings.personalModulesOrder = PERSONAL_MODULES.map(m=>m.id);
   }
@@ -6344,7 +6996,20 @@ function renderPersonalModulesAdminPanel(){
 function refreshPersonalModulesPanel(){
   const body = document.getElementById('personalModulesPanelBody');
   if(body) body.innerHTML = renderPersonalModulesAdminPanel();
+  const quotaInput = document.getElementById('leaveQuotaInput');
+  if(quotaInput){
+    getPersonalModulesState();
+    quotaInput.value = state.settings.leaveQuotaPerYear;
+  }
 }
+document.getElementById('leaveQuotaInput')?.addEventListener('change', (e)=>{
+  const num = parseFloat(e.target.value);
+  if(isNaN(num) || num < 0){ showToast('⚠️ Số ngày không hợp lệ'); e.target.value = state.settings.leaveQuotaPerYear; return; }
+  state.settings.leaveQuotaPerYear = num;
+  saveSettings();
+  showToast(`💾 Đã đặt quota phép mặc định: ${num} ngày/năm`);
+  if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
+});
 document.getElementById('personalModulesPanelBody')?.addEventListener('click', (ev)=>{
   const row = ev.target.closest('.pm-row');
   if(!row) return;
@@ -6745,6 +7410,7 @@ async function loadFromGithub(){
     if(data.settings) Object.assign(state.settings, data.settings);
     saveStages(); saveBatches(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
+    if(typeof renderChartsHub === 'function') renderChartsHub();
     refreshPersonalModulesPanel();
     showToast('✅ Đã tải dữ liệu mới nhất!');
     logActivity('📥 Tải bản mới nhất từ máy chủ — thành công');
@@ -6786,6 +7452,7 @@ async function loadFromGithubSilent(){
     renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips();
     if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
     if(typeof renderAggregateShiftChart === 'function') renderAggregateShiftChart();
+    if(typeof renderChartsHub === 'function') renderChartsHub();
     if(typeof refreshPersonalModulesPanel === 'function') refreshPersonalModulesPanel();
     if(label) label.textContent = '✅ Cập nhật lúc ' + fmtSyncClock(data.exportAt || new Date().toISOString());
     return true;
@@ -6892,6 +7559,244 @@ async function importEmployeeCsvFile(file){
     logActivity('❌ Import CSV nhân viên thất bại: ' + e.message);
   }
 }
+
+// ================= NHẬP CHẤM CÔNG TỪ MÁY CHẤM CÔNG (vân tay/khuôn mặt/QR) =================
+// LƯU Ý: mỗi hãng máy xuất file khác nhau, nên hàm này dò cột theo TỪ KHOÁ trong dòng tiêu đề
+// (Mã NV / Ngày / Giờ...) thay vì cố định thứ tự cột — cố gắng chạy được với nhiều máy khác nhau.
+// Nếu dò sai, người dùng sẽ THẤY NGAY ở bảng xem trước trước khi bấm xác nhận, không tự động ghi thẳng.
+function detectDelimiter(headerLine){
+  const counts = { ',': (headerLine.match(/,/g)||[]).length, ';': (headerLine.match(/;/g)||[]).length, '\t': (headerLine.match(/\t/g)||[]).length };
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1])[0][0] || ',';
+}
+function splitCsvLine(line, delim){
+  return line.split(delim).map(c=>c.trim().replace(/^["']|["']$/g,''));
+}
+// Nhận diện 1 ô là "ngày" (trả về yyyy-mm-dd) hoặc null
+function parseDateCell(text){
+  if(!text) return null;
+  let m = text.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); // dd/mm/yyyy hoặc dd-mm-yyyy
+  if(m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  m = text.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/); // yyyy-mm-dd
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  return null;
+}
+// Nhận diện 1 ô là "giờ" (trả về HH:MM) hoặc null
+function parseTimeCell(text){
+  if(!text) return null;
+  const m = text.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+  if(!m) return null;
+  const hh = m[1].padStart(2,'0'), mm = m[2];
+  if(parseInt(hh,10) > 23 || parseInt(mm,10) > 59) return null;
+  return `${hh}:${mm}`;
+}
+function timeToMinutes(hm){ const [h,m] = hm.split(':').map(Number); return h*60+m; }
+function guessShiftFromTime(hm){
+  getPersonalModulesState();
+  const ranges = state.settings.shiftTimeRanges;
+  const targets = [ ['Ca 1', ranges.ca1], ['Ca 2', ranges.ca2], ['Ca 3', ranges.ca3], ['Hành chính', ranges.hc] ];
+  const mins = timeToMinutes(hm);
+  let best = null, bestDiff = Infinity;
+  targets.forEach(([shift, t])=>{
+    if(!t) return;
+    let diff = Math.abs(timeToMinutes(t) - mins);
+    diff = Math.min(diff, 1440 - diff); // xử lý vòng qua nửa đêm (VD Ca 3 22h vs 23h55 khác ngày lịch)
+    if(diff < bestDiff){ bestDiff = diff; best = shift; }
+  });
+  return best || 'Hành chính';
+}
+
+// Đọc toàn bộ file CSV, tự dò cột Mã NV / Ngày / Giờ (hoặc 1 cột gộp "Ngày giờ"), trả về danh sách
+// bản ghi thô { rawCode, date, time } — chưa khớp với danh sách nhân viên, chưa xác định ca.
+function parseAttendanceMachineCSV(text){
+  const lines = text.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!lines.length) return { rows:[], error:'File rỗng.' };
+  const delim = detectDelimiter(lines[0]);
+  const header = splitCsvLine(lines[0], delim).map(h=>normalize(h));
+  const findCol = (keywords)=> header.findIndex(h=>keywords.some(k=>h.includes(k)));
+  let idxCode = findCol(['ma nv','ma nhan vien','ma so','id','code','employee id','user id']);
+  let idxDate = findCol(['ngay','date']);
+  let idxTime = findCol(['gio','time','thoi gian']);
+  const startRow = (idxCode>-1 || idxDate>-1 || idxTime>-1) ? 1 : 0; // có dò được cột nào thì coi dòng 1 là tiêu đề
+
+  const rows = [];
+  let unmatchedLines = 0;
+  for(let i=startRow;i<lines.length;i++){
+    const cols = splitCsvLine(lines[i], delim);
+    if(!cols.length || cols.every(c=>!c)) continue;
+
+    let rawCode = idxCode>-1 ? cols[idxCode] : '';
+    let date = idxDate>-1 ? parseDateCell(cols[idxDate]) : null;
+    let time = idxTime>-1 ? parseTimeCell(cols[idxTime]) : null;
+
+    // Nếu chưa đủ, quét toàn bộ các cột còn lại để tự tìm cột ngày/giờ (kể cả cột "Ngày giờ" gộp chung)
+    if(!date || !time){
+      cols.forEach(c=>{
+        if(!date){ const d = parseDateCell(c); if(d) date = d; }
+        if(!time){ const t = parseTimeCell(c); if(t) time = t; }
+      });
+    }
+    // Nếu chưa xác định được cột mã NV, thử cột đầu tiên trông giống mã (chữ+số ngắn, không phải ngày/giờ)
+    if(!rawCode){
+      const cand = cols.find(c=>c && c.length<=15 && !parseDateCell(c) && !parseTimeCell(c) && /[A-Za-z0-9]/.test(c));
+      if(cand) rawCode = cand;
+    }
+
+    if(!rawCode || !date || !time){ unmatchedLines++; continue; }
+    rows.push({ rawCode: rawCode.trim(), date, time });
+  }
+  return { rows, unmatchedLines, detectedCols: { idxCode, idxDate, idxTime } };
+}
+
+// Gộp theo (mã, ngày) -> lấy giờ SỚM NHẤT trong ngày làm "giờ vào ca", khớp với danh sách nhân viên,
+// và đoán ca theo khung giờ đã cấu hình.
+function buildAttendancePreview(rawRows){
+  const byPersonDay = new Map(); // rawCode|date -> earliest time
+  rawRows.forEach(r=>{
+    const key = r.rawCode + '|' + r.date;
+    const cur = byPersonDay.get(key);
+    if(!cur || timeToMinutes(r.time) < timeToMinutes(cur)) byPersonDay.set(key, r.time);
+  });
+  const preview = [];
+  byPersonDay.forEach((time, key)=>{
+    const [rawCode, date] = key.split('|');
+    const emp = EMPLOYEES.find(e=> e.code.toLowerCase()===rawCode.toLowerCase());
+    const shift = guessShiftFromTime(time);
+    preview.push({ rawCode, date, time, shift, emp, include: !!emp });
+  });
+  preview.sort((a,b)=> a.date===b.date ? (a.emp?.short||a.rawCode).localeCompare(b.emp?.short||b.rawCode) : a.date.localeCompare(b.date));
+  return preview;
+}
+
+let attImportPreviewData = [];
+function renderAttendanceImportPreview(){
+  const el = document.getElementById('attMachineImportResult');
+  if(!el) return;
+  const matched = attImportPreviewData.filter(r=>r.emp);
+  const unmatched = attImportPreviewData.filter(r=>!r.emp);
+  const included = matched.filter(r=>r.include);
+
+  if(!attImportPreviewData.length){ el.innerHTML = ''; return; }
+
+  el.innerHTML = `
+    <div style="background:var(--panel-soft);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:12.5px;">
+      Đọc được <b>${attImportPreviewData.length}</b> lượt (người+ngày). Khớp được mã NV: <b>${matched.length}</b>.
+      ${unmatched.length ? `<span style="color:var(--danger);">Không khớp mã: <b>${unmatched.length}</b> (sẽ bị bỏ qua, xem danh sách bên dưới).</span>` : ''}
+      Ca được đoán theo khung giờ đã cấu hình ở trên — kiểm tra lại cột "Ca" trước khi xác nhận, bấm vào ô Ca để đổi tay nếu đoán sai.
+    </div>
+    <div style="overflow-x:auto;max-height:420px;overflow-y:auto;">
+      <table class="roster-table">
+        <thead><tr><th>#</th><th>Mã quẹt</th><th>Nhân viên</th><th>Ngày</th><th>Giờ vào sớm nhất</th><th>Ca (đoán)</th><th>Nhập?</th></tr></thead>
+        <tbody>
+          ${matched.map((r,i)=>`
+            <tr>
+              <td class="roster-stt">${i+1}</td>
+              <td class="mono">${r.rawCode}</td>
+              <td>${r.emp.short}</td>
+              <td>${r.date}</td>
+              <td class="mono">${r.time}</td>
+              <td>
+                <select data-att-idx="${attImportPreviewData.indexOf(r)}" class="att-shift-select" style="font-size:12px;padding:2px 4px;">
+                  ${['Ca 1','Ca 2','Ca 3','Hành chính'].map(s=>`<option ${s===r.shift?'selected':''}>${s}</option>`).join('')}
+                </select>
+              </td>
+              <td style="text-align:center;"><input type="checkbox" class="att-include-cb" data-att-idx="${attImportPreviewData.indexOf(r)}" ${r.include?'checked':''}></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    ${unmatched.length ? `
+    <details style="margin-top:10px;">
+      <summary style="cursor:pointer;font-size:12.5px;color:var(--danger);">🔻 Xem ${unmatched.length} dòng KHÔNG khớp được mã nhân viên</summary>
+      <div style="font-size:12px;margin-top:6px;color:var(--muted);">${unmatched.map(r=>`${r.rawCode} · ${r.date} ${r.time}`).join(' &nbsp;|&nbsp; ')}</div>
+    </details>` : ''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button type="button" class="btn btn-ghost" id="btnAttImportCancel">✕ Huỷ</button>
+      <button type="button" class="btn btn-primary" id="btnAttImportConfirm">✅ Xác nhận nhập <span id="attImportConfirmCount">${included.length}</span> lượt chấm công</button>
+    </div>
+  `;
+
+  el.querySelectorAll('.att-shift-select').forEach(sel=>{
+    sel.addEventListener('change', e=>{
+      attImportPreviewData[+e.target.dataset.attIdx].shift = e.target.value;
+    });
+  });
+  el.querySelectorAll('.att-include-cb').forEach(cb=>{
+    cb.addEventListener('change', e=>{
+      attImportPreviewData[+e.target.dataset.attIdx].include = e.target.checked;
+      document.getElementById('attImportConfirmCount').textContent = attImportPreviewData.filter(r=>r.emp && r.include).length;
+    });
+  });
+  document.getElementById('btnAttImportCancel')?.addEventListener('click', ()=>{ attImportPreviewData = []; el.innerHTML = ''; document.getElementById('attMachineFileInput').value = ''; });
+  document.getElementById('btnAttImportConfirm')?.addEventListener('click', confirmAttendanceImport);
+}
+
+async function confirmAttendanceImport(){
+  const toImport = attImportPreviewData.filter(r=>r.emp && r.include);
+  if(!toImport.length){ await customAlert('❌ Chưa có dòng nào được chọn để nhập.'); return; }
+  const ok = await customConfirm(`Xác nhận ghi ${toImport.length} lượt chấm công vào hệ thống? Không thể tự động hoàn tác, nhưng vẫn sửa/xoá được từng dòng sau ở tab Nhật ký.`);
+  if(!ok) return;
+
+  let added = 0, skippedDup = 0;
+  toImport.forEach(r=>{
+    const dup = state.records.some(rec=>rec.code===r.emp.code && rec.date===r.date && rec.shift===r.shift);
+    if(dup){ skippedDup++; return; }
+    state.records.push({
+      id: Date.now()+Math.random(), date:r.date, shift:r.shift, stage:'Máy chấm công',
+      code:r.emp.code, short:r.emp.short, full:r.emp.full, batch:'', time:r.time, mult:defaultMultFor(r.shift)
+    });
+    added++;
+  });
+  logActivity(`📥 Nhập từ máy chấm công: +${added} bản ghi, bỏ qua ${skippedDup} trùng`);
+  await customAlert(`✅ Đã nhập xong!\n\n➕ Thêm mới: ${added}\n⏭️ Bỏ qua (đã có sẵn đúng người/ngày/ca): ${skippedDup}\n\nCông đoạn được ghi tạm là "Máy chấm công" — vào Nhật ký sửa lại đúng công đoạn thực tế nếu cần.`);
+  attImportPreviewData = [];
+  document.getElementById('attMachineImportResult').innerHTML = '';
+  document.getElementById('attMachineFileInput').value = '';
+  saveRecords();
+  safeRun(renderStats, 'Cập nhật thống kê sau nhập máy chấm công');
+  safeRun(renderRecords, 'Cập nhật nhật ký sau nhập máy chấm công');
+  safeRun(renderShiftChips, 'Cập nhật chip ca sau nhập máy chấm công');
+}
+
+async function handleAttendanceMachineFile(file){
+  try{
+    const text = await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = e=>resolve(e.target.result);
+      reader.onerror = ()=>reject(new Error('Không đọc được file'));
+      reader.readAsText(file, 'UTF-8');
+    });
+    const { rows, unmatchedLines, error } = parseAttendanceMachineCSV(text);
+    if(error || !rows.length){
+      await customAlert(`❌ Không dò được dữ liệu hợp lệ trong file này.\n\nApp cần tìm được ít nhất 1 cột kiểu "Mã NV", 1 cột/ô kiểu "Ngày" (vd 14/09/2026) và 1 cột/ô kiểu "Giờ" (vd 07:02). Nếu file của bạn có định dạng khác, gửi lại vài dòng mẫu để chỉnh cách dò cho đúng máy này.`);
+      return;
+    }
+    attImportPreviewData = buildAttendancePreview(rows);
+    renderAttendanceImportPreview();
+    if(unmatchedLines) showToast(`⚠️ Có ${unmatchedLines} dòng trong file bị bỏ qua vì thiếu ngày/giờ/mã`);
+  }catch(e){
+    await customAlert('❌ Lỗi đọc file: ' + e.message);
+  }
+}
+document.getElementById('attMachineFileInput')?.addEventListener('change', function(){
+  if(this.files && this.files[0]) handleAttendanceMachineFile(this.files[0]);
+});
+// Ô cấu hình khung giờ nhận diện ca — nạp giá trị đã lưu, lưu lại khi đổi.
+function initShiftTimeRangeInputs(){
+  getPersonalModulesState();
+  const r = state.settings.shiftTimeRanges;
+  const map = { shiftTimeCa1:'ca1', shiftTimeCa2:'ca2', shiftTimeCa3:'ca3', shiftTimeHC:'hc' };
+  Object.entries(map).forEach(([elId,key])=>{
+    const el = document.getElementById(elId);
+    if(!el) return;
+    el.value = r[key] || '';
+    el.addEventListener('change', ()=>{
+      state.settings.shiftTimeRanges[key] = el.value;
+      saveSettings();
+      showToast('💾 Đã lưu khung giờ nhận diện ca');
+    });
+  });
+}
+safeRun(initShiftTimeRangeInputs, 'Khởi tạo khung giờ nhận diện ca máy chấm công');
 
 function exportEmployeeCSV(){
   const header = 'Ma,Ten tat,Ho va ten\n';
@@ -7019,6 +7924,34 @@ async function exportElementToImg(elId, filename, btn){
 }
 
 document.getElementById('btnExportJournalPdf').addEventListener('click', (e)=> exportElementToPdf('journalTableExportArea', `NhatKy_ChamCong_${todayISO()}.pdf`, e.currentTarget));
+
+// ================= XUẤT BÁO CÁO EXCEL (.xlsx) — để báo cáo cho sếp dễ lọc/tính toán lại =================
+// Dùng thư viện SheetJS đọc thẳng từ bảng <table> đang hiển thị (table_to_sheet), giữ đúng số liệu, tự
+// nhận số là số (không bị Excel hiểu nhầm thành chữ) nhờ option raw:true. Không cần dựng lại dữ liệu
+// thủ công — bảng hiện đang hiển thị trên màn hình y hệt sẽ ra file Excel, luôn khớp với những gì đang xem.
+function exportTableToExcel(tableEl, filename, sheetName){
+  if(!tableEl){ customAlert('❌ Không tìm thấy bảng để xuất!'); return; }
+  if(typeof XLSX === 'undefined'){ customAlert('❌ Không tải được thư viện xuất Excel (cần có mạng internet ở lần mở app đầu tiên). Hãy kiểm tra kết nối mạng rồi thử lại.'); return; }
+  try{
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.table_to_sheet(tableEl, { raw:true });
+    // Tự giãn độ rộng cột theo nội dung dài nhất từng cột, để mở ra không bị chữ tràn/cắt.
+    const colWidths = [];
+    tableEl.querySelectorAll('tr').forEach(tr=>{
+      [...tr.children].forEach((td,ci)=>{
+        const len = (td.textContent||'').trim().length;
+        colWidths[ci] = Math.max(colWidths[ci]||8, Math.min(40, len+2));
+      });
+    });
+    ws['!cols'] = colWidths.map(w=>({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, (sheetName||'Báo cáo').slice(0,31));
+    XLSX.writeFile(wb, filename);
+    showToast('✅ Đã xuất Excel');
+  }catch(e){
+    customAlert('❌ Lỗi khi xuất Excel: ' + e.message);
+  }
+}
+
 document.getElementById('btnExportJournalImg').addEventListener('click', (e)=> exportElementToImg('journalTableExportArea', `NhatKy_ChamCong_${todayISO()}.png`, e.currentTarget));
 document.getElementById('btnExportStatsPdf').addEventListener('click', (e)=> exportElementToPdf('statsExportArea', `ThongKe_ChamCong_${todayISO()}.pdf`, e.currentTarget));
 document.getElementById('btnExportStatsImg').addEventListener('click', (e)=> exportElementToImg('statsExportArea', `ThongKe_ChamCong_${todayISO()}.png`, e.currentTarget));
@@ -7049,6 +7982,10 @@ function exportStatsCSV(){
   showToast('✅ Đã xuất CSV');
 }
 document.getElementById('btnExportStatsCsv').addEventListener('click', exportStatsCSV);
+document.getElementById('btnExportOverviewExcel')?.addEventListener('click', ()=>{
+  const monthLabel = document.getElementById('ovMonthLabel')?.textContent?.trim().replace(/\s+/g,'_') || todayISO();
+  exportTableToExcel(document.getElementById('overviewTable'), `TongQuan_ChamCong_${monthLabel}.xlsx`, `Tổng quan ${monthLabel}`);
+});
 
 // ================= TÍNH LƯƠNG (native — dùng chung state.records/EMPLOYEES/mult, không cần iframe) =================
 function money(n){ return Math.round(n||0).toLocaleString('vi-VN') + 'đ'; }
@@ -7081,79 +8018,67 @@ function fillPayrollRatesForm(){
   document.getElementById('prRice').value = r.rice;
 }
 // ================= GIÁ NHANH THEO CA (đơn giá lương) =================
-// Mỗi ô Ca 1/Ca 2/Ca 3/Hành chính có 2 "mức giá thường dùng" lưu sẵn — bấm 1 cái là điền luôn,
-// khỏi phải gõ tay mỗi lần mở. Lưu trong state.settings nên đi kèm luôn khi "Lưu lên máy chủ".
-const PRICE_PRESET_INPUTS = { ca1:'prCa1', ca2:'prCa2', ca3:'prCa3', hc:'prHC' };
-function getPricePresets(){
-  if(!state.settings.payrollRatePresets || typeof state.settings.payrollRatePresets !== 'object'){
-    state.settings.payrollRatePresets = {};
+// 🔒 AN TOÀN: lưu ở 1 key localStorage RIÊNG (KHÔNG nằm trong state.settings), nên KHÔNG BAO GIỜ
+// bị cuốn theo buildGithubBackupData() khi "Lưu lên máy chủ", và cũng không tải xuống qua đồng bộ
+// công khai (loadFromGithubSilent). Trước đây các mức giá thường dùng bị lưu chung trong
+// state.settings.payrollRatePresets — cùng "rổ" dữ liệu được đồng bộ lên máy chủ mỗi khi bấm
+// "Lưu lên máy chủ", nên có nguy cơ rò rỉ số tiền lương thật ra ngoài nếu Worker phía sau chỉ lọc bỏ
+// trường "payrollRates" mà không biết tới trường mới này. Tách hẳn ra khỏi state.settings để việc rò
+// rỉ này KHÔNG THỂ xảy ra nữa, bất kể Worker có lọc đúng hay không.
+// Cách hoạt động: mỗi lần bấm "Lưu đơn giá", số vừa nhập tự được ghi nhớ làm gợi ý cho lần sau —
+// không cần bấm ✎ hay gõ hộp thoại riêng nữa, chỉ gõ số rồi Lưu là lần sau đã có sẵn để bấm chọn.
+const PRICE_HISTORY_KEY = 'v4_payroll_rate_history_local'; // chỉ tồn tại trên máy này
+const PRICE_HISTORY_INPUTS = { ca1:'prCa1', ca2:'prCa2', ca3:'prCa3', hc:'prHC' };
+const PRICE_HISTORY_MAX = 4;
+function loadPriceHistory(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(PRICE_HISTORY_KEY) || '{}');
+    Object.keys(PRICE_HISTORY_INPUTS).forEach(f=>{ if(!Array.isArray(raw[f])) raw[f] = []; });
+    return raw;
+  }catch(e){
+    const empty = {}; Object.keys(PRICE_HISTORY_INPUTS).forEach(f=>empty[f]=[]); return empty;
   }
-  Object.keys(PRICE_PRESET_INPUTS).forEach(f=>{
-    if(!Array.isArray(state.settings.payrollRatePresets[f]) || state.settings.payrollRatePresets[f].length !== 2){
-      state.settings.payrollRatePresets[f] = [null, null];
-    }
-  });
-  return state.settings.payrollRatePresets;
 }
-function fmtPresetVal(v){ return (v===null || v===undefined || v==='') ? '＋ Đặt giá' : Number(v).toLocaleString('vi-VN')+'đ'; }
-function renderPricePresetRow(field){
-  const presets = getPricePresets()[field];
-  const row = document.querySelector(`.price-preset-row[data-field="${field}"]`);
-  if(!row) return;
-  row.querySelectorAll('.price-preset-btn').forEach(btn=>{
-    const slot = Number(btn.dataset.slot);
-    const v = presets[slot];
-    const label = slot === 0 ? 'A' : 'B';
-    // Icon ✎ nằm ngay trong nút — bấm đúng icon là sửa riêng mức này, bấm phần chữ giá là điền luôn vào ô.
-    btn.innerHTML = `${fmtPresetVal(v)} <span class="ppe" title="Sửa mức giá ${label}">✎</span>`;
-    btn.classList.toggle('empty', v===null || v===undefined || v==='');
-  });
+function savePriceHistory(hist){ localStorage.setItem(PRICE_HISTORY_KEY, JSON.stringify(hist)); }
+function rememberPriceValue(field, value){
+  if(!value || value <= 0) return;
+  const hist = loadPriceHistory();
+  hist[field] = [value, ...hist[field].filter(v=>v!==value)].slice(0, PRICE_HISTORY_MAX);
+  savePriceHistory(hist);
 }
-function renderAllPricePresetRows(){ Object.keys(PRICE_PRESET_INPUTS).forEach(renderPricePresetRow); }
-document.querySelectorAll('.price-preset-row').forEach(row=>{
-  const field = row.dataset.field;
-  const inputEl = document.getElementById(PRICE_PRESET_INPUTS[field]);
-  row.addEventListener('click', async (e)=>{
-    const presets = getPricePresets()[field];
-    // Bấm đúng icon ✎ -> sửa NGAY 1 mức giá đó, 1 bước duy nhất (không phải lướt qua cả 2 mức như trước)
-    const editIcon = e.target.closest('.ppe');
-    if(editIcon){
-      const slot = Number(editIcon.closest('.price-preset-btn').dataset.slot);
-      const label = slot === 0 ? 'A' : 'B';
-      const cur = presets[slot];
-      const val = await customPrompt(`Mức giá nhanh ${label} cho ô này (đ):`, (cur!==null && cur!==undefined) ? String(cur) : '');
-      if(val===null) return; // bấm Hủy -> giữ nguyên
-      const num = parseFloat(val.replace(/[^\d.]/g,''));
-      if(isNaN(num)){ showToast('⚠️ Giá không hợp lệ'); return; }
-      presets[slot] = num;
-      saveSettings();
-      renderPricePresetRow(field);
-      showToast('💾 Đã cập nhật mức giá nhanh');
-      return;
-    }
-    // Bấm phần chữ giá -> điền thẳng vào ô đơn giá; nếu mức này chưa đặt giá thì hỏi 1 lần rồi lưu luôn
-    const applyBtn = e.target.closest('.price-preset-btn');
-    if(applyBtn){
-      const slot = Number(applyBtn.dataset.slot);
-      let v = presets[slot];
-      if(v===null || v===undefined || v===''){
-        const val = await customPrompt('Nhập mức giá muốn lưu nhanh cho ô này (đ):', inputEl.value || '');
-        if(val===null) return;
-        const num = parseFloat(val.replace(/[^\d.]/g,''));
-        if(isNaN(num)){ showToast('⚠️ Giá không hợp lệ'); return; }
-        v = num; presets[slot] = num;
-        saveSettings();
-        renderPricePresetRow(field);
-        showToast('💾 Đã lưu mức giá nhanh');
-      }
-      inputEl.value = v;
+function renderPriceChipRow(field){
+  const row = document.querySelector(`.price-chip-row[data-field="${field}"]`);
+  const inputEl = document.getElementById(PRICE_HISTORY_INPUTS[field]);
+  if(!row || !inputEl) return;
+  const values = loadPriceHistory()[field] || [];
+  row.innerHTML = values.length
+    ? values.map(v=>`<button type="button" class="price-chip" data-val="${v}">${Number(v).toLocaleString('vi-VN')}đ</button>`).join('')
+    : `<span class="price-chip-hint">Gõ số rồi bấm "Lưu đơn giá" — lần sau sẽ hiện gợi ý ở đây</span>`;
+  row.querySelectorAll('.price-chip').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      inputEl.value = btn.dataset.val;
       inputEl.focus();
-    }
+    });
   });
-});
+}
+function renderAllPriceChipRows(){ Object.keys(PRICE_HISTORY_INPUTS).forEach(renderPriceChipRow); }
+// Dọn rác dữ liệu cũ (nếu máy này từng lưu mức giá nhanh kiểu cũ trong state.settings) để không còn
+// nằm trong "rổ" state.settings nữa — tự chuyển sang lịch sử gợi ý mới rồi xóa hẳn khỏi settings.
+(function migrateOldPricePresets(){
+  const old = state.settings.payrollRatePresets;
+  if(!old || typeof old !== 'object') return;
+  const hist = loadPriceHistory();
+  Object.keys(PRICE_HISTORY_INPUTS).forEach(f=>{
+    (old[f]||[]).forEach(v=>{ if(v!==null && v!==undefined && v>0 && !hist[f].includes(v)) hist[f].push(v); });
+    hist[f] = hist[f].slice(0, PRICE_HISTORY_MAX);
+  });
+  savePriceHistory(hist);
+  delete state.settings.payrollRatePresets;
+  saveSettings();
+})();
 
 document.getElementById('btnSavePayrollRates').addEventListener('click', ()=>{
-  state.settings.payrollRates = {
+  const vals = {
     ca1: parseFloat(document.getElementById('prCa1').value) || 0,
     ca2: parseFloat(document.getElementById('prCa2').value) || 0,
     ca3: parseFloat(document.getElementById('prCa3').value) || 0,
@@ -7162,7 +8087,10 @@ document.getElementById('btnSavePayrollRates').addEventListener('click', ()=>{
     ot:  parseFloat(document.getElementById('prOT').value) || 0,
     rice: parseFloat(document.getElementById('prRice').value) || 0,
   };
+  state.settings.payrollRates = vals;
   saveSettings();
+  Object.keys(PRICE_HISTORY_INPUTS).forEach(f=> rememberPriceValue(f, vals[f]));
+  renderAllPriceChipRows();
   showToast('💾 Đã lưu đơn giá lương');
   renderPayrollReport();
   if(document.getElementById('payrollAllArea').style.display !== 'none') renderPayrollAllTable();
@@ -7287,6 +8215,7 @@ function renderPayrollReport(){
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="btnExportPayrollPdf" type="button">📄 Xuất PDF</button>
       <button class="btn" id="btnExportPayrollImg" type="button">🖼️ Xuất ảnh</button>
+      <button class="btn" id="btnExportPayrollExcel" type="button">📊 Xuất Excel</button>
     </div>
   `;
   area.querySelectorAll('.payroll-editable-row').forEach(tr=>{
@@ -7297,6 +8226,7 @@ function renderPayrollReport(){
   });
   document.getElementById('btnExportPayrollPdf')?.addEventListener('click', (e)=> exportElementToPdf('payrollExportArea', `Luong_${emp?emp.short:state.payrollCode}_${monthVal}.pdf`, e.currentTarget));
   document.getElementById('btnExportPayrollImg')?.addEventListener('click', (e)=> exportElementToImg('payrollExportArea', `Luong_${emp?emp.short:state.payrollCode}_${monthVal}.png`, e.currentTarget));
+  document.getElementById('btnExportPayrollExcel')?.addEventListener('click', ()=> exportTableToExcel(document.querySelector('#payrollExportArea table'), `Luong_${emp?emp.short:state.payrollCode}_${monthVal}.xlsx`, `Lương ${monthVal}`));
 }
 
 function renderPayrollAllTable(){
@@ -7331,6 +8261,7 @@ function renderPayrollAllTable(){
     <div class="row" style="margin-top:10px;">
       <button class="btn" id="btnExportPayrollAllPdf" type="button">📄 Xuất PDF</button>
       <button class="btn" id="btnExportPayrollAllImg" type="button">🖼️ Xuất ảnh</button>
+      <button class="btn" id="btnExportPayrollAllExcel" type="button">📊 Xuất Excel</button>
     </div>
   `;
   area.querySelectorAll('.payroll-all-row').forEach(tr=>{
@@ -7344,6 +8275,7 @@ function renderPayrollAllTable(){
   });
   document.getElementById('btnExportPayrollAllPdf')?.addEventListener('click', (e)=> exportElementToPdf('payrollAllExportArea', `BangLuong_TatCa_${monthVal}.pdf`, e.currentTarget));
   document.getElementById('btnExportPayrollAllImg')?.addEventListener('click', (e)=> exportElementToImg('payrollAllExportArea', `BangLuong_TatCa_${monthVal}.png`, e.currentTarget));
+  document.getElementById('btnExportPayrollAllExcel')?.addEventListener('click', ()=> exportTableToExcel(document.querySelector('#payrollAllExportArea table'), `BangLuong_TatCa_${monthVal}.xlsx`, `Lương tất cả ${monthVal}`));
 }
 document.getElementById('btnTogglePayrollAll').addEventListener('click', function(){
   const area = document.getElementById('payrollAllArea');
@@ -7355,7 +8287,7 @@ document.getElementById('btnTogglePayrollAll').addEventListener('click', functio
 
 function renderPayrollTab(){
   fillPayrollRatesForm();
-  renderAllPricePresetRows();
+  renderAllPriceChipRows();
   const monthEl = document.getElementById('payrollMonth');
   if(!monthEl.value){
     const d = new Date();
@@ -7563,6 +8495,13 @@ safeRun(renderDayTabs, 'Tab ảnh');
 safeRun(renderAnalytics, 'Bảng thống kê chi tiết (chỉ dùng khi admin mở tab Thống kê)');
 safeRun(renderPersonalTab, 'Tab Cá nhân (tab công khai mặc định)');
 safeRun(refreshPersonalModulesPanel, 'Bảng tuỳ chỉnh các mục tab Cá nhân');
+
+// ===== Đăng ký Service Worker (chạy được khi mất mạng, cần host qua https/GitHub Pages) =====
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{ /* im lặng nếu chạy local file:// không hỗ trợ SW */ });
+  });
+}
 </script>
 </body>
 </html>
