@@ -6308,7 +6308,7 @@ function renderAggregateShiftChart(){
 const chartCursor = { value:new Date(), mode:'month' };
 function chartMonthRange(){
   const y=chartCursor.value.getFullYear(), m=chartCursor.value.getMonth();
-  return {from:isoOf(y,m+1,1), to:isoOf(y,m+1,daysInMonth(y,m+1))};
+  return {from:isoOf(y,m,1), to:isoOf(y,m,daysInMonth(y,m+1))};
 }
 function chartFilteredRecords(){
   if(chartCursor.mode==='all') return state.records.slice();
@@ -6326,7 +6326,7 @@ function renderDailyAttendanceChart(records){
   const byDay=new Map();
   records.forEach(r=>{ if(r.shift===LEAVE_SHIFT)return; if(!byDay.has(r.date))byDay.set(r.date,new Set()); byDay.get(r.date).add(r.code); });
   let dates=[];
-  if(chartCursor.mode==='month'){ const rg=chartMonthRange(); let d=new Date(rg.from+'T00:00:00'); const end=new Date(rg.to+'T00:00:00'); while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth()+1,d.getDate()));d.setDate(d.getDate()+1);} }
+  if(chartCursor.mode==='month'){ const rg=chartMonthRange(); let d=new Date(rg.from+'T00:00:00'); const end=new Date(rg.to+'T00:00:00'); while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth(),d.getDate()));d.setDate(d.getDate()+1);} }
   else dates=[...byDay.keys()].sort();
   if(!dates.length){el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>';return;}
   const rows=dates.map(date=>{const n=byDay.get(date)?.size||0;return {date,n,abs:Math.max(0,(EMPLOYEES.length||162)-n)};});
@@ -6357,7 +6357,7 @@ function renderWorkDistributionChart(records){
 function renderAttendanceHeatmap(records){
   const el=document.getElementById('chartHeatmap'); if(!el)return;
   let dates=[];
-  if(chartCursor.mode==='month'){const rg=chartMonthRange();let d=new Date(rg.from+'T00:00:00');const end=new Date(rg.to+'T00:00:00');while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth()+1,d.getDate()));d.setDate(d.getDate()+1);}}
+  if(chartCursor.mode==='month'){const rg=chartMonthRange();let d=new Date(rg.from+'T00:00:00');const end=new Date(rg.to+'T00:00:00');while(d<=end){dates.push(isoOf(d.getFullYear(),d.getMonth(),d.getDate()));d.setDate(d.getDate()+1);}}
   else dates=[...new Set(records.map(r=>r.date))].sort();
   if(!dates.length){el.innerHTML='<div class="chart-empty">Chưa có dữ liệu.</div>';return;}
   const worked=new Map();
