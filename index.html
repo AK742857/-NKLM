@@ -2459,6 +2459,7 @@ html.compact-mode input[type=date]{line-height:1.1;}
     <div class="ai-hint">AI chỉ đề xuất thay đổi — bạn xem lại và bấm "Áp dụng" mới thật sự ghi vào dữ liệu.</div>
     <div class="modal-actions">
       <button class="btn btn-ghost" id="btnAiClose" type="button">Đóng</button>
+      <button class="btn btn-teal" id="btnAiScanHalf" type="button" title="Quét toàn bộ dữ liệu, tìm ca nửa buổi đang bị tính 1 công — miễn phí, không cần gõ câu hỏi">🔍 Dò lỗi công ½</button>
       <button class="btn btn-primary" id="btnAiAsk" type="button">🔎 Hỏi AI</button>
     </div>
     <div class="ai-result" id="aiResultBox"></div>
@@ -2536,6 +2537,25 @@ const LEAVE_SHIFT = 'Nghỉ phép / Ốm';
 const HALF_DAY_SHIFTS = new Set(['Hành chính (Sáng)','Hành chính (Chiều)']);
 function isHalfDayShift(shift){ return HALF_DAY_SHIFTS.has(shift) || /^\s*1\/2\s/.test(String(shift||'')); }
 function defaultMultFor(shift){ return isHalfDayShift(shift) ? 0.5 : 1; }
+// Hệ số công mới khi ĐỔI CA của 1 lượt chấm:
+// - Chưa chỉnh tay (chưa có hệ số, hoặc đúng bằng mặc định của ca cũ) → theo mặc định của ca mới
+//   (đổi sang ca nửa buổi → 0.5, đổi từ ca nửa buổi sang ca cả ngày → 1).
+// - Đã chỉnh tay (vd 0.25, hoặc 0.5 ở ca cả ngày) → giữ nguyên.
+// - Đổi vào ca nửa buổi mà hệ số đang là 1 → về 0.5 (giữ quy tắc cũ của app).
+function multAfterShiftChange(oldShift, newShift, curMult){
+  const oldDef = defaultMultFor(oldShift);
+  const cur = Number(curMult);
+  if(!Number.isFinite(cur) || cur <= 0 || cur === oldDef) return defaultMultFor(newShift);
+  if(isHalfDayShift(newShift) && cur === 1) return 0.5;
+  return cur;
+}
+// Hệ số công thực tế của 1 người khi nhập nhiều công đoạn từ văn bản/bảng dán:
+// - Người nhập CHỦ ĐỘNG ghi phân số (< 1, vd "Chín/2", "Chín ×0.5", "Chín 7h-11h") → tôn trọng.
+// - Không ghi gì (parsePersonFraction trả 1 làm mặc định) → dùng mặc định của ca (ca nửa buổi = 0.5).
+function effectiveMsMult(personMult, shift){
+  const m = Number(personMult);
+  return (Number.isFinite(m) && m > 0 && m < 1) ? m : defaultMultFor(shift);
+}
 const LS_KEYS = { records:'attendance-records', stages:'custom-stages', images:'day-images', teams:'saved-teams', theme:'app-theme', batches:'custom-batches', employees:'custom-employees', settings:'app-settings', uiScale:'app-ui-scale', compact:'app-compact', shifts:'custom-shifts' };
 
 // ================= BỘ 8 THEME (giao diện màu) =================
@@ -3036,8 +3056,10 @@ function renderConflictPanel(){
       const id = sel.getAttribute('data-conflict-shift');
       const rec = state.records.find(r=>String(r.id)===String(id));
       if(!rec) return;
+      const oldShift = rec.shift;
       rec.shift = sel.value;
-      if(isHalfDayShift(sel.value) && (!rec.mult || rec.mult===1)) rec.mult = 0.5;
+      // Đổi ca → tự đổi hệ số theo ca mới (nửa buổi ↔ cả ngày), giữ hệ số đã chỉnh tay
+      rec.mult = multAfterShiftChange(oldShift, sel.value, rec.mult);
       saveRecords();
       renderStats();
       if(typeof renderRecords==='function') renderRecords();
@@ -4385,8 +4407,9 @@ renderMsAiMemory();
 
 // Chuẩn hóa phần người: hiểu “Chín/2”, “Chín 1/2”, “Chín ×0,5”, và khoảng giờ như “Chín 7h-11h” là 1/2 công.
 function parsePersonFraction(raw){
+  // Lưu ý: phút sau chữ h là TÙY CHỌN — để nhận cả "7h-11h" (trước đây chỉ nhận "7h30-11h30" / "7-11", nên "7h-11h" bị bỏ sót và ra 1 công).
   let s=(raw||'').trim(), mult=1;
-  const range=s.match(/(\d{1,2})(?:\s*[:h]\s*(\d{1,2}))?\s*(?:-|–|—|đến|tới)\s*(\d{1,2})(?:\s*[:h]\s*(\d{1,2}))?\s*(?:h|giờ)?/i);
+  const range=s.match(/(\d{1,2})(?:\s*[:h]\s*(\d{1,2})?)?\s*(?:-|–|—|đến|tới)\s*(\d{1,2})(?:\s*[:h]\s*(\d{1,2}))?\s*(?:h|giờ)?/i);
   if(range){
     const h1=Number(range[1]), m1=Number(range[2]||0), h2=Number(range[3]), m2=Number(range[4]||0);
     const dur=(h2*60+m2)-(h1*60+m1);
@@ -4394,7 +4417,7 @@ function parsePersonFraction(raw){
     else if(dur>300 && dur<=600) mult=1;
     s=s.replace(range[0],' ').replace(/\s{2,}/g,' ').trim();
   }
-  const fracSlash=s.match(/\/\s*(2|3|4)\s*$/i);
+  const fracSlash=s.match(/(?:\b1\s*)?\/\s*(2|3|4)\s*$/i); // nhận cả \"Chín/2\" lẫn \"Chín 1/2\" (bỏ luôn số 1 đứng trước dấu /, kẻo tên bị dính \"Chín 1\")
   const frac=s.match(/(?:^|\s)(?:×\s*)?(1\s*\/\s*2|1\s*\/\s*3|1\s*\/\s*4|0[\.,]?5|0[\.,]?25)\s*$/i);
   if(fracSlash){
     mult=1/Number(fracSlash[1]);
@@ -4724,6 +4747,11 @@ function parseMultiStageBlock(text){
   return { groups: mergedGroups, skippedLines };
 }
 
+// Huy hiệu hệ số công của 1 người ở bản xem trước. Luôn có thẻ <b class="ms-mult"> để cập nhật ngay khi đổi Ca.
+function msMultBadge(m, shift){
+  const v = effectiveMsMult(m && m.mult, shift);
+  return `<b class="ms-mult" style="font-family:var(--font-mono);">${v!==1 ? ' ×'+v : ''}</b>`;
+}
 function renderMultiStageResult(groups, skippedLines){
   if(!groups.length){
     multiStageResult.innerHTML = '<div class="empty-state">Chưa nhận diện được công đoạn nào — kiểm tra lại định dạng: mỗi dòng cần có dấu ":" ngăn giữa tên công đoạn và danh sách người, HOẶC dán dạng bảng (Tab) đủ cột Công đoạn + Người. Bấm "ⓘ Các bước & lưu ý" ở trên để xem chi tiết.</div>';
@@ -4736,7 +4764,7 @@ function renderMultiStageResult(groups, skippedLines){
     const pills = g.matched.map((m,pi)=>{
       const emp = EMPLOYEES.find(e=>e.code===m.code);
       if(!emp) return '';
-      return `<span class="person-pill" data-gidx="${i}" data-pidx="${pi}" title="${emp.full} (${emp.code}) — dán từ: &quot;${escapeHtml(m.raw)}&quot; · bấm để đổi người / chuyển công đoạn">${escapeHtml(emp.short)} <small>${escapeHtml(emp.code)}</small>${m.mult&&m.mult!==1?` <b style="font-family:var(--font-mono);">×${m.mult}</b>`:''}${m.memory?'<span class="ms-confidence">🧠</span>':''}${m.leader?'<span class="ms-leader-badge">NT</span>':''}</span>`;
+      return `<span class="person-pill" data-gidx="${i}" data-pidx="${pi}" title="${emp.full} (${emp.code}) — dán từ: &quot;${escapeHtml(m.raw)}&quot; · bấm để đổi người / chuyển công đoạn">${escapeHtml(emp.short)} <small>${escapeHtml(emp.code)}</small>${msMultBadge(m, g.suggestedShift)}${m.memory?'<span class="ms-confidence">🧠</span>':''}${m.leader?'<span class="ms-leader-badge">NT</span>':''}</span>`;
     }).join('');
     const unresolvedHtml = g.unresolved.length ? `<div class="ms-unresolved-list">` + g.unresolved.map((u,ui)=>{
       const cands = (u.candidates||[]).filter(code=>!g.matched.some(m=>m.code===code)).map(code=>{
@@ -4795,6 +4823,19 @@ function syncMsCardsToModel(){
 }
 
 function wireMultiStageCardEvents(){
+  // Đổi Ca trên thẻ → cập nhật ngay hệ số công hiển thị của từng người (ca nửa buổi = ×0.5)
+  multiStageResult.querySelectorAll('.multistage-card .ms-shift').forEach(sel=>{
+    sel.addEventListener('change', ()=>{
+      const card = sel.closest('.multistage-card');
+      const group = msGroups[Number(card.dataset.idx)];
+      if(!group) return;
+      card.querySelectorAll('.person-pill[data-pidx]').forEach(pill=>{
+        const m = group.matched[Number(pill.dataset.pidx)];
+        const badge = pill.querySelector('.ms-mult');
+        if(m && badge){ const v = effectiveMsMult(m.mult, sel.value); badge.textContent = v!==1 ? ' ×'+v : ''; }
+      });
+    });
+  });
   multiStageResult.querySelectorAll('.person-pill[data-gidx]').forEach(pill=>{
     pill.addEventListener('click', ()=> openMsPillAction(Number(pill.dataset.gidx), Number(pill.dataset.pidx)));
   });
@@ -4949,7 +4990,9 @@ btnSaveMultiStage.onclick = async ()=>{
       const emp = EMPLOYEES.find(e=>e.code===m.code);
       if(!emp) return;
       const mm = group.matched.find(m=>m.code===emp.code);
-      plan.push({ stageName, shift, batch, emp, mult:(mm&&mm.mult)||defaultMultFor(shift) });
+      // Trước đây: (mm&&mm.mult)||defaultMultFor(shift) → mm.mult luôn = 1 (giá trị mặc định) nên KHÔNG BAO GIỜ dùng
+      // được mặc định 0.5 của ca nửa buổi. Nay dùng effectiveMsMult để ưu tiên đúng.
+      plan.push({ stageName, shift, batch, emp, mult:effectiveMsMult(mm&&mm.mult, shift) });
     });
   });
 
@@ -5435,7 +5478,8 @@ async function bulkApplyShift(newShift){
   const totalPeople = groups.reduce((sum,g)=>sum+g.records.length,0);
   if(!(await customConfirm(`Đổi ca thành "${newShift}" cho ${groups.length} công đoạn (${totalPeople} lượt chấm) đang chọn?`))) return;
   const ids = new Set(groups.flatMap(g=>g.records.map(r=>r.id)));
-  state.records.forEach(r=>{ if(ids.has(r.id)) r.shift = newShift; });
+  // Đổi ca hàng loạt → hệ số công đi theo ca mới (trước đây giữ nguyên nên chọn ca nửa buổi vẫn ra 1 công)
+  state.records.forEach(r=>{ if(ids.has(r.id)){ r.mult = multAfterShiftChange(r.shift, newShift, r.mult); r.shift = newShift; } });
   saveRecords();
   state.selectedJournalGroups.clear();
   renderStats(); renderRecords(); renderAnalytics();
@@ -5479,7 +5523,7 @@ document.getElementById('btnConfirmBulkEdit').onclick = async ()=>{
   state.records.forEach(r=>{
     if(!ids.has(r.id)) return;
     if(newDate) r.date = newDate;
-    if(newShift) r.shift = newShift;
+    if(newShift){ r.mult = multAfterShiftChange(r.shift, newShift, r.mult); r.shift = newShift; }
     if(newStage) r.stage = newStage;
     if(newBatch) r.batch = newBatch;
   });
@@ -5691,7 +5735,13 @@ function openEditModal(peopleList){
   document.getElementById('editStage').value = first.stage;
   document.getElementById('editBatch').value = first.batch || '';
   document.getElementById('editTime').value = first.time || '';
-  document.getElementById('editMult').value = first.mult || 1;
+  // Nhóm có hệ số KHÁC NHAU giữa các người → để trống (giữ nguyên từng người), tránh ghi đè cả nhóm
+  // bằng hệ số của người đầu tiên khi chỉ sửa ngày/công đoạn/mác thuốc.
+  const editMultSet = new Set(peopleList.map(p=>Number(p.mult)||1));
+  const editMultEl = document.getElementById('editMult');
+  editMultEl.value = editMultSet.size > 1 ? '' : (first.mult || 1);
+  editMultEl.placeholder = editMultSet.size > 1 ? 'Giữ nguyên từng người' : '';
+  state.editPrevShift = first.shift;  // ca trước khi sửa — để tự đổi hệ số khi đổi Ca
   document.getElementById('editOT').value = first.otHours || 0;
   editAddPersonSearch.value = '';
   editAddPersonCombo.style.display = 'none';
@@ -5702,7 +5752,11 @@ function openEditModal(peopleList){
 document.getElementById('btnCancelEdit').onclick = ()=> editRecordModal.classList.remove('show');
 document.getElementById('editShift').addEventListener('change', function(){
   const multEl = document.getElementById('editMult');
-  if(isHalfDayShift(this.value) && (!multEl.value || parseFloat(multEl.value)===1)) multEl.value = 0.5;
+  // Ô hệ số đang trống (nhóm nhiều hệ số khác nhau) → giữ trống, sẽ xử lý riêng từng người khi bấm Lưu
+  if(multEl.value !== ''){
+    multEl.value = multAfterShiftChange(state.editPrevShift, this.value, parseFloat(multEl.value));
+  }
+  state.editPrevShift = this.value;
 });
 
 editAddPersonSearch.addEventListener('input', ()=>{
@@ -5752,11 +5806,19 @@ document.getElementById('btnConfirmEdit').onclick = ()=>{
   const newBatch = document.getElementById('editBatch').value.trim();
   rememberBatch(newBatch);
   const newTime = document.getElementById('editTime').value;
-  const newMult = parseFloat(document.getElementById('editMult').value) || 1;
+  // Ô hệ số trống = nhóm có nhiều hệ số khác nhau và người dùng không nhập → giữ nguyên từng người
+  const editMultRaw = document.getElementById('editMult').value.trim();
+  const keepEachMult = (editMultRaw === '');
+  const newMult = parseFloat(editMultRaw) || 1;
   const newOT = parseFloat(document.getElementById('editOT').value) || 0;
   if(!newDate || !newStage){ showToast('Vui lòng nhập đủ ngày và công đoạn'); return; }
   state.records.forEach(r=>{
-    if(state.editingIds.includes(r.id)){ r.date=newDate; r.shift=newShift; r.stage=newStage; r.batch=newBatch; r.time=newTime; r.mult=newMult; r.otHours=newOT; }
+    if(state.editingIds.includes(r.id)){
+      const oldShift = r.shift;
+      r.date=newDate; r.shift=newShift; r.stage=newStage; r.batch=newBatch; r.time=newTime; r.otHours=newOT;
+      // Có nhập hệ số → áp cho cả nhóm; để trống → giữ từng người (chỉ tự đổi theo ca mới nếu có đổi Ca)
+      r.mult = keepEachMult ? multAfterShiftChange(oldShift, newShift, r.mult) : newMult;
+    }
   });
   if(!allStages().some(s=>normalize(s)===normalize(newStage))) state.customStages.push(newStage);
   saveRecords(); saveStages();
@@ -5877,10 +5939,24 @@ function openSplitModal(people){
   document.getElementById('splitStage').value = first.stage;
   document.getElementById('splitShift').value = first.shift;
   document.getElementById('splitBatch').value = first.batch || '';
-  document.getElementById('splitMult').value = first.mult || 1;
+  // Nhóm nhiều hệ số khác nhau → để trống (giữ nguyên từng người được tách)
+  const splitMultSet = new Set(people.map(p=>Number(p.mult)||1));
+  const splitMultEl = document.getElementById('splitMult');
+  splitMultEl.value = splitMultSet.size > 1 ? '' : (first.mult || 1);
+  splitMultEl.placeholder = splitMultSet.size > 1 ? 'Giữ nguyên từng người' : '';
+  state.splitPrevShift = first.shift;  // ca trước khi đổi — để tự đổi hệ số khi đổi Ca đích
   splitRecordModal.classList.add('show');
 }
 document.getElementById('btnCancelSplit').onclick = ()=> splitRecordModal.classList.remove('show');
+// Đổi Ca đích → tự đổi hệ số công theo ca mới (ca nửa buổi = 0.5), giữ hệ số đã chỉnh tay
+document.getElementById('splitShift').addEventListener('change', function(){
+  if(!this.value) return;  // đang chọn "— Chọn Ca —" thì bỏ qua
+  const multEl = document.getElementById('splitMult');
+  if(multEl.value !== ''){
+    multEl.value = multAfterShiftChange(state.splitPrevShift, this.value, parseFloat(multEl.value));
+  }
+  state.splitPrevShift = this.value;
+});
 document.getElementById('btnConfirmSplit').onclick = ()=>{
   const checkedIds = [...document.querySelectorAll('.split-check:checked')].map(c=>c.value);
   if(!checkedIds.length){ showToast('Chọn ít nhất 1 người để tách'); return; }
@@ -5889,7 +5965,9 @@ document.getElementById('btnConfirmSplit').onclick = ()=>{
   const newShift = document.getElementById('splitShift').value;
   const newBatch = document.getElementById('splitBatch').value.trim();
   rememberBatch(newBatch);
-  const newMult = parseFloat(document.getElementById('splitMult').value) || 1;
+  const splitMultRaw = document.getElementById('splitMult').value.trim();
+  const keepEachMult = (splitMultRaw === '');  // trống = giữ nguyên hệ số từng người
+  const newMult = parseFloat(splitMultRaw) || 1;
   if(!newStage || !newShift){ showToast('Vui lòng chọn đủ Công đoạn và Ca đích'); return; }
   const idSet = new Set(checkedIds);
   let moved = 0, skippedDup = 0;
@@ -5897,7 +5975,9 @@ document.getElementById('btnConfirmSplit').onclick = ()=>{
     if(!idSet.has(String(r.id))) return;
     const dupExists = state.records.some(other=> other!==r && other.date===r.date && other.shift===newShift && other.stage===newStage && other.code===r.code);
     if(dupExists){ skippedDup++; return; }
-    r.stage = newStage; r.shift = newShift; r.batch = newBatch; r.mult = newMult;
+    const oldShift = r.shift;
+    r.stage = newStage; r.shift = newShift; r.batch = newBatch;
+    r.mult = keepEachMult ? multAfterShiftChange(oldShift, newShift, r.mult) : newMult;
     moved++;
   });
   if(!allStages().some(s=>normalize(s)===normalize(newStage))) state.customStages.push(newStage);
@@ -8608,12 +8688,26 @@ function askAiAssistLocal(){
     dupGroups.forEach(g => { g.slice(1).forEach(r => { actions.push({ id: r.id, type: 'delete', reason: 'Trùng lặp y hệt với 1 bản ghi khác — giữ lại bản đầu tiên' }); }); });
   }
 
+  // 2b) Ca nửa buổi (Hành chính Sáng/Chiều, "1/2 ...") nhưng đang tính 1 công / chưa có hệ số → đề xuất về 0.5
+  // Câu hỏi về hệ số công thường chứa chữ "công" — dễ khớp nhầm với tên nhân viên "Công" — nên với câu hỏi
+  // dạng này KHÔNG lọc theo tên người (vẫn lọc theo ngày/ca nếu có nêu).
+  const asksMult = /he so|nua buoi|nua cong|1\/2|0[.,]5/.test(normalize(question));
+  let halfSource = recsCtx;
+  if(dateISO) halfSource = halfSource.filter(r => r.date === dateISO);
+  if(shift)   halfSource = halfSource.filter(r => r.shift === shift);
+  if(emp && !asksMult) halfSource = halfSource.filter(r => r.code === emp.code);
+  const halfWrong = halfSource.filter(r => isHalfDayShift(r.shift) && (r.mult == null || Number(r.mult) === 1));
+  if(halfWrong.length){
+    parts.push('⏱️ Phát hiện ' + halfWrong.length + ' lượt chấm thuộc CA NỬA BUỔI (Hành chính Sáng/Chiều, ca "1/2 ...") nhưng đang tính 1 công. Đề xuất đổi về 0.5 công — bỏ chọn những dòng bạn cố ý tính 1 công.');
+    halfWrong.forEach(r => actions.push({ id: r.id, type: 'edit', field: 'mult', newValue: 0.5, reason: 'Ca nửa buổi mặc định tính 0.5 công' }));
+  }
+
   // 3) Liệt kê các bản ghi khớp mô tả để đối chiếu trực tiếp
   if(filtered.length){
     const sample = filtered.slice(0, 15);
     parts.push('📋 Tìm thấy ' + filtered.length + ' bản ghi khớp mô tả trong phạm vi đã chọn' + (filtered.length > 15 ? ' (hiện 15 dòng đầu)' : '') + ':\n' +
       sample.map(r => '• ' + fmtDate(r.date) + ' — ' + r.short + ' — ' + r.shift + ' — ' + r.stage + (r.batch ? (' — ' + r.batch) : '')).join('\n'));
-  } else if(!conflicts.length && !dupGroups.length){
+  } else if(!conflicts.length && !dupGroups.length && !halfWrong.length){
     parts.push('Không tìm thấy bản ghi nào khớp mô tả trong phạm vi dữ liệu đã chọn. Bạn nêu rõ hơn: tên người, ngày (vd 12/9) hoặc ca (Ca 1/2/3, Hành chính) rồi hỏi lại nhé.');
   }
   if(!emp && !dateISO && !shift){
@@ -8748,7 +8842,7 @@ function renderAiResult(parsed){
       if(a.type === 'delete'){
         desc = 'Xóa lượt chấm: <b>' + r.short + '</b> — ' + fmtDate(r.date) + ' — ' + r.shift + ' — ' + r.stage;
       } else {
-        desc = 'Sửa <b>' + r.short + '</b> (' + fmtDate(r.date) + ' — ' + r.shift + '): ' + a.field + ' "' + String(r[a.field]) + '" → "<b>' + String(a.newValue) + '</b>"';
+        desc = 'Sửa <b>' + r.short + '</b> (' + fmtDate(r.date) + ' — ' + r.shift + '): ' + a.field + ' "' + String(r[a.field] == null ? '(chưa có)' : r[a.field]) + '" → "<b>' + String(a.newValue) + '</b>"';
       }
       return '<label class="ai-action-item"><input type="checkbox" checked data-ai-action-idx="' + idx + '"><div><div class="aa-desc">' + desc + '</div>' + (a.reason ? '<div class="aa-reason">' + String(a.reason).replace(/</g,'&lt;') + '</div>' : '') + '</div></label>';
     }).join('');
@@ -8792,6 +8886,26 @@ document.getElementById('btnClearAiKey').addEventListener('click', clearAiApiKey
 document.getElementById('btnAiSetKeyInline').addEventListener('click', setAiApiKey);
 document.getElementById('btnAiClose').addEventListener('click', closeAiAssist);
 document.getElementById('btnAiAsk').addEventListener('click', askAiAssist);
+
+// Dò 1 chạm (miễn phí, offline, KHÔNG cần gõ câu hỏi): quét TOÀN BỘ dữ liệu, tìm các lượt chấm thuộc ca nửa buổi
+// (Hành chính Sáng/Chiều, ca "1/2 ...") nhưng đang tính 1 công / chưa có hệ số → đề xuất đổi về 0.5.
+// Kết quả đi qua renderAiResult nên vẫn có checkbox từng dòng + bước xác nhận trước khi ghi.
+function scanHalfDayMult(){
+  const resultBox = document.getElementById('aiResultBox');
+  resultBox.style.display = 'block';
+  document.getElementById('aiRangeSelect').value = 'all';   // hiển thị đúng phạm vi đã quét
+  const halfAll = state.records.filter(r => isHalfDayShift(r.shift));
+  const bad = halfAll
+    .filter(r => r.mult == null || Number(r.mult) === 1)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  const actions = bad.map(r => ({ id: r.id, type: 'edit', field: 'mult', newValue: 0.5, reason: 'Ca nửa buổi mặc định tính 0.5 công' }));
+  const explanation = bad.length
+    ? ('⏱️ Đã quét toàn bộ dữ liệu: có ' + halfAll.length + ' lượt chấm thuộc ca nửa buổi, trong đó ' + bad.length +
+       ' lượt đang tính 1 công (hoặc chưa có hệ số). Đề xuất đổi về 0.5 công — bỏ chọn những dòng bạn cố ý tính 1 công.')
+    : ('✅ Đã quét toàn bộ dữ liệu: ' + halfAll.length + ' lượt chấm thuộc ca nửa buổi, tất cả đều đã đúng 0.5 công. Không cần sửa gì.');
+  renderAiResult({ explanation, actions, note: '🆓 Dò bằng luật có sẵn — miễn phí, không cần mạng, chỉ đề xuất, bạn bấm "Áp dụng" mới ghi vào dữ liệu.' });
+}
+document.getElementById('btnAiScanHalf').addEventListener('click', scanHalfDayMult);
 updateAiDot();
 
 // ================= TỰ ĐỘNG ĐỒNG BỘ CHO NGƯỜI XEM (chế độ công khai — không cần đăng nhập, không hỏi xác nhận) =================
