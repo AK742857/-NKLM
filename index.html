@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -1251,6 +1252,13 @@ html.compact-mode input[type=date]{line-height:1.1;}
         <button class="more-menu-item" id="btnD1Push" type="button">📤 Đẩy lên kho D1 (thử)</button>
         <button class="more-menu-item" id="btnD1Pull" type="button">📥 Tải từ kho D1 (thử)</button>
 
+        <div class="theme-menu-title menu-group-title" style="display:flex;align-items:center;gap:6px;">🟢 Supabase (thử nghiệm) <span class="sync-dot dot-gray" id="dotSupabaseSync" title="Trạng thái kết nối Supabase"></span></div>
+        <div id="supabaseLastSyncInfo" style="font-size:10.5px;color:var(--muted);padding:0 9px 6px;line-height:1.4;">📤 Đẩy lần cuối: chưa từng · 📥 Tải lần cuối: chưa từng</div>
+        <button class="more-menu-item" id="btnSupabaseLogin" type="button">🔑 Đăng nhập Admin Supabase</button>
+        <button class="more-menu-item" id="btnSupabasePush" type="button">📤 Đẩy lên Supabase (thử)</button>
+        <button class="more-menu-item" id="btnSupabasePull" type="button">📥 Tải từ Supabase (thử)</button>
+        <button class="more-menu-item" id="btnSupabaseLogout" type="button">🚪 Đăng xuất Admin Supabase</button>
+
         <div class="theme-menu-title menu-group-title" style="display:flex;align-items:center;gap:6px;">🤖 AI Trợ lý (Claude API) <span class="sync-dot dot-gray" id="dotAiKey" title="Đã có khóa API Claude hay chưa"></span></div>
         <button class="more-menu-item" id="btnOpenAiAssist" type="button">🤖 Hỏi AI chẩn đoán & sửa lỗi</button>
         <button class="more-menu-item" id="btnSetAiKey" type="button">🔑 Nhập/Đổi khóa API Claude</button>
@@ -1294,7 +1302,7 @@ html.compact-mode input[type=date]{line-height:1.1;}
 </div><!-- /#appHeaderWrap -->
 
 <div class="sync-status-bar" id="syncStatusBar">
-  <span id="syncStatusText">🔄 Đang đồng bộ...</span>
+  <span id="syncStatusText" class="admin-only">🔄 Đang đồng bộ...</span>
   <button type="button" id="btnPublicRefresh" class="public-only">🔄 Làm mới</button>
 </div>
 
@@ -1895,28 +1903,54 @@ html.compact-mode input[type=date]{line-height:1.1;}
     <div class="panel">
       <h2>🧾 Bảng lương chính thức (Phòng KT)</h2>
       <p class="sub">Số liệu gốc trích từ bảng lương phòng Kế toán — khác với "💰 Tính lương" (số ước tính từ chấm công).</p>
+      <p class="sub" style="margin-top:-4px;">🔒 Dữ liệu chỉ nằm trong bộ nhớ phiên làm việc này (không lưu vào file), tự xóa khi đóng tab trình duyệt.</p>
 
-      <div class="month-switch" id="luongMonthSwitch"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 14px;">
+        <button type="button" class="btn" id="btnLuongLoadD1">🔄 Tải từ kho D1</button>
+        <button type="button" class="btn" id="btnLuongImportBtn">📥 Dán JSON / Cập nhật</button>
+        <button type="button" class="btn" id="btnLuongClear" style="color:var(--danger);">🗑 Xóa khỏi phiên này</button>
+      </div>
 
-      <div class="top15-luong">
-        <div class="top15-luong-head">
-          <h2>Top 15 lương cao nhất</h2>
-          <span class="count" id="luongTop15Sub"></span>
+      <div id="luongEmptyState" style="display:none;padding:18px;border:1px dashed var(--line);border-radius:10px;text-align:center;color:var(--muted);font-size:13px;">
+        Chưa có dữ liệu lương trong phiên làm việc này.<br>Bấm "🔄 Tải từ kho D1" (nếu đã đồng bộ trước đó) hoặc "📥 Dán JSON / Cập nhật" để nhập.
+      </div>
+
+      <div id="luongContentArea" style="display:none;">
+        <div class="month-switch" id="luongMonthSwitch"></div>
+
+        <div class="top15-luong">
+          <div class="top15-luong-head">
+            <h2>Top 15 lương cao nhất</h2>
+            <span class="count" id="luongTop15Sub"></span>
+          </div>
+          <div id="luongTop15List"></div>
         </div>
-        <div id="luongTop15List"></div>
-      </div>
 
-      <div class="field" style="position:relative;">
-        <label>Tìm nhân viên</label>
-        <input type="text" id="luongSearchInput" class="name-typed-highlight" placeholder="Tên hoặc mã NV..." autocomplete="off">
-        <div id="luongSuggest" class="ms-suggest-list" style="display:none;"></div>
-      </div>
+        <div class="field" style="position:relative;">
+          <label>Tìm nhân viên</label>
+          <input type="text" id="luongSearchInput" class="name-typed-highlight" placeholder="Tên hoặc mã NV..." autocomplete="off">
+          <div id="luongSuggest" class="ms-suggest-list" style="display:none;"></div>
+        </div>
 
-      <div id="luongSelectedArea" style="margin-top:12px;">
-        <p class="sub" id="luongEmptyHint">👆 Tìm và bấm chọn để xem chi tiết lương.</p>
+        <div id="luongSelectedArea" style="margin-top:12px;">
+          <p class="sub" id="luongEmptyHint">👆 Tìm và bấm chọn để xem chi tiết lương.</p>
+        </div>
       </div>
     </div>
   </section>
+
+  <!-- ============ MODAL: NHẬP JSON BẢNG LƯƠNG (chỉ Admin) ============ -->
+  <div class="modal-bg" id="luongImportModal">
+    <div class="modal" style="max-width:640px;">
+      <h3>📥 Dán dữ liệu bảng lương (JSON)</h3>
+      <p class="sub">Đúng cấu trúc: <code>{"08":{"label":"Tháng 8/2026","data":[{"ma":"Z0001","ten":"...","tenNgan":"...","ngayCong":"...","tongLuong":0,"luongDem":0,"tamUng":0}]}}</code></p>
+      <textarea id="luongImportTextarea" style="width:100%;min-height:220px;font-family:var(--font-mono);font-size:11.5px;padding:8px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);"></textarea>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="btnLuongImportCancel">Hủy</button>
+        <button type="button" class="btn btn-teal" id="btnLuongImportOk">Nạp dữ liệu</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ============ TAB: TỔNG QUAN 162 NGƯỜI ============ -->
   <section class="tab-panel" id="tab-overview">
@@ -2937,6 +2971,7 @@ async function doLogin(){
   if(hash === getActivePasswordHash()){
     clearLoginFails();
     sessionStorage.setItem('admin_logged_in', 'true');
+    try{ localStorage.setItem('v4_admin_device', '1'); }catch(e){}   // nhớ đây là máy Admin để lần mở sau không tự đè dữ liệu chưa đẩy
     err.textContent = '';
     closeLoginGate();
     applyAccessMode();
@@ -7390,17 +7425,93 @@ document.addEventListener('click', (e)=>{
 });
 function renderPersonalTab(){ applyViewerModeUI(); renderPersonalReport(); }
 
-// ================= TAB: BẢNG LƯƠNG CHÍNH THỨC (dữ liệu phòng KT, nhúng sẵn) =================
-const LUONG_MONTHS = {
-  "07": { label:"Tháng 7/2026", data: [{"ma":"Z0074","ten":"Lê Văn Bảy","tenNgan":"Bảy","ngayCong":"23,0","tongLuong":46186598,"luongDem":0,"tamUng":43877268},{"ma":"Z0601","ten":"Nguyễn Hữu Hưởng","tenNgan":"Hưởng","ngayCong":"23,0","tongLuong":41389006,"luongDem":0,"tamUng":39319556},{"ma":"Z0007","ten":"Nguyễn Thái Hợp","tenNgan":"Hợp","ngayCong":"23,0","tongLuong":42905881,"luongDem":0,"tamUng":40760587},{"ma":"Z0245","ten":"Nguyễn Việt Cường","tenNgan":"V.Cường","ngayCong":"23,0","tongLuong":31143297,"luongDem":0,"tamUng":29586132},{"ma":"Z1262","ten":"Nguyễn Văn Cương","tenNgan":"Cương","ngayCong":"23,0","tongLuong":27876517,"luongDem":0,"tamUng":26482692},{"ma":"Z0975","ten":"Vũ Thị Loan","tenNgan":"Loan","ngayCong":"23,0","tongLuong":20430874,"luongDem":0,"tamUng":19409330},{"ma":"Z0211","ten":"Nguyễn Trường Hưng","tenNgan":"Hưng","ngayCong":"31,8","tongLuong":28753781,"luongDem":3086039,"tamUng":27316092},{"ma":"Z0682","ten":"Phùng Quốc Khanh","tenNgan":"Khanh","ngayCong":"31,5","tongLuong":26316099,"luongDem":3744070,"tamUng":25000294},{"ma":"Z0247","ten":"Nguyễn Mạnh Hưng","tenNgan":"M.Hưng","ngayCong":"32,8","tongLuong":29051483,"luongDem":3497130,"tamUng":27598909},{"ma":"Z0632","ten":"Nguyễn Bá Huy","tenNgan":"B.Huy","ngayCong":"33,0","tongLuong":27894326,"luongDem":3833996,"tamUng":26499610},{"ma":"Z0700","ten":"Đỗ Quang Dương","tenNgan":"Dương","ngayCong":"29,5","tongLuong":26848833,"luongDem":4931667,"tamUng":25506392},{"ma":"Z0702","ten":"Hoàng Bá Duy","tenNgan":"H.Duy","ngayCong":"27,5","tongLuong":25781091,"luongDem":5739575,"tamUng":24492036},{"ma":"Z0763","ten":"Phùng Trọng Tâm","tenNgan":"P.Tâm","ngayCong":"30,0","tongLuong":23444935,"luongDem":4182282,"tamUng":22272689},{"ma":"Z0816","ten":"Quế Văn Khiêm","tenNgan":"Khiêm","ngayCong":"32,0","tongLuong":30074099,"luongDem":6324809,"tamUng":28570394},{"ma":"Z0755","ten":"Phạm Ngọc Sơn","tenNgan":"N.Sơn","ngayCong":"32,5","tongLuong":29660166,"luongDem":5966532,"tamUng":28177157},{"ma":"Z0691","ten":"Lục Thanh Tú","tenNgan":"Tú","ngayCong":"33,0","tongLuong":28171173,"luongDem":3210223,"tamUng":26762614},{"ma":"Z0641","ten":"Phùng Trọng Tuyển","tenNgan":"Tuyển","ngayCong":"31,5","tongLuong":31878349,"luongDem":8393112,"tamUng":30284431},{"ma":"Z0283","ten":"Phạm Vĩnh Hạnh","tenNgan":"Hạnh","ngayCong":"32,0","tongLuong":32547442,"luongDem":7693686,"tamUng":30920070},{"ma":"Z0253","ten":"Nguyễn Văn Hội","tenNgan":"Hội","ngayCong":"31,5","tongLuong":27276565,"luongDem":3607040,"tamUng":25912737},{"ma":"Z0263","ten":"Lê Văn Bằng","tenNgan":"Bằng","ngayCong":"32,0","tongLuong":35885518,"luongDem":6783005,"tamUng":34091242},{"ma":"Z0255","ten":"Nguyễn Hải Đăng","tenNgan":"Đăng","ngayCong":"29,5","tongLuong":25404889,"luongDem":6563185,"tamUng":24134645},{"ma":"Z0330","ten":"Hán Văn Hiệp","tenNgan":"Hiệp","ngayCong":"34,0","tongLuong":31154672,"luongDem":3291584,"tamUng":29596938},{"ma":"Z0272","ten":"Trương Thị Hoa","tenNgan":"Tr.Hoa","ngayCong":"31,5","tongLuong":25880829,"luongDem":6370486,"tamUng":24586788},{"ma":"Z0701","ten":"Phan Thành Duy","tenNgan":"P.Duy","ngayCong":"30,0","tongLuong":25915260,"luongDem":5571142,"tamUng":24619497},{"ma":"Z0232","ten":"Nguyễn Thị Hội","tenNgan":"T.Hội","ngayCong":"31,0","tongLuong":22195774,"luongDem":1725727,"tamUng":21085985},{"ma":"Z0729","ten":"Nguyễn Như Trường Giang","tenNgan":"N.Giang","ngayCong":"32,5","tongLuong":28685753,"luongDem":3247335,"tamUng":27251465},{"ma":"Z0767","ten":"Phạm Chí Linh","tenNgan":"Linh","ngayCong":"33,0","tongLuong":26688744,"luongDem":1193306,"tamUng":25354307},{"ma":"Z0768","ten":"Nguyễn Quang Hiếu","tenNgan":"Q.Hiếu","ngayCong":"31,5","tongLuong":28670800,"luongDem":3247335,"tamUng":27237260},{"ma":"Z0821","ten":"Bùi Văn Công","tenNgan":"Công","ngayCong":"30,5","tongLuong":25569264,"luongDem":0,"tamUng":24290801},{"ma":"Z0863","ten":"Nguyễn Văn Cường","tenNgan":"Cường.a","ngayCong":"35,5","tongLuong":28647164,"luongDem":2597868,"tamUng":27214806},{"ma":"Z0291","ten":"Phạm Minh Thuật","tenNgan":"Thuật","ngayCong":"33,0","tongLuong":30458998,"luongDem":2463692,"tamUng":28936048},{"ma":"Z0352","ten":"Trương Ngọc Đức","tenNgan":"N.Đức","ngayCong":"30,5","tongLuong":28253624,"luongDem":4176572,"tamUng":26840943},{"ma":"Z0620","ten":"Bùi Văn Sơn","tenNgan":"B.Sơn","ngayCong":"34,5","tongLuong":30634111,"luongDem":0,"tamUng":29102406},{"ma":"Z0284","ten":"Đào Bá Tước","tenNgan":"Tước","ngayCong":"32,5","tongLuong":31538112,"luongDem":2906186,"tamUng":29961206},{"ma":"Z0268","ten":"Nguyễn Bá Ích","tenNgan":"Ích","ngayCong":"31,5","tongLuong":26847660,"luongDem":5369879,"tamUng":25505277},{"ma":"Z0265","ten":"Nguyễn Quang Thức","tenNgan":"Thức","ngayCong":"29,5","tongLuong":23885427,"luongDem":1193306,"tamUng":22691156},{"ma":"Z0267","ten":"Nguyễn Anh Thư","tenNgan":"Thư","ngayCong":"32,5","tongLuong":30187901,"luongDem":8353145,"tamUng":28678506},{"ma":"Z0683","ten":"Nguyễn Khắc Thắng An","tenNgan":"An","ngayCong":"27,5","tongLuong":22210732,"luongDem":3405776,"tamUng":21099542},{"ma":"Z0703","ten":"Nguyễn Anh Tú","tenNgan":"A.Tú","ngayCong":"30,5","tongLuong":24581970,"luongDem":0,"tamUng":23352872},{"ma":"Z0730","ten":"Thân Quang Đạt","tenNgan":"Q.Đạt","ngayCong":"32,0","tongLuong":26757164,"luongDem":4449920,"tamUng":25419645},{"ma":"Z0731","ten":"Trần Quang Long","tenNgan":"Q.Long","ngayCong":"33,0","tongLuong":23854078,"luongDem":0,"tamUng":22661375},{"ma":"Z0765","ten":"Nguyễn Văn Tuấn Anh","tenNgan":"T.Anh","ngayCong":"30,5","tongLuong":25416967,"luongDem":2386613,"tamUng":24146118},{"ma":"Z0766","ten":"Đỗ Văn Hiếu","tenNgan":"V.Hiếu","ngayCong":"31,5","tongLuong":30442948,"luongDem":6336229,"tamUng":28920800},{"ma":"Z0835","ten":"Nguyễn Văn Phi","tenNgan":"N.Phi","ngayCong":"32,0","tongLuong":28167227,"luongDem":8154736,"tamUng":26758866},{"ma":"Z0278","ten":"Nguyễn Thanh Chúc","tenNgan":"Chúc","ngayCong":"26,5","tongLuong":22100359,"luongDem":2797704,"tamUng":20995341},{"ma":"Z0271","ten":"Phạm Duy Hưng","tenNgan":"P.Hưng","ngayCong":"30,5","tongLuong":28421049,"luongDem":5839493,"tamUng":26999996},{"ma":"Z0249","ten":"Nguyễn Nhật Chiến","tenNgan":"N.Chiến","ngayCong":"33,0","tongLuong":31083239,"luongDem":6494670,"tamUng":29529077},{"ma":"Z0292","ten":"Nguyễn Hữu Hiếu","tenNgan":"Hiếu","ngayCong":"31,0","tongLuong":31607555,"luongDem":6029338,"tamUng":30027177},{"ma":"Z0270","ten":"Vũ Mạnh Hà","tenNgan":"V.Hà","ngayCong":"33,5","tongLuong":28406004,"luongDem":4396392,"tamUng":26985704},{"ma":"Z0663","ten":"Lê Đức Anh","tenNgan":"Đ.Anh","ngayCong":"28,5","tongLuong":21649267,"luongDem":623774,"tamUng":20566804},{"ma":"Z0698","ten":"Nguyễn Huy Hoàng","tenNgan":"N.Hoàng","ngayCong":"32,0","tongLuong":28095527,"luongDem":1911289,"tamUng":26690751},{"ma":"Z0649","ten":"Đào Đình Đức","tenNgan":"Đ.Đức","ngayCong":"31,5","tongLuong":22957200,"luongDem":0,"tamUng":21809340},{"ma":"Z0806","ten":"Đinh Huy Hoàng","tenNgan":"Đ.Hoàng","ngayCong":"32,5","tongLuong":26793171,"luongDem":0,"tamUng":25453513},{"ma":"Z0822","ten":"Nguyễn Ngọc Dũng","tenNgan":"Dũng","ngayCong":"33,0","tongLuong":26610059,"luongDem":0,"tamUng":25279556},{"ma":"Z0857","ten":"Lương Quang Huy","tenNgan":"Q.Huy","ngayCong":"31,0","tongLuong":24224311,"luongDem":0,"tamUng":23013096},{"ma":"Z0860","ten":"Trần Thị Lan","tenNgan":"T.Lan","ngayCong":"32,5","tongLuong":27854727,"luongDem":4631913,"tamUng":26461991},{"ma":"Z0864","ten":"Lương Vũ Vân Ly","tenNgan":"Ly","ngayCong":"32,5","tongLuong":23575115,"luongDem":2744890,"tamUng":22396359},{"ma":"Z0300","ten":"Nguyễn Thị Thu Lý","tenNgan":"Lý","ngayCong":"31,5","tongLuong":25089132,"luongDem":3971027,"tamUng":23834675},{"ma":"Z0302","ten":"Nguyễn Thị Vân","tenNgan":"Vân","ngayCong":"33,5","tongLuong":29154301,"luongDem":6374768,"tamUng":27696586},{"ma":"Z0402","ten":"Đỗ Thị Minh Nghĩa","tenNgan":"Nghĩa","ngayCong":"31,5","tongLuong":25441609,"luongDem":5194309,"tamUng":24169528},{"ma":"Z0258","ten":"Phùng Thị Thành","tenNgan":"P.Thành","ngayCong":"31,5","tongLuong":23081281,"luongDem":2275276,"tamUng":21927217},{"ma":"Z0257","ten":"Dương Thị Hồng Ánh","tenNgan":"Ánh","ngayCong":"31,5","tongLuong":24506536,"luongDem":4473472,"tamUng":23281209},{"ma":"Z0296","ten":"Phan Thị Thu Trang","tenNgan":"Trang","ngayCong":"31,5","tongLuong":24392381,"luongDem":1648647,"tamUng":23172762},{"ma":"Z0664","ten":"Phạm Thị Huyền Trang","tenNgan":"H.Trang","ngayCong":"29,0","tongLuong":21165769,"luongDem":0,"tamUng":20107480},{"ma":"Z0732","ten":"Nguyễn Thị Yến","tenNgan":"N.Yến","ngayCong":"34,0","tongLuong":24745199,"luongDem":0,"tamUng":23507939},{"ma":"Z0819","ten":"Vi Thị Thanh Hiếu","tenNgan":"T.Hiếu","ngayCong":"30,0","tongLuong":23741493,"luongDem":2129681,"tamUng":22554419},{"ma":"Z0741","ten":"Vũ Thanh Tâm","tenNgan":"V.Tâm","ngayCong":"31,5","tongLuong":23211222,"luongDem":0,"tamUng":22050661},{"ma":"Z0818","ten":"Bùi Xuân Yến","tenNgan":"X.Yến","ngayCong":"32,5","tongLuong":21919570,"luongDem":0,"tamUng":20823591},{"ma":"Z0288","ten":"Lê Thị Thanh Huệ","tenNgan":"L.Huệ","ngayCong":"33,5","tongLuong":28999505,"luongDem":5241413,"tamUng":27549530},{"ma":"Z0266","ten":"Nguyễn Thành Chung","tenNgan":"Chung","ngayCong":"31,5","tongLuong":28037173,"luongDem":5788107,"tamUng":26635314},{"ma":"Z0281","ten":"Trần Thị Niên","tenNgan":"Niên","ngayCong":"30,0","tongLuong":21921129,"luongDem":0,"tamUng":20825073},{"ma":"Z0252","ten":"Trần Khắc Chuy","tenNgan":"Chuy","ngayCong":"32,0","tongLuong":34574763,"luongDem":5275670,"tamUng":32846024},{"ma":"Z0290","ten":"Phùng Thanh Hội","tenNgan":"P.Hội","ngayCong":"30,5","tongLuong":23823755,"luongDem":0,"tamUng":22632567},{"ma":"Z0400","ten":"Mai Văn Phương","tenNgan":"M.Phương","ngayCong":"31,5","tongLuong":30010470,"luongDem":7402496,"tamUng":28509947},{"ma":"Z0807","ten":"Phạm Văn Hải","tenNgan":"P.Hải","ngayCong":"31,5","tongLuong":25861269,"luongDem":0,"tamUng":24568205},{"ma":"Z0856","ten":"Vũ Thị Hồng Ngọc","tenNgan":"Ngọc","ngayCong":"34,0","tongLuong":24195945,"luongDem":0,"tamUng":22986148},{"ma":"Z0858","ten":"Trần Quốc Toàn","tenNgan":"Toàn","ngayCong":"25,5","tongLuong":20182361,"luongDem":0,"tamUng":19173243},{"ma":"Z0859","ten":"Dương Xuân Dũng","tenNgan":"X.Dũng","ngayCong":"32,5","tongLuong":26833889,"luongDem":2322380,"tamUng":25492194},{"ma":"Z0865","ten":"Nguyễn Văn Tiến","tenNgan":"N.Tiến","ngayCong":"32,0","tongLuong":25202583,"luongDem":1789960,"tamUng":23942453},{"ma":"Z0287","ten":"Đào Thị Hồng","tenNgan":"Đ.Hồng","ngayCong":"31,5","tongLuong":25469008,"luongDem":4644760,"tamUng":24195558},{"ma":"Z0631","ten":"Ngô Tiến Quang","tenNgan":"T.Quang","ngayCong":"30,0","tongLuong":27119946,"luongDem":5682479,"tamUng":25763948},{"ma":"Z0452","ten":"Mai Văn Dung","tenNgan":"M.Dung","ngayCong":"29,0","tongLuong":23754827,"luongDem":1911289,"tamUng":22567086},{"ma":"Z0280","ten":"Ngô Thế Cường","tenNgan":"N.Cường","ngayCong":"32,3","tongLuong":32615605,"luongDem":2206760,"tamUng":30984824},{"ma":"Z0141","ten":"Ngô Văn Quyết","tenNgan":"Quyết","ngayCong":"32,5","tongLuong":32735537,"luongDem":6685942,"tamUng":31098760},{"ma":"Z0668","ten":"Đỗ Trọng Đạo","tenNgan":"Đạo","ngayCong":"29,5","tongLuong":26692243,"luongDem":6553193,"tamUng":25357632},{"ma":"Z0404","ten":"Lê Thị Ái Vân","tenNgan":"L.Vân","ngayCong":"31,5","tongLuong":24278731,"luongDem":2871929,"tamUng":23064795},{"ma":"Z0361","ten":"Lê Thị Thùy Dung","tenNgan":"L.Dung","ngayCong":"29,0","tongLuong":21834946,"luongDem":4941659,"tamUng":20743199},{"ma":"Z0299","ten":"Kiều Thị Chin","tenNgan":"Chín","ngayCong":"31,5","tongLuong":22897882,"luongDem":1193306,"tamUng":21752988},{"ma":"Z0815","ten":"Nguyễn Thị Hồng Liên","tenNgan":"Liên","ngayCong":"31,5","tongLuong":22833707,"luongDem":0,"tamUng":21692022},{"ma":"Z0820","ten":"Kiều Văn Duy","tenNgan":"K.Duy","ngayCong":"32,0","tongLuong":24224335,"luongDem":1789960,"tamUng":23013118},{"ma":"Z0861","ten":"Đào Duy Hiệu","tenNgan":"Hiệu","ngayCong":"33,5","tongLuong":29488842,"luongDem":7746500,"tamUng":28014400},{"ma":"Z0862","ten":"Trần Mạnh Hùng","tenNgan":"Hùng","ngayCong":"31,5","tongLuong":26341508,"luongDem":0,"tamUng":25024432},{"ma":"Z0922","ten":"Lê Anh Tuấn","tenNgan":"L.Tuấn","ngayCong":"30,0","tongLuong":22350455,"luongDem":2125399,"tamUng":21232932},{"ma":"Z0923","ten":"Âu Ngọc Hải","tenNgan":"A.Hải","ngayCong":"29,0","tongLuong":21692155,"luongDem":3654144,"tamUng":20607548},{"ma":"Z0924","ten":"Mai Văn Lợi","tenNgan":"Lợi","ngayCong":"30,5","tongLuong":24144648,"luongDem":596653,"tamUng":22937416},{"ma":"Z0925","ten":"Nguyễn Văn Hưng","tenNgan":"Ng.Hưng","ngayCong":"32,0","tongLuong":28718459,"luongDem":7159838,"tamUng":27282536},{"ma":"Z0926","ten":"Trần Xuân Huy","tenNgan":"X.Huy","ngayCong":"33,0","tongLuong":25163711,"luongDem":1528745,"tamUng":23905525},{"ma":"Z0927","ten":"Lê Đức Toàn","tenNgan":"L.Toàn","ngayCong":"31,0","tongLuong":24710449,"luongDem":596653,"tamUng":23474927},{"ma":"Z0928","ten":"Đoàn Như Ngọc","tenNgan":"Đ.Ngọc","ngayCong":"31,5","tongLuong":28412810,"luongDem":5845203,"tamUng":26992170},{"ma":"Z0973","ten":"Trần Văn Chiến","tenNgan":"V.Chiến","ngayCong":"32,0","tongLuong":25346904,"luongDem":1193306,"tamUng":24079559},{"ma":"Z0976","ten":"Phùng Tiến Đạt","tenNgan":"P.Đạt","ngayCong":"31,5","tongLuong":25315879,"luongDem":4516294,"tamUng":24050085},{"ma":"Z0970","ten":"Nguyễn Đức Hào","tenNgan":"Hào","ngayCong":"30,0","tongLuong":21006618,"luongDem":509582,"tamUng":19956287},{"ma":"Z0977","ten":"Lương Việt Anh","tenNgan":"L.Anh","ngayCong":"32,0","tongLuong":25744874,"luongDem":4971634,"tamUng":24457630},{"ma":"Z0930","ten":"Nguyễn Văn Quân","tenNgan":"V.Quân","ngayCong":"34,0","tongLuong":26763057,"luongDem":1193306,"tamUng":25424898},{"ma":"Z0726","ten":"Hoàng Thị Minh Lý","tenNgan":"M.Lý","ngayCong":"","tongLuong":0,"luongDem":0,"tamUng":0},{"ma":"Z0966","ten":"Nguyễn Minh Thư","tenNgan":"M.Thư","ngayCong":"24,5","tongLuong":16930301,"luongDem":1019164,"tamUng":16083786},{"ma":"Z0994","ten":"Nguyễn Hữu Đạt","tenNgan":"H.Đạt","ngayCong":"30,5","tongLuong":22126821,"luongDem":1528745,"tamUng":21020480},{"ma":"Z0995","ten":"Nguyễn Văn Long","tenNgan":"V.Long","ngayCong":"31,5","tongLuong":25453991,"luongDem":4089501,"tamUng":24181292},{"ma":"Z0996","ten":"Nguyễn Quang Sơn","tenNgan":"Ng.Sơn","ngayCong":"22,0","tongLuong":16261763,"luongDem":3144562,"tamUng":15448675},{"ma":"Z0997","ten":"Nguyễn Như Hải","tenNgan":"Ng.Hải","ngayCong":"32,0","tongLuong":23867717,"luongDem":1193306,"tamUng":22674331},{"ma":"Z0998","ten":"Nguyễn Văn Dũng","tenNgan":"Ng.Dũng","ngayCong":"30,0","tongLuong":22936567,"luongDem":5195736,"tamUng":21789738},{"ma":"Z0999","ten":"Lê Văn Thành","tenNgan":"L.Thành","ngayCong":"29,5","tongLuong":22148218,"luongDem":2809123,"tamUng":21040807},{"ma":"Z1000","ten":"Hoàng Văn Thắng","tenNgan":"Thắng","ngayCong":"31,5","tongLuong":24538039,"luongDem":0,"tamUng":23311137},{"ma":"Z1001","ten":"Nguyễn Thị Phượng","tenNgan":"Phượng","ngayCong":"28,5","tongLuong":20232702,"luongDem":1099098,"tamUng":19221067},{"ma":"Z1002","ten":"Đinh Quang Tuấn","tenNgan":"Q.Tuấn","ngayCong":"31,5","tongLuong":25738793,"luongDem":4686154,"tamUng":24451853},{"ma":"Z1003","ten":"Nguyễn Tiến Khoa","tenNgan":"T.Khoa","ngayCong":"31,5","tongLuong":26385707,"luongDem":6563193,"tamUng":25066422},{"ma":"Z1004","ten":"Lê Thị Hiền","tenNgan":"Lê Hiền","ngayCong":"23,0","tongLuong":13833372,"luongDem":0,"tamUng":13141703},{"ma":"Z1005","ten":"Lê Tấn Dũng","tenNgan":"T.Dũng","ngayCong":"24,0","tongLuong":14493149,"luongDem":0,"tamUng":13768491},{"ma":"Z1006","ten":"Vũ Ngọc Ánh","tenNgan":"V.Ánh","ngayCong":"","tongLuong":0,"luongDem":0,"tamUng":0},{"ma":"Z1007","ten":"Lê Trung Kiên","tenNgan":"L.Kiên","ngayCong":"28,5","tongLuong":21888336,"luongDem":3231634,"tamUng":20793920},{"ma":"Z1008","ten":"Lương Ngọc Hải","tenNgan":"L.Hải","ngayCong":"28,5","tongLuong":21047872,"luongDem":1019164,"tamUng":19995478},{"ma":"Z1009","ten":"Nguyễn Văn Hưng","tenNgan":"V.Hưng","ngayCong":"29,5","tongLuong":22695407,"luongDem":3828287,"tamUng":21560637},{"ma":"Z1010","ten":"Trần Minh Tâm","tenNgan":"M.Tâm","ngayCong":"34,0","tongLuong":26964670,"luongDem":3492848,"tamUng":25616437},{"ma":"Z1011","ten":"Bùi Quốc Việt","tenNgan":"Q.Việt","ngayCong":"31,5","tongLuong":23909983,"luongDem":2386613,"tamUng":22714484},{"ma":"Z1012","ten":"Văn Chí Công","tenNgan":"V.Công","ngayCong":"31,5","tongLuong":24633894,"luongDem":1193306,"tamUng":23402199},{"ma":"Z1013","ten":"Doãn Văn Cường","tenNgan":"D.Cường","ngayCong":"32,5","tongLuong":24745198,"luongDem":1789960,"tamUng":23507938},{"ma":"Z1014","ten":"Phó Văn Bình","tenNgan":"P.Bình","ngayCong":"31,0","tongLuong":23424478,"luongDem":3231634,"tamUng":22253254},{"ma":"Z1015","ten":"Đào Ngọc Kỷ","tenNgan":"Kỷ","ngayCong":"25,5","tongLuong":19219649,"luongDem":573815,"tamUng":18258667},{"ma":"Z1016","ten":"Hà Thanh Tùng","tenNgan":"H.Tùng","ngayCong":"31,0","tongLuong":23430275,"luongDem":2983266,"tamUng":22258761},{"ma":"Z1017","ten":"Dương Huyền Trang","tenNgan":"D.Trang","ngayCong":"26,5","tongLuong":19977985,"luongDem":2292404,"tamUng":18979086},{"ma":"Z1018","ten":"Nguyễn Thiện Hải","tenNgan":"T.Hải","ngayCong":"29,0","tongLuong":21738956,"luongDem":0,"tamUng":20652008},{"ma":"Z1019","ten":"Phùng Văn Hùng","tenNgan":"P.Hùng","ngayCong":"32,0","tongLuong":23718136,"luongDem":2212470,"tamUng":22532229},{"ma":"Z1020","ten":"Hà Hồng Đức","tenNgan":"Hà Đức","ngayCong":"28,5","tongLuong":22448222,"luongDem":5487639,"tamUng":21325811},{"ma":"Z1021","ten":"Đặng Chung Tiểu Nguyệt","tenNgan":"Nguyệt","ngayCong":"31,5","tongLuong":21747339,"luongDem":509582,"tamUng":20659972},{"ma":"Z1022","ten":"Đinh Ngọc Lưu","tenNgan":"Lưu","ngayCong":"31,5","tongLuong":24619072,"luongDem":0,"tamUng":23388119},{"ma":"Z1023","ten":"Nguyễn Thanh Tú","tenNgan":"N.Tú","ngayCong":"32,0","tongLuong":24807114,"luongDem":1528745,"tamUng":23566759},{"ma":"Z1024","ten":"Lê Thị Phương","tenNgan":"L.Phương","ngayCong":"32,5","tongLuong":23790623,"luongDem":0,"tamUng":22601092},{"ma":"Z1025","ten":"Nguyễn Hoàng Thái","tenNgan":"Thái","ngayCong":"32,0","tongLuong":25109130,"luongDem":1615817,"tamUng":23853674},{"ma":"Z1026","ten":"Lê Văn Sang","tenNgan":"Sang","ngayCong":"29,5","tongLuong":21256313,"luongDem":0,"tamUng":20193497},{"ma":"Z1027","ten":"Đinh Tuấn Anh","tenNgan":"ĐT.Anh","ngayCong":"31,5","tongLuong":24589526,"luongDem":2809123,"tamUng":23360050},{"ma":"Z1028","ten":"Nguyễn Thu Chang","tenNgan":"Chang","ngayCong":"31,0","tongLuong":21256695,"luongDem":0,"tamUng":20193860},{"ma":"Z1029","ten":"Đào Duy Hoạt","tenNgan":"Hoạt","ngayCong":"30,5","tongLuong":23517820,"luongDem":3405776,"tamUng":22341929},{"ma":"Z1030","ten":"Nguyễn Quốc Minh","tenNgan":"Minh","ngayCong":"31,5","tongLuong":24618844,"luongDem":0,"tamUng":23387902},{"ma":"Z1031","ten":"Nguyễn Thị Ngân","tenNgan":"Ngân","ngayCong":"31,0","tongLuong":21510150,"luongDem":0,"tamUng":20434642},{"ma":"Z1032","ten":"Nguyễn Thu Hiền","tenNgan":"Ng.Hiền","ngayCong":"32,0","tongLuong":22289067,"luongDem":0,"tamUng":21174614},{"ma":"Z1067","ten":"Phùng Văn Bình","tenNgan":"V.Bình","ngayCong":"31,5","tongLuong":25960364,"luongDem":4176572,"tamUng":24662346},{"ma":"Z1125","ten":"Hoàng Thị Yến","tenNgan":"H.Yến","ngayCong":"28,5","tongLuong":18938329,"luongDem":0,"tamUng":17991412},{"ma":"Z1126","ten":"Doãn Thị Ngọc Thúy","tenNgan":"D.Thúy","ngayCong":"32,0","tongLuong":22988687,"luongDem":1019164,"tamUng":21839253},{"ma":"Z1127","ten":"Nguyễn Thị Thu Linh","tenNgan":"N.Linh","ngayCong":"32,0","tongLuong":22168687,"luongDem":0,"tamUng":21060439},{"ma":"Z1128","ten":"Mẫu Mai Chi","tenNgan":"Chi","ngayCong":"30,5","tongLuong":19790644,"luongDem":0,"tamUng":18801112},{"ma":"Z1033","ten":"Thiều Trọng Khiêm","tenNgan":"T.Khiêm","ngayCong":"31,5","tongLuong":25225550,"luongDem":5065129,"tamUng":23964272},{"ma":"Z1291","ten":"Nguyễn Thị Thu Hà","tenNgan":"Thu Hà","ngayCong":"30,5","tongLuong":21160688,"luongDem":1019164,"tamUng":20102654},{"ma":"Z1292","ten":"Lê Trung Thành","tenNgan":"Tr.Thành","ngayCong":"31,5","tongLuong":21333358,"luongDem":2547909,"tamUng":20266690},{"ma":"Z1293","ten":"Hoàng Như Sáu","tenNgan":"H.Sáu","ngayCong":"33,0","tongLuong":22855986,"luongDem":1019164,"tamUng":21713187},{"ma":"Z1294","ten":"Nguyễn Hồng Tuấn","tenNgan":"H.Tuấn","ngayCong":"25,0","tongLuong":15664110,"luongDem":1019164,"tamUng":14880905},{"ma":"Z1296","ten":"Ngô Tiến Cường","tenNgan":"T.Cường","ngayCong":"32,5","tongLuong":25912439,"luongDem":3144562,"tamUng":24616817},{"ma":"Z1297","ten":"Đậu Thị Hương","tenNgan":"Đ.Hương","ngayCong":"33,0","tongLuong":22539408,"luongDem":0,"tamUng":21412438},{"ma":"Z1298","ten":"Đỗ Đức Chiến","tenNgan":"Đ.Chiến","ngayCong":"33,0","tongLuong":23120033,"luongDem":0,"tamUng":21964031},{"ma":"Z1299","ten":"Trịnh Quốc Huy","tenNgan":"Tr.Huy","ngayCong":"31,0","tongLuong":21583186,"luongDem":1528745,"tamUng":20504027},{"ma":"Z1356","ten":"Trần Mạnh Hùng","tenNgan":"Trần.Hùng","ngayCong":"28,5","tongLuong":20444940,"luongDem":0,"tamUng":19422693},{"ma":"Z1357","ten":"Nguyễn Quang Dũng","tenNgan":"Nguyễn.Dũng","ngayCong":"31,0","tongLuong":22105440,"luongDem":509582,"tamUng":21000168},{"ma":"Z0222","ten":"Phạm Như Vinh","tenNgan":"","ngayCong":"2,0","tongLuong":1360272,"luongDem":0,"tamUng":1292258},{"ma":"Z0223","ten":"Đinh Đức Hà","tenNgan":"","ngayCong":"2,0","tongLuong":1360272,"luongDem":0,"tamUng":1292258}] },
-  "08": { label:"Tháng 8/2026", data: [{"ma":"Z0211","ten":"Nguyễn Trường Hưng","tenNgan":"Hưng","ngayCong":"31,5","tongLuong":28117421,"luongDem":3785465,"tamUng":26711550},{"ma":"Z0682","ten":"Phùng Quốc Khanh","tenNgan":"Khanh","ngayCong":"28,0","tongLuong":25776777,"luongDem":6083579,"tamUng":24487938},{"ma":"Z0247","ten":"Nguyễn Mạnh Hưng","tenNgan":"M.Hưng","ngayCong":"28,0","tongLuong":27474364,"luongDem":6192061,"tamUng":26100645},{"ma":"Z0632","ten":"Nguyễn Bá Huy","tenNgan":"B.Huy","ngayCong":"27,0","tongLuong":23794768,"luongDem":1797097,"tamUng":22605030},{"ma":"Z0700","ten":"Đỗ Quang Dương","tenNgan":"Dương","ngayCong":"32,5","tongLuong":28432980,"luongDem":4282200,"tamUng":27011331},{"ma":"Z0702","ten":"Hoàng Bá Duy","tenNgan":"H.Duy","ngayCong":"26,0","tongLuong":23983211,"luongDem":7018526,"tamUng":22784051},{"ma":"Z0763","ten":"Phùng Trọng Tâm","tenNgan":"P.Tâm","ngayCong":"28,0","tongLuong":24646965,"luongDem":4387828,"tamUng":23414617},{"ma":"Z0816","ten":"Quế Văn Khiêm","tenNgan":"Khiêm","ngayCong":"31,5","tongLuong":26255750,"luongDem":1875604,"tamUng":24942963},{"ma":"Z0755","ten":"Phạm Ngọc Sơn","tenNgan":"N.Sơn","ngayCong":"31,5","tongLuong":27406008,"luongDem":3579919,"tamUng":26035707},{"ma":"Z0691","ten":"Lục Thanh Tú","tenNgan":"Tú","ngayCong":"32,5","tongLuong":26059529,"luongDem":4110912,"tamUng":24756552},{"ma":"Z0641","ten":"Phùng Trọng Tuyển","tenNgan":"Tuyển","ngayCong":"32,5","tongLuong":31777956,"luongDem":4196556,"tamUng":30189058},{"ma":"Z0283","ten":"Phạm Vĩnh Hạnh","tenNgan":"Hạnh","ngayCong":"28,0","tongLuong":30227268,"luongDem":8393112,"tamUng":28715904},{"ma":"Z0253","ten":"Nguyễn Văn Hội","tenNgan":"Hội","ngayCong":"28,0","tongLuong":26666671,"luongDem":4733258,"tamUng":25333337},{"ma":"Z0263","ten":"Lê Văn Bằng","tenNgan":"Bằng","ngayCong":"27,0","tongLuong":31867899,"luongDem":6029338,"tamUng":30274504},{"ma":"Z0255","ten":"Nguyễn Hải Đăng","tenNgan":"Đăng","ngayCong":"27,0","tongLuong":24710902,"luongDem":6563185,"tamUng":23475357},{"ma":"Z0330","ten":"Hán Văn Hiệp","tenNgan":"Hiệp","ngayCong":"32,5","tongLuong":30739175,"luongDem":3291584,"tamUng":29202216},{"ma":"Z0272","ten":"Trương Thị Hoa","tenNgan":"Tr.Hoa","ngayCong":"28,0","tongLuong":23792699,"luongDem":2960428,"tamUng":22603064},{"ma":"Z0701","ten":"Phan Thành Duy","tenNgan":"P.Duy","ngayCong":"28,0","tongLuong":23243123,"luongDem":1193306,"tamUng":22080966},{"ma":"Z0232","ten":"Nguyễn Thị Hội","tenNgan":"T.Hội","ngayCong":"27,0","tongLuong":18431627,"luongDem":509582,"tamUng":17510045},{"ma":"Z0729","ten":"Nguyễn Như Trường Giang","tenNgan":"N.Giang","ngayCong":"27,0","tongLuong":24012300,"luongDem":4546269,"tamUng":22811685},{"ma":"Z0767","ten":"Phạm Chí Linh","tenNgan":"Linh","ngayCong":"25,0","tongLuong":20640901,"luongDem":2973274,"tamUng":19608856},{"ma":"Z0768","ten":"Nguyễn Quang Hiếu","tenNgan":"Q.Hiếu","ngayCong":"26,0","tongLuong":26187402,"luongDem":7144137,"tamUng":24878032},{"ma":"Z0821","ten":"Bùi Văn Công","tenNgan":"Công","ngayCong":"28,5","tongLuong":23921214,"luongDem":0,"tamUng":22725153},{"ma":"Z0863","ten":"Nguyễn Văn Cường","tenNgan":"Cường.a","ngayCong":"27,0","tongLuong":23891365,"luongDem":649467,"tamUng":22696797},{"ma":"Z0291","ten":"Phạm Minh Thuật","tenNgan":"Thuật","ngayCong":"28,0","tongLuong":25273224,"luongDem":2098278,"tamUng":24009563},{"ma":"Z0352","ten":"Trương Ngọc Đức","tenNgan":"N.Đức","ngayCong":"28,0","tongLuong":24501157,"luongDem":1789960,"tamUng":23276099},{"ma":"Z0620","ten":"Bùi Văn Sơn","tenNgan":"B.Sơn","ngayCong":"28,0","tongLuong":25680992,"luongDem":0,"tamUng":24396943},{"ma":"Z0284","ten":"Đào Bá Tước","tenNgan":"Tước","ngayCong":"28,0","tongLuong":30907892,"luongDem":3768336,"tamUng":29362497},{"ma":"Z0268","ten":"Nguyễn Bá Ích","tenNgan":"Ích","ngayCong":"27,0","tongLuong":24143334,"luongDem":5926565,"tamUng":22936167},{"ma":"Z0265","ten":"Nguyễn Quang Thức","tenNgan":"Thức","ngayCong":"28,0","tongLuong":25513760,"luongDem":4708993,"tamUng":24238072},{"ma":"Z0267","ten":"Nguyễn Anh Thư","tenNgan":"Thư","ngayCong":"28,0","tongLuong":24687214,"luongDem":3579919,"tamUng":23452854},{"ma":"Z0683","ten":"Nguyễn Khắc Thắng An","tenNgan":"An","ngayCong":"25,0","tongLuong":20446078,"luongDem":3338689,"tamUng":19423774},{"ma":"Z0703","ten":"Nguyễn Anh Tú","tenNgan":"A.Tú","ngayCong":"26,0","tongLuong":20996223,"luongDem":0,"tamUng":19946411},{"ma":"Z0730","ten":"Thân Quang Đạt","tenNgan":"Q.Đạt","ngayCong":"28,0","tongLuong":24159725,"luongDem":3564218,"tamUng":22951739},{"ma":"Z0731","ten":"Trần Quang Long","tenNgan":"Q.Long","ngayCong":"24,0","tongLuong":18823387,"luongDem":596653,"tamUng":17882217},{"ma":"Z0765","ten":"Nguyễn Văn Tuấn Anh","tenNgan":"T.Anh","ngayCong":"27,0","tongLuong":23266628,"luongDem":1789960,"tamUng":22103297},{"ma":"Z0766","ten":"Đỗ Văn Hiếu","tenNgan":"V.Hiếu","ngayCong":"27,0","tongLuong":25094948,"luongDem":3796884,"tamUng":23840201},{"ma":"Z0835","ten":"Nguyễn Văn Phi","tenNgan":"N.Phi","ngayCong":"24,0","tongLuong":20312732,"luongDem":3579919,"tamUng":19297095},{"ma":"Z0278","ten":"Nguyễn Thanh Chúc","tenNgan":"Chúc","ngayCong":"20,0","tongLuong":17592963,"luongDem":0,"tamUng":16713315},{"ma":"Z0271","ten":"Phạm Duy Hưng","tenNgan":"P.Hưng","ngayCong":"28,0","tongLuong":27751622,"luongDem":6995687,"tamUng":26364048},{"ma":"Z0249","ten":"Nguyễn Nhật Chiến","tenNgan":"N.Chiến","ngayCong":"28,0","tongLuong":17956633,"luongDem":3247335,"tamUng":17058802},{"ma":"Z0292","ten":"Nguyễn Hữu Hiếu","tenNgan":"Hiếu","ngayCong":"29,5","tongLuong":33115270,"luongDem":6029338,"tamUng":31459507},{"ma":"Z0270","ten":"Vũ Mạnh Hà","tenNgan":"V.Hà","ngayCong":"29,0","tongLuong":25208838,"luongDem":3522823,"tamUng":23948396},{"ma":"Z0663","ten":"Lê Đức Anh","tenNgan":"Đ.Anh","ngayCong":"28,0","tongLuong":23661217,"luongDem":3455735,"tamUng":22478156},{"ma":"Z0698","ten":"Nguyễn Huy Hoàng","tenNgan":"N.Hoàng","ngayCong":"26,0","tongLuong":23346632,"luongDem":2874784,"tamUng":22179300},{"ma":"Z0649","ten":"Đào Đình Đức","tenNgan":"Đ.Đức","ngayCong":"25,0","tongLuong":17361919,"luongDem":596653,"tamUng":16493823},{"ma":"Z0806","ten":"Đinh Huy Hoàng","tenNgan":"Đ.Hoàng","ngayCong":"27,0","tongLuong":21638799,"luongDem":0,"tamUng":20556859},{"ma":"Z0822","ten":"Nguyễn Ngọc Dũng","tenNgan":"Dũng","ngayCong":"28,0","tongLuong":22458570,"luongDem":0,"tamUng":21335642},{"ma":"Z0857","ten":"Lương Quang Huy","tenNgan":"Q.Huy","ngayCong":"27,0","tongLuong":21454238,"luongDem":0,"tamUng":20381526},{"ma":"Z0860","ten":"Trần Thị Lan","tenNgan":"T.Lan","ngayCong":"16,0","tongLuong":14365702,"luongDem":2212470,"tamUng":13647416},{"ma":"Z0864","ten":"Lương Vũ Vân Ly","tenNgan":"Ly","ngayCong":"26,0","tongLuong":19522968,"luongDem":1193306,"tamUng":18546819},{"ma":"Z0300","ten":"Nguyễn Thị Thu Lý","tenNgan":"Lý","ngayCong":"27,0","tongLuong":22668658,"luongDem":3387220,"tamUng":21535225},{"ma":"Z0302","ten":"Nguyễn Thị Vân","tenNgan":"Vân","ngayCong":"23,0","tongLuong":19690986,"luongDem":2940444,"tamUng":18706436},{"ma":"Z0402","ten":"Đỗ Thị Minh Nghĩa","tenNgan":"Nghĩa","ngayCong":"28,0","tongLuong":23652857,"luongDem":4694719,"tamUng":22470214},{"ma":"Z0258","ten":"Phùng Thị Thành","tenNgan":"P.Thành","ngayCong":"27,0","tongLuong":20685169,"luongDem":1789960,"tamUng":19650910},{"ma":"Z0257","ten":"Dương Thị Hồng Ảnh","tenNgan":"Ánh","ngayCong":"28,0","tongLuong":23083835,"luongDem":4035260,"tamUng":21929643},{"ma":"Z0296","ten":"Phan Thị Thu Trang","tenNgan":"Trang","ngayCong":"28,0","tongLuong":23637197,"luongDem":1193306,"tamUng":22455337},{"ma":"Z0664","ten":"Phạm Thị Huyền Trang","tenNgan":"H.Trang","ngayCong":"26,0","tongLuong":18794561,"luongDem":0,"tamUng":17854833},{"ma":"Z0732","ten":"Nguyễn Thị Yến","tenNgan":"N.Yến","ngayCong":"24,0","tongLuong":16877152,"luongDem":0,"tamUng":16033295},{"ma":"Z0819","ten":"Vi Thị Thanh Hiếu","tenNgan":"T.Hiếu","ngayCong":"27,5","tongLuong":20594452,"luongDem":532420,"tamUng":19564730},{"ma":"Z0741","ten":"Vũ Thanh Tâm","tenNgan":"V.Tâm","ngayCong":"27,0","tongLuong":20021690,"luongDem":0,"tamUng":19020605},{"ma":"Z0818","ten":"Bùi Xuân Yến","tenNgan":"X.Yến","ngayCong":"27,5","tongLuong":20245793,"luongDem":1099098,"tamUng":19233504},{"ma":"Z0288","ten":"Lê Thị Thanh Huệ","tenNgan":"L.Huệ","ngayCong":"28,5","tongLuong":25654594,"luongDem":3322987,"tamUng":24371864},{"ma":"Z0266","ten":"Nguyễn Thành Chung","tenNgan":"Chung","ngayCong":"28,0","tongLuong":24270167,"luongDem":3685547,"tamUng":23056659},{"ma":"Z0281","ten":"Trần Thị Niên","tenNgan":"Niên","ngayCong":"26,0","tongLuong":20582839,"luongDem":0,"tamUng":19553697},{"ma":"Z0290","ten":"Phùng Thanh Hội","tenNgan":"P.Hội","ngayCong":"20,0","tongLuong":22849938,"luongDem":596653,"tamUng":21707441},{"ma":"Z0400","ten":"Mai Văn Phương","tenNgan":"M.Phương","ngayCong":"27,0","tongLuong":24787333,"luongDem":4156589,"tamUng":23547967},{"ma":"Z0807","ten":"Phạm Văn Hải","tenNgan":"P.Hải","ngayCong":"27,0","tongLuong":22263714,"luongDem":0,"tamUng":21150528},{"ma":"Z0856","ten":"Vũ Thị Hồng Ngọc","tenNgan":"Ngọc","ngayCong":"27,0","tongLuong":18569144,"luongDem":0,"tamUng":17640687},{"ma":"Z0858","ten":"Trần Quốc Toàn","tenNgan":"Toàn","ngayCong":"20,0","tongLuong":16413822,"luongDem":0,"tamUng":15592808},{"ma":"Z0859","ten":"Dương Xuân Dũng","tenNgan":"X.Dũng","ngayCong":"27,0","tongLuong":21599822,"luongDem":0,"tamUng":20519831},{"ma":"Z0865","ten":"Nguyễn Văn Tiến","tenNgan":"N.Tiến","ngayCong":"28,0","tongLuong":26082161,"luongDem":3247335,"tamUng":24778053},{"ma":"Z0287","ten":"Đào Thị Hồng","tenNgan":"Đ.Hồng","ngayCong":"28,0","tongLuong":25298551,"luongDem":5124366,"tamUng":24033624},{"ma":"Z0631","ten":"Ngô Tiến Quang","tenNgan":"T.Quang","ngayCong":"28,5","tongLuong":30136964,"luongDem":2906186,"tamUng":28630116},{"ma":"Z0452","ten":"Mai Văn Dung","tenNgan":"M.Dung","ngayCong":"31,5","tongLuong":29082173,"luongDem":4494883,"tamUng":27628065},{"ma":"Z0280","ten":"Ngô Thế Cường","tenNgan":"N.Cường","ngayCong":"26,0","tongLuong":27511254,"luongDem":0,"tamUng":26135691},{"ma":"Z0141","ten":"Ngô Văn Quyết","tenNgan":"Quyết","ngayCong":"28,0","tongLuong":27352266,"luongDem":4196556,"tamUng":25984652},{"ma":"Z0668","ten":"Đỗ Trọng Đạo","tenNgan":"Đạo","ngayCong":"25,0","tongLuong":21559758,"luongDem":2386613,"tamUng":20481770},{"ma":"Z0404","ten":"Lê Thị Ái Vân","tenNgan":"L.Vân","ngayCong":"28,0","tongLuong":22853936,"luongDem":3485711,"tamUng":21711239},{"ma":"Z0361","ten":"Lê Thị Thùy Dung","tenNgan":"L.Dung","ngayCong":"27,0","tongLuong":20534606,"luongDem":2794849,"tamUng":19507876},{"ma":"Z0815","ten":"Nguyễn Thị Hồng Liên","tenNgan":"Liên","ngayCong":"27,0","tongLuong":19790425,"luongDem":0,"tamUng":18800903},{"ma":"Z0820","ten":"Kiều Văn Duy","tenNgan":"K.Duy","ngayCong":"27,0","tongLuong":23239634,"luongDem":3544234,"tamUng":22077653},{"ma":"Z0861","ten":"Đào Duy Hiệu","tenNgan":"Hiệu","ngayCong":"31,5","tongLuong":25291902,"luongDem":2936162,"tamUng":24027307},{"ma":"Z0862","ten":"Trần Mạnh Hùng","tenNgan":"Hùng","ngayCong":"28,0","tongLuong":23152983,"luongDem":0,"tamUng":21995334},{"ma":"Z0922","ten":"Lê Anh Tuấn","tenNgan":"L.Tuấn","ngayCong":"28,0","tongLuong":24239048,"luongDem":1193306,"tamUng":23027096},{"ma":"Z0299","ten":"Kiều Thị Chin","tenNgan":"Chín","ngayCong":"27,0","tongLuong":22594100,"luongDem":4580527,"tamUng":21464395},{"ma":"Z0923","ten":"Âu Ngọc Hải","tenNgan":"A.Hải","ngayCong":"27,0","tongLuong":23161487,"luongDem":6127828,"tamUng":22003413},{"ma":"Z0924","ten":"Mai Văn Lợi","tenNgan":"Lợi","ngayCong":"28,0","tongLuong":23432279,"luongDem":0,"tamUng":22260665},{"ma":"Z0925","ten":"Nguyễn Văn Hưng","tenNgan":"Ng.Hưng","ngayCong":"28,0","tongLuong":22775789,"luongDem":2386613,"tamUng":21636999},{"ma":"Z0926","ten":"Trần Xuân Huy","tenNgan":"X.Huy","ngayCong":"28,0","tongLuong":24586531,"luongDem":5195736,"tamUng":23357205},{"ma":"Z0927","ten":"Lê Đức Toàn","tenNgan":"L.Toàn","ngayCong":"27,0","tongLuong":21999004,"luongDem":1789960,"tamUng":20899054},{"ma":"Z0928","ten":"Đoàn Như Ngọc","tenNgan":"Đ.Ngọc","ngayCong":"22,0","tongLuong":20453169,"luongDem":3791174,"tamUng":19430511},{"ma":"Z0973","ten":"Trần Văn Chiến","tenNgan":"V.Chiến","ngayCong":"28,0","tongLuong":22320183,"luongDem":3405776,"tamUng":21204174},{"ma":"Z0976","ten":"Phùng Tiến Đạt","tenNgan":"P.Đạt","ngayCong":"27,0","tongLuong":21524401,"luongDem":2155374,"tamUng":20448181},{"ma":"Z0977","ten":"Lương Việt Anh","tenNgan":"L.Anh","ngayCong":"28,0","tongLuong":23579374,"luongDem":2841953,"tamUng":22400406},{"ma":"Z0970","ten":"Nguyễn Đức Hào","tenNgan":"Hào","ngayCong":"26,0","tongLuong":19727883,"luongDem":0,"tamUng":18741489},{"ma":"Z0930","ten":"Nguyễn Văn Quân","tenNgan":"V.Quân","ngayCong":"26,0","tongLuong":20203577,"luongDem":1086251,"tamUng":19193398},{"ma":"Z0966","ten":"Nguyễn Minh Thư","tenNgan":"M.Thư","ngayCong":"26,0","tongLuong":18265703,"luongDem":0,"tamUng":17352417},{"ma":"Z0994","ten":"Nguyễn Hữu Đạt","tenNgan":"H.Đạt","ngayCong":"25,0","tongLuong":17560620,"luongDem":0,"tamUng":16682589},{"ma":"Z0995","ten":"Nguyễn Văn Long","tenNgan":"V.Long","ngayCong":"28,0","tongLuong":23297543,"luongDem":1193306,"tamUng":22132666},{"ma":"Z0996","ten":"Nguyễn Quang Sơn","tenNgan":"Ng.Sơn","ngayCong":"22,0","tongLuong":17756065,"luongDem":3828287,"tamUng":16868261},{"ma":"Z0997","ten":"Nguyễn Như Hải","tenNgan":"Ng.Hải","ngayCong":"27,0","tongLuong":23128326,"luongDem":2386613,"tamUng":21971909},{"ma":"Z0998","ten":"Nguyễn Văn Dũng","tenNgan":"Ng.Dũng","ngayCong":"27,0","tongLuong":21015170,"luongDem":1528745,"tamUng":19964412},{"ma":"Z0999","ten":"Lê Văn Thành","tenNgan":"L.Thành","ngayCong":"25,0","tongLuong":19750372,"luongDem":0,"tamUng":18762853},{"ma":"Z1000","ten":"Hoàng Văn Thắng","tenNgan":"Thắng","ngayCong":"27,0","tongLuong":23273801,"luongDem":1789960,"tamUng":22110111},{"ma":"Z1001","ten":"Nguyễn Thị Phượng","tenNgan":"Phượng","ngayCong":"28,0","tongLuong":22607499,"luongDem":4396392,"tamUng":21477124},{"ma":"Z1002","ten":"Đinh Quang Tuấn","tenNgan":"Q.Tuấn","ngayCong":"24,0","tongLuong":19453931,"luongDem":3057491,"tamUng":18481234},{"ma":"Z1003","ten":"Nguyễn Tiến Khoa","tenNgan":"T.Khoa","ngayCong":"21,0","tongLuong":14408435,"luongDem":596653,"tamUng":13688013},{"ma":"Z1004","ten":"Lê Thị Hiền","tenNgan":"Lê Hiền","ngayCong":"24,0","tongLuong":17026147,"luongDem":0,"tamUng":16174839},{"ma":"Z1005","ten":"Lê Tấn Dũng","tenNgan":"T.Dũng","ngayCong":"25,0","tongLuong":19143281,"luongDem":596653,"tamUng":18186117},{"ma":"Z1357","ten":"Nguyễn Quang Dũng","tenNgan":"Nguyễn.Dũng","ngayCong":"28,0","tongLuong":21629299,"luongDem":3567073,"tamUng":20547834},{"ma":"Z1007","ten":"Lê Trung Kiên","tenNgan":"L.Kiên","ngayCong":"26,0","tongLuong":19632471,"luongDem":3654144,"tamUng":18650847},{"ma":"Z1008","ten":"Lương Ngọc Hải","tenNgan":"L.Hải","ngayCong":"27,0","tongLuong":21517143,"luongDem":1789960,"tamUng":20441285},{"ma":"Z1009","ten":"Nguyễn Văn Hưng","tenNgan":"V.Hưng","ngayCong":"26,0","tongLuong":21149996,"luongDem":3231634,"tamUng":20092496},{"ma":"Z1010","ten":"Trần Minh Tâm","tenNgan":"M.Tâm","ngayCong":"28,0","tongLuong":22498541,"luongDem":1615817,"tamUng":21373614},{"ma":"Z1011","ten":"Bùi Quốc Việt","tenNgan":"Q.Việt","ngayCong":"28,0","tongLuong":23270225,"luongDem":3405776,"tamUng":22106713},{"ma":"Z1012","ten":"Văn Chí Công","tenNgan":"V.Công","ngayCong":"28,0","tongLuong":21941046,"luongDem":1789960,"tamUng":20843994},{"ma":"Z1013","ten":"Doãn Văn Cường","tenNgan":"D.Cường","ngayCong":"28,0","tongLuong":22803574,"luongDem":596653,"tamUng":21663395},{"ma":"Z1014","ten":"Phó Văn Bình","tenNgan":"P.Bình","ngayCong":"26,0","tongLuong":21314628,"luongDem":2896195,"tamUng":20248897},{"ma":"Z1015","ten":"Đào Ngọc Kỷ","tenNgan":"Kỷ","ngayCong":"27,0","tongLuong":24213933,"luongDem":5302791,"tamUng":23003236},{"ma":"Z1016","ten":"Hà Thanh Tùng","tenNgan":"H.Tùng","ngayCong":"28,0","tongLuong":22871685,"luongDem":2386613,"tamUng":21728101},{"ma":"Z1017","ten":"Dương Huyền Trang","tenNgan":"D.Trang","ngayCong":"24,0","tongLuong":17682253,"luongDem":1199016,"tamUng":16798140},{"ma":"Z1018","ten":"Nguyễn Thiện Hải","tenNgan":"T.Hải","ngayCong":"28,0","tongLuong":22677544,"luongDem":0,"tamUng":21543667},{"ma":"Z1019","ten":"Phùng Văn Hùng","tenNgan":"P.Hùng","ngayCong":"28,0","tongLuong":22745257,"luongDem":1193306,"tamUng":21607994},{"ma":"Z1020","ten":"Hà Hồng Đức","tenNgan":"Hà Đức","ngayCong":"28,0","tongLuong":22836489,"luongDem":2212470,"tamUng":21694665},{"ma":"Z1021","ten":"Nguyệt","tenNgan":"Nguyệt","ngayCong":"37,0","tongLuong":24783962,"luongDem":0,"tamUng":23544764},{"ma":"Z1022","ten":"Đinh Ngọc Lưu","tenNgan":"Lưu","ngayCong":"27,0","tongLuong":23068819,"luongDem":0,"tamUng":21915378},{"ma":"Z1023","ten":"Nguyễn Thanh Tú","tenNgan":"N.Tú","ngayCong":"27,0","tongLuong":21778677,"luongDem":0,"tamUng":20689743},{"ma":"Z1024","ten":"Lê Thị Phương","tenNgan":"L.Phương","ngayCong":"27,0","tongLuong":19403260,"luongDem":0,"tamUng":18433097},{"ma":"Z1025","ten":"Nguyễn Hoàng Thái","tenNgan":"Thái","ngayCong":"28,0","tongLuong":23859404,"luongDem":2386613,"tamUng":22666433},{"ma":"Z1026","ten":"Lê Văn Sang","tenNgan":"Sang","ngayCong":"24,0","tongLuong":18345086,"luongDem":0,"tamUng":17427832},{"ma":"Z1027","ten":"Đinh Tuấn Anh","tenNgan":"ĐT.Anh","ngayCong":"28,0","tongLuong":23844773,"luongDem":3405776,"tamUng":22652534},{"ma":"Z1028","ten":"Nguyễn Thu Chang","tenNgan":"Chang","ngayCong":"26,0","tongLuong":18727318,"luongDem":0,"tamUng":17790952},{"ma":"Z1029","ten":"Đào Duy Hoạt","tenNgan":"Hoạt","ngayCong":"28,0","tongLuong":23066314,"luongDem":2386613,"tamUng":21912999},{"ma":"Z1030","ten":"Nguyễn Quốc Minh","tenNgan":"Minh","ngayCong":"27,0","tongLuong":22830253,"luongDem":0,"tamUng":21688740},{"ma":"Z1031","ten":"Nguyễn Thị Ngân","tenNgan":"Ngân","ngayCong":"27,0","tongLuong":18825491,"luongDem":0,"tamUng":17884217},{"ma":"Z1032","ten":"Nguyễn Thu Hiền","tenNgan":"Ng.Hiền","ngayCong":"28,0","tongLuong":20372119,"luongDem":0,"tamUng":19353513},{"ma":"Z1067","ten":"Phùng Văn Bình","tenNgan":"V.Bình","ngayCong":"28,0","tongLuong":23873391,"luongDem":2386613,"tamUng":22679721},{"ma":"Z1125","ten":"Hoàng Thị Yến","tenNgan":"H.Yến","ngayCong":"28,0","tongLuong":18262649,"luongDem":0,"tamUng":17349517},{"ma":"Z1126","ten":"Doãn Thị Ngọc Thúy","tenNgan":"D.Thúy","ngayCong":"24,0","tongLuong":17084237,"luongDem":0,"tamUng":16230025},{"ma":"Z1127","ten":"Nguyễn Thị Thu Linh","tenNgan":"N.Linh","ngayCong":"27,0","tongLuong":19894015,"luongDem":0,"tamUng":18899315},{"ma":"Z1128","ten":"Mẫu Mai Chi","tenNgan":"Chi","ngayCong":"23,0","tongLuong":15857469,"luongDem":0,"tamUng":15064595},{"ma":"Z1033","ten":"Thiều Trọng Khiêm","tenNgan":"T.Khiêm","ngayCong":"27,0","tongLuong":20182809,"luongDem":1528745,"tamUng":19173669},{"ma":"Z1291","ten":"Nguyễn Thị Thu Hà","tenNgan":"Thu Hà","ngayCong":"23,0","tongLuong":14807550,"luongDem":0,"tamUng":14067172},{"ma":"Z1292","ten":"Lê Trung Thành","tenNgan":"Tr.Thành","ngayCong":"26,0","tongLuong":17906849,"luongDem":1019164,"tamUng":17011506},{"ma":"Z1293","ten":"Hoàng Như Sáu","tenNgan":"H.Sáu","ngayCong":"27,0","tongLuong":19204313,"luongDem":2722052,"tamUng":18244098},{"ma":"Z1294","ten":"Nguyễn Hồng Tuấn","tenNgan":"H.Tuấn","ngayCong":"22,0","tongLuong":14283587,"luongDem":2547909,"tamUng":13569407},{"ma":"Z1296","ten":"Ngô Tiến Cường","tenNgan":"T.Cường","ngayCong":"27,0","tongLuong":21162721,"luongDem":2212470,"tamUng":20104585},{"ma":"Z1297","ten":"Đậu Thị Hương","tenNgan":"Đ.Hương","ngayCong":"28,0","tongLuong":17746626,"luongDem":0,"tamUng":16859295},{"ma":"Z1298","ten":"Đỗ Đức Chiến","tenNgan":"Đ.Chiến","ngayCong":"27,0","tongLuong":21060609,"luongDem":2038327,"tamUng":20007578},{"ma":"Z1299","ten":"Trịnh Quốc Huy","tenNgan":"Tr.Huy","ngayCong":"28,0","tongLuong":21956674,"luongDem":2038327,"tamUng":20858840},{"ma":"Z1356","ten":"Trần Mạnh Hùng","tenNgan":"Trần.Hùng","ngayCong":"28,0","tongLuong":21613754,"luongDem":3231634,"tamUng":20533067}] }
-};
-let luongCurrentMonth = "08";
+// ================= TAB: BẢNG LƯƠNG CHÍNH THỨC (dữ liệu phòng KT) =================
+// ⚠️ KHÔNG nhúng dữ liệu lương thật vào file này nữa — file .html này gửi cho ai
+// cũng đọc được "Xem nguồn trang", nên số liệu lương (tên + tiền) tuyệt đối không
+// được để tĩnh ở đây. Dữ liệu chỉ tồn tại trong bộ nhớ phiên (sessionStorage) sau khi
+// Admin đăng nhập + đồng bộ từ kho D1 (có khóa X-Sync-Key), hoặc Admin tự dán JSON vào.
+const LUONG_CACHE_KEY = 'v4_luong_cache_session'; // sessionStorage — tự xóa khi đóng tab trình duyệt
+let LUONG_MONTHS = {};
+
+function loadLuongFromSession(){
+  try{
+    const raw = sessionStorage.getItem(LUONG_CACHE_KEY);
+    if(raw) LUONG_MONTHS = JSON.parse(raw) || {};
+  }catch(e){ LUONG_MONTHS = {}; }
+}
+function saveLuongToSession(){
+  try{ sessionStorage.setItem(LUONG_CACHE_KEY, JSON.stringify(LUONG_MONTHS)); }catch(e){}
+}
+function clearLuongFromSession(){
+  try{ sessionStorage.removeItem(LUONG_CACHE_KEY); }catch(e){}
+  LUONG_MONTHS = {};
+}
+// Tải bảng lương từ kho D1 (cần Admin đã đăng nhập D1_KEY — xem mục "Đồng bộ" trong ⋯ Thêm).
+// Yêu cầu Worker có endpoint GET /luong/export kiểm tra header X-Sync-Key trước khi trả dữ liệu.
+async function loadLuongFromD1(){
+  if(!isAdminV4){ await customAlert('⚠️ Cần đăng nhập Admin trước.'); return false; }
+  if(!D1_URL || !D1_KEY){ await customAlert('⚠️ Chưa cấu hình địa chỉ/khóa kho D1 (xem ⋯ Thêm → Đồng bộ).'); return false; }
+  try{
+    const res = await fetch(D1_URL + '/luong/export?t=' + Date.now(), { headers: { 'X-Sync-Key': D1_KEY } });
+    if(res.status === 404){ await customAlert('ℹ️ Kho D1 chưa có endpoint /luong/export — cần bổ sung ở Worker trước (xem ghi chú kỹ thuật đã gửi).'); return false; }
+    if(!res.ok){ await customAlert('⚠️ Lỗi tải bảng lương: HTTP ' + res.status); return false; }
+    const data = await res.json();
+    LUONG_MONTHS = data && typeof data === 'object' ? data : {};
+    saveLuongToSession();
+    const months = Object.keys(LUONG_MONTHS);
+    luongCurrentMonth = months.length ? months[months.length - 1] : '';
+    if(typeof renderLuongTab === 'function') renderLuongTab();
+    showToast('✅ Đã tải bảng lương từ kho D1');
+    return true;
+  }catch(e){ await customAlert('⚠️ Không kết nối được kho D1 để lấy bảng lương.'); return false; }
+}
+// Đẩy bảng lương (đã nhập/sửa) lên kho D1 để lưu tập trung — Worker cần endpoint POST /luong/import.
+async function pushLuongToD1(){
+  if(!isAdminV4){ await customAlert('⚠️ Cần đăng nhập Admin trước.'); return false; }
+  if(!D1_URL || !D1_KEY){ await customAlert('⚠️ Chưa cấu hình địa chỉ/khóa kho D1.'); return false; }
+  try{
+    const res = await fetch(D1_URL + '/luong/import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Sync-Key': D1_KEY },
+      body: JSON.stringify(LUONG_MONTHS)
+    });
+    if(res.status === 404){ await customAlert('ℹ️ Kho D1 chưa có endpoint /luong/import — dữ liệu tạm thời chỉ lưu trên máy này (phiên hiện tại).'); return false; }
+    if(!res.ok){ await customAlert('⚠️ Lỗi lưu lên kho D1: HTTP ' + res.status); return false; }
+    showToast('✅ Đã lưu bảng lương lên kho D1');
+    return true;
+  }catch(e){ await customAlert('⚠️ Không kết nối được kho D1 — dữ liệu tạm thời chỉ lưu trên máy này (phiên hiện tại).'); return false; }
+}
+// Admin dán JSON bảng lương thủ công (đúng cấu trúc {"07":{label,data:[...]},...}) — dùng khi
+// chưa có endpoint D1, hoặc muốn cập nhật nhanh cho phiên làm việc hiện tại.
+async function importLuongManual(){
+  if(!isAdminV4){ await customAlert('⚠️ Cần đăng nhập Admin trước.'); return; }
+  const modal = document.getElementById('luongImportModal');
+  const textarea = document.getElementById('luongImportTextarea');
+  textarea.value = '';
+  modal.classList.add('show');
+  const cleanup = () => modal.classList.remove('show');
+  document.getElementById('btnLuongImportCancel').onclick = cleanup;
+  document.getElementById('btnLuongImportOk').onclick = async () => {
+    let parsed;
+    try{ parsed = JSON.parse(textarea.value); }
+    catch(e){ await customAlert('❌ JSON không hợp lệ — kiểm tra lại định dạng.'); return; }
+    LUONG_MONTHS = parsed && typeof parsed === 'object' ? parsed : {};
+    saveLuongToSession();
+    const months = Object.keys(LUONG_MONTHS);
+    luongCurrentMonth = months.length ? months[months.length - 1] : '';
+    cleanup();
+    if(typeof renderLuongTab === 'function') renderLuongTab();
+    showToast('✅ Đã nạp bảng lương cho phiên làm việc này');
+    await pushLuongToD1(); // thử đồng bộ luôn lên D1 nếu Worker đã hỗ trợ
+  };
+}
+loadLuongFromSession(); // chỉ khôi phục dữ liệu đã có trong phiên trình duyệt hiện tại (nếu có)
+let luongCurrentMonth = Object.keys(LUONG_MONTHS).slice(-1)[0] || '';
 let luongSelected = [];
 let luongMatches = [];
 let luongActiveIndex = -1;
 
-function luongData(){ return LUONG_MONTHS[luongCurrentMonth].data; }
+function luongData(){ return (LUONG_MONTHS[luongCurrentMonth] && LUONG_MONTHS[luongCurrentMonth].data) || []; }
 function luongFmt(n){ if(!n) return '—'; return n.toLocaleString('vi-VN'); }
 
 function renderLuongMonthSwitch(){
@@ -7421,7 +7532,7 @@ document.getElementById('luongMonthSwitch').addEventListener('click', (e)=>{
 
 function renderLuongTop15(){
   const ranked = luongData().filter(e=>e.tongLuong>0).slice().sort((a,b)=>b.tongLuong-a.tongLuong).slice(0,15);
-  document.getElementById('luongTop15Sub').textContent = LUONG_MONTHS[luongCurrentMonth].label;
+  document.getElementById('luongTop15Sub').textContent = (LUONG_MONTHS[luongCurrentMonth] && LUONG_MONTHS[luongCurrentMonth].label) || '';
   const max = ranked.length ? ranked[0].tongLuong : 1;
   document.getElementById('luongTop15List').innerHTML = ranked.map((r,i)=>{
     const pct = Math.max(4, Math.round((r.tongLuong/max)*100));
@@ -7517,7 +7628,22 @@ document.getElementById('luongSelectedArea').addEventListener('click', (e)=>{
   if(btn) luongRemoveEmployee(btn.dataset.ma);
 });
 
+document.getElementById('btnLuongLoadD1').addEventListener('click', loadLuongFromD1);
+document.getElementById('btnLuongImportBtn').addEventListener('click', importLuongManual);
+document.getElementById('btnLuongClear').addEventListener('click', async ()=>{
+  if(!(await customConfirm('Xóa dữ liệu lương khỏi phiên làm việc này? (Kho D1 nếu có vẫn giữ nguyên)'))) return;
+  clearLuongFromSession();
+  renderLuongTab();
+  showToast('🗑 Đã xóa khỏi phiên này');
+});
+
 function renderLuongTab(){
+  const empty = Object.keys(LUONG_MONTHS).length === 0;
+  const emptyBox = document.getElementById('luongEmptyState');
+  const contentBox = document.getElementById('luongContentArea');
+  if(emptyBox) emptyBox.style.display = empty ? 'block' : 'none';
+  if(contentBox) contentBox.style.display = empty ? 'none' : 'block';
+  if(empty) return;
   renderLuongMonthSwitch();
   renderLuongTop15();
   renderLuongSelected();
@@ -8913,7 +9039,42 @@ function fmtSyncClock(iso){
   const d = iso ? new Date(iso) : new Date();
   return d.toLocaleString('vi-VN', { hour:'2-digit', minute:'2-digit', day:'2-digit', month:'2-digit' });
 }
-async function loadFromGithubSilent(){
+// ---- BẢO VỆ DỮ LIỆU KHI TỰ ĐỒNG BỘ LÚC MỞ APP ----
+// Lỗi cũ: mỗi lần mở app (sessionStorage đã mất => chế độ công khai) hàm tự đồng bộ GHI ĐÈ thẳng dữ liệu máy bằng
+// bản trên máy chủ, không so sánh gì cả => dữ liệu vừa nhập/vừa tải về bị bản cũ hơn (hoặc bản rỗng) đè mất.
+// Nay: (1) không bao giờ đè bản có dữ liệu bằng bản máy chủ RỖNG; (2) trên máy từng dùng để Admin đẩy dữ liệu,
+// nếu máy có bản ghi mà máy chủ chưa có thì KHÔNG tự đè — chờ Admin bấm Đẩy hoặc Tải thủ công.
+var __syncGuardNotified = false;
+function isAdminDevice(){
+  try{
+    return localStorage.getItem('v4_admin_device') === '1' ||
+           !!localStorage.getItem('v4_d1_last_push') ||
+           !!localStorage.getItem('v4_worker_sync_state');
+  }catch(e){ return false; }
+}
+function autoSyncGuard(remoteRecords, src){
+  if(!Array.isArray(remoteRecords)) return true;
+  const local = Array.isArray(state.records) ? state.records : [];
+  let reason = '';
+  if(local.length && !remoteRecords.length){
+    reason = 'Máy chủ (' + src + ') đang trống nhưng máy này có ' + local.length + ' bản ghi';
+  } else if(isAdminDevice()){
+    const ids = new Set(remoteRecords.map(r => String(r.id)));
+    const localOnly = local.filter(r => !ids.has(String(r.id))).length;
+    if(localOnly) reason = 'Máy này có ' + localOnly + ' bản ghi chưa có trên ' + src;
+  }
+  if(!reason) return true;
+  const label = document.getElementById('syncStatusText');
+  if(label) label.textContent = '⏸️ ' + reason + ' — KHÔNG tự ghi đè. Bấm 📤 Đẩy để lưu lên, hoặc 📥 Tải để lấy bản máy chủ.';
+  if(!__syncGuardNotified){
+    __syncGuardNotified = true;
+    try{ logActivity('⏸️ Bỏ qua tự cập nhật lúc mở app: ' + reason); }catch(e){}
+    try{ showToast('⏸️ ' + reason + ' — không tự ghi đè', 6000); }catch(e){}
+  }
+  return false;
+}
+
+async function loadFromGithubSilent(opts){
   const label = document.getElementById('syncStatusText');
   let data = null, lastErr = null;
   // 1) Thử Worker (đường duy nhất)
@@ -8925,6 +9086,7 @@ async function loadFromGithubSilent(){
     }catch(e){ lastErr = 'Worker: ' + e.message; }
   } else { lastErr = 'Chưa cấu hình Worker'; }
   if(!data){ if(label) label.textContent = '⚠️ ' + (lastErr || 'Chưa có dữ liệu trên máy chủ'); return false; }
+  if(!(opts && opts.force) && !autoSyncGuard(data.records, 'Worker')) return 'blocked';
   if(data.customStages) state.customStages = data.customStages;
   if(data.customBatches) state.customBatches = data.customBatches;
   if(data.customShifts) state.customShifts = data.customShifts;
@@ -8944,7 +9106,7 @@ async function loadFromGithubSilent(){
 }
 
 // ---- Tự lặng lẽ tải từ kho D1 (chỉ chạy lúc CHƯA đăng nhập Admin — an toàn, không đè dữ liệu đang nhập dở) ----
-async function loadFromD1Silent(){
+async function loadFromD1Silent(opts){
   const label = document.getElementById('syncStatusText');
   if(!D1_URL) return false;
   let data = null;
@@ -8954,6 +9116,7 @@ async function loadFromD1Silent(){
     if(!res.ok){ if(label) label.textContent = '⚠️ Kho D1 lỗi HTTP ' + res.status; return false; }
     data = await res.json();
   }catch(e){ if(label) label.textContent = '⚠️ Không kết nối được kho D1'; return false; }
+  if(!(opts && opts.force) && !autoSyncGuard(Array.isArray(data.records) ? data.records.map(recordFromD1) : null, 'kho D1')) return 'blocked';
   if(Array.isArray(data.employees) && data.employees.length) EMPLOYEES = data.employees;
   if(Array.isArray(data.records)) state.records = data.records.map(recordFromD1);
   if(Array.isArray(data.lookups)){
@@ -8986,7 +9149,7 @@ async function loadFromD1Silent(){
 // ---- Đầu mối tự động đồng bộ: ưu tiên kho D1 trước (mới hơn), nếu không có/lỗi thì rơi về Worker cũ ----
 async function silentAutoSync(){
   const okD1 = await loadFromD1Silent();
-  if(!okD1) await loadFromGithubSilent();
+  if(okD1 === false) await loadFromGithubSilent();   // 'blocked' = D1 trả lời nhưng bị chặn ghi đè → KHÔNG thử Worker (Worker có thể là bản cũ hơn)
 }
 
 let publicAutoRefreshTimer = null;
@@ -10049,6 +10212,19 @@ function markRecordsDeletedForD1(ids){
   });
   saveD1SyncedIds(synced);
   saveD1PendingDeletes(pending);
+
+  // Theo dõi song song cho Supabase (đẩy tăng dần dùng chung cơ chế "bản ghi đã xóa chưa báo")
+  if(typeof getSupabaseSyncedIds === 'function'){
+    const sSynced = getSupabaseSyncedIds();
+    const sPending = getSupabasePendingDeletes();
+    ids.forEach(id=>{
+      const key = String(id);
+      sPending.add(key);
+      sSynced.delete(key);
+    });
+    saveSupabaseSyncedIds(sSynced);
+    saveSupabasePendingDeletes(sPending);
+  }
 }
 
 async function pushToD1(){
@@ -10268,6 +10444,241 @@ document.getElementById('btnD1Push')?.addEventListener('click', pushToD1);
 document.getElementById('btnD1Pull')?.addEventListener('click', pullFromD1);
 updateD1Dot();
 updateD1LastSyncInfo();
+
+// ================= ĐỒNG BỘ QUA SUPABASE (thử nghiệm — lựa chọn thứ 3, song song với Worker/D1) =================
+// Project URL + anon key KHÔNG phải bí mật (anon key chỉ có quyền theo RLS đã cấu hình sẵn trên
+// Supabase — người xem thường chỉ đọc được, chỉ tài khoản Admin mới ghi được), nên để thẳng
+// trong code là an toàn, giống cách làm với SYNC_WORKER_URL_DEFAULT ở trên.
+var SUPABASE_URL = 'https://dsntritqxnyhkjjkxmup.supabase.co';
+var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRzbnRyaXRxeG55aGtqamt4bXVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk4ODYzMTMsImV4cCI6MjEwNTQ2MjMxM30.8N0EK5iL0VfSHdLWkaBHBuQO39E2htNzk2WR83EdBFo';
+var supabaseClient = (typeof window.supabase !== 'undefined')
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+var SUPABASE_LAST_PUSH_KEY = 'v4_supabase_last_push';
+var SUPABASE_LAST_PULL_KEY = 'v4_supabase_last_pull';
+
+// ---- Theo dõi bản ghi đã đẩy lên Supabase + bản ghi vừa xóa trên máy nhưng chưa báo cho
+// Supabase biết — để mỗi lần "Đẩy" chỉ cần gửi phần mới/thay đổi/xóa, không phải ghi đè lại
+// toàn bộ (tiết kiệm lượt ghi trên Supabase). Cùng cơ chế như kho D1 đang dùng.
+const SUPABASE_SYNCED_IDS_KEY = 'v4_supabase_synced_ids';
+const SUPABASE_PENDING_DELETES_KEY = 'v4_supabase_pending_deletes';
+const SUPABASE_META_FP_KEY = 'v4_supabase_meta_fp';
+function getSupabaseSyncedIds(){
+  try{ return new Set(JSON.parse(localStorage.getItem(SUPABASE_SYNCED_IDS_KEY) || '[]')); }catch(e){ return new Set(); }
+}
+function saveSupabaseSyncedIds(set){
+  try{ localStorage.setItem(SUPABASE_SYNCED_IDS_KEY, JSON.stringify([...set])); }catch(e){}
+}
+function getSupabasePendingDeletes(){
+  try{ return new Set(JSON.parse(localStorage.getItem(SUPABASE_PENDING_DELETES_KEY) || '[]')); }catch(e){ return new Set(); }
+}
+function saveSupabasePendingDeletes(set){
+  try{ localStorage.setItem(SUPABASE_PENDING_DELETES_KEY, JSON.stringify([...set])); }catch(e){}
+}
+
+function saveSupabaseLastSync(kind){
+  try{ localStorage.setItem(kind === 'push' ? SUPABASE_LAST_PUSH_KEY : SUPABASE_LAST_PULL_KEY, new Date().toISOString()); }catch(e){}
+  updateSupabaseLastSyncInfo();
+}
+function updateSupabaseLastSyncInfo(){
+  const el = document.getElementById('supabaseLastSyncInfo');
+  if(!el) return;
+  let push = null, pull = null;
+  try{ push = localStorage.getItem(SUPABASE_LAST_PUSH_KEY); }catch(e){}
+  try{ pull = localStorage.getItem(SUPABASE_LAST_PULL_KEY); }catch(e){}
+  el.textContent = `📤 Đẩy lần cuối: ${formatD1SyncTime(push)} · 📥 Tải lần cuối: ${formatD1SyncTime(pull)}`;
+}
+
+async function pingSupabase(){
+  if(!supabaseClient) return false;
+  try{
+    const { error } = await supabaseClient.rpc('get_version');
+    return !error;
+  }catch(e){ return false; }
+}
+
+async function isSupabaseAdminLoggedIn(){
+  if(!supabaseClient) return false;
+  try{
+    const { data } = await supabaseClient.auth.getSession();
+    return !!(data && data.session);
+  }catch(e){ return false; }
+}
+
+async function updateSupabaseDot(){
+  const dot = document.getElementById('dotSupabaseSync');
+  if(!dot) return;
+  if(!supabaseClient){ dot.className = 'sync-dot dot-red'; dot.title = 'Chưa nạp được thư viện Supabase (kiểm tra mạng)'; return; }
+  const ok = await pingSupabase();
+  if(!ok){ dot.className = 'sync-dot dot-red'; dot.title = 'Không kết nối được Supabase'; return; }
+  const loggedIn = await isSupabaseAdminLoggedIn();
+  dot.className = 'sync-dot ' + (loggedIn ? 'dot-green' : 'dot-gray');
+  dot.title = loggedIn ? 'Supabase OK — đã đăng nhập Admin (đẩy/tải được)' : 'Supabase OK — CHƯA đăng nhập Admin (chỉ tải được, chưa đẩy được)';
+}
+
+async function loginSupabaseAdmin(){
+  if(!supabaseClient){ await customAlert('⚠️ Chưa nạp được thư viện Supabase — kiểm tra kết nối mạng rồi tải lại trang.'); return; }
+  const email = await customPrompt('📧 Nhập email tài khoản Admin Supabase (tạo ở Authentication → Users):');
+  if(!email){ showToast('Đã hủy đăng nhập'); return; }
+  const password = await customPrompt('🔑 Nhập mật khẩu tài khoản Admin Supabase:');
+  if(!password){ showToast('Đã hủy đăng nhập'); return; }
+  showToast('⏳ Đang đăng nhập...', 4000);
+  const { error } = await supabaseClient.auth.signInWithPassword({ email: email.trim(), password });
+  if(error){
+    await customAlert('❌ Đăng nhập thất bại: ' + error.message);
+  }else{
+    await customAlert('✅ Đăng nhập Admin Supabase thành công.\n\n🔒 Phiên đăng nhập được trình duyệt tự giữ lại (kể cả sau khi tải lại trang) cho tới khi bạn bấm "Đăng xuất Admin Supabase".');
+  }
+  updateSupabaseDot();
+  document.getElementById('moreMenu').classList.remove('open');
+}
+
+async function logoutSupabaseAdmin(){
+  if(!supabaseClient) return;
+  await supabaseClient.auth.signOut();
+  showToast('🚪 Đã đăng xuất Admin Supabase');
+  updateSupabaseDot();
+  document.getElementById('moreMenu').classList.remove('open');
+}
+
+// Dùng lại recordToD1 vì bảng "records" trên Supabase dùng đúng cùng cấu trúc cột
+// (client_id, date, shift, stage, employee_code, batch, extra) như kho D1 đã có.
+function buildSupabaseMetaPayload(){
+  return {
+    employees: EMPLOYEES,
+    lookups: [
+      ...(state.customStages||[]).map(name => ({ kind: 'stage', name })),
+      ...(state.customBatches||[]).map(name => ({ kind: 'batch', name })),
+      ...(state.customShifts||[]).map(name => ({ kind: 'shift', name }))
+    ],
+    state: {
+      dayImages: state.dayImages,
+      savedTeams: state.savedTeams,
+      settings: state.settings
+    }
+  };
+}
+
+async function pushToSupabase(){
+  document.getElementById('moreMenu').classList.remove('open');
+  if(!supabaseClient){ await customAlert('⚠️ Chưa nạp được thư viện Supabase.'); return; }
+  if(!(await isSupabaseAdminLoggedIn())){
+    await customAlert('⚠️ Chưa đăng nhập Admin Supabase — bấm "🔑 Đăng nhập Admin Supabase" trước đã.');
+    return;
+  }
+  showToast('⏳ Đang kiểm tra phiên bản hiện có trên Supabase...', 4000);
+  const { data: curVersion, error: vErr } = await supabaseClient.rpc('get_version');
+  if(vErr){ await customAlert('❌ Không lấy được phiên bản hiện tại trên Supabase: ' + vErr.message); return; }
+
+  // 1) Nhân viên/danh mục/cấu hình — chỉ gửi khi có thay đổi so với lần đẩy trước (dùng dấu vân tay quickHash)
+  const metaPayload = buildSupabaseMetaPayload();
+  const metaFp = quickHash(JSON.stringify(metaPayload));
+  const metaChanged = localStorage.getItem(SUPABASE_META_FP_KEY) !== metaFp;
+
+  // 2) Bản ghi mới/đổi kể từ lần đẩy trước + bản ghi đã xóa trên máy chưa báo
+  const synced = getSupabaseSyncedIds();
+  const toSync = state.records.filter(r => !synced.has(String(r.id)));
+  const pending = getSupabasePendingDeletes();
+
+  if(!toSync.length && !pending.size && !metaChanged){
+    await customAlert('✅ Không có gì mới để đẩy — Supabase đã khớp với máy này rồi.');
+    return;
+  }
+
+  const ok = await customConfirm(
+    'Đẩy dữ liệu lên Supabase (tăng dần — chỉ gửi phần mới/đổi)?\n\n' +
+    `📤 ${toSync.length} bản ghi mới/đổi\n` +
+    `🗑 ${pending.size} bản ghi cần xóa\n` +
+    `👥 Nhân viên/danh mục/cấu hình: ${metaChanged ? 'có thay đổi — sẽ gửi kèm' : 'không đổi — bỏ qua'}\n\n` +
+    `📦 Supabase hiện ở phiên bản v${curVersion}`
+  );
+  if(!ok) return;
+
+  showToast('⏳ Đang đẩy lên Supabase...', 4000);
+  const { data: result, error } = await supabaseClient.rpc('push_records_incremental', {
+    p_upserts: toSync.map(recordToD1),
+    p_deletes: [...pending],
+    p_employees: metaChanged ? metaPayload.employees : null,
+    p_lookups: metaChanged ? metaPayload.lookups : null,
+    p_state: metaChanged ? metaPayload.state : null,
+    p_expected_version: curVersion
+  });
+  if(error){
+    await customAlert('❌ Đẩy lên Supabase thất bại: ' + error.message +
+      (error.message && error.message.includes('push_records_incremental') ? '\n\n⚠️ Có vẻ chưa chạy file SQL bổ sung "push_records_incremental" trên Supabase — chạy file đó trước rồi thử lại.' : ''));
+  }else if(result && result.ok){
+    toSync.forEach(r => synced.add(String(r.id)));
+    saveSupabaseSyncedIds(synced);
+    saveSupabasePendingDeletes(new Set());
+    if(metaChanged){ try{ localStorage.setItem(SUPABASE_META_FP_KEY, metaFp); }catch(e){} }
+    showToast('✅ Đã đẩy lên Supabase — v' + result.version + ' · ' + toSync.length + ' mới/đổi · ' + pending.size + ' xóa');
+    logActivity('🟢 Đẩy lên Supabase (tăng dần) — thành công (v' + result.version + ')');
+    saveSupabaseLastSync('push');
+    const label = document.getElementById('syncStatusText');
+    if(label) label.textContent = '✅ Đã đẩy lúc ' + fmtSyncClock(new Date().toISOString());
+  }else{
+    const reason = (result && result.reason) || 'không rõ';
+    const reasonText = reason === 'version_conflict'
+      ? `Supabase đã có bản mới hơn (v${result.current_version}) — hãy bấm "📥 Tải từ Supabase" trước rồi đẩy lại.`
+      : (reason === 'not_admin' ? 'Tài khoản đang đăng nhập KHÔNG có quyền Admin trên bảng admins.' : reason);
+    await customAlert('❌ Đẩy lên Supabase bị từ chối: ' + reasonText);
+  }
+  updateSupabaseDot();
+}
+
+async function pullFromSupabase(){
+  document.getElementById('moreMenu').classList.remove('open');
+  if(!supabaseClient){ await customAlert('⚠️ Chưa nạp được thư viện Supabase.'); return; }
+  showToast('⏳ Đang tải từ Supabase...', 4000);
+  const { data, error } = await supabaseClient.rpc('pull_dataset');
+  if(error){ await customAlert('❌ Tải từ Supabase thất bại: ' + error.message); return; }
+
+  const ok = await customConfirm(
+    'Tải dữ liệu từ Supabase về máy này?\n\n' +
+    `📦 Supabase: v${data.version} — ${(data.records||[]).length} bản ghi, ${(data.employees||[]).length} nhân viên\n` +
+    `💻 Máy này hiện có: ${state.records.length} bản ghi\n\n` +
+    'Dữ liệu trên máy sẽ bị GHI ĐÈ bằng bản từ Supabase.'
+  );
+  if(!ok) return;
+
+  if(Array.isArray(data.employees) && data.employees.length) EMPLOYEES = data.employees;
+  if(Array.isArray(data.records)) state.records = data.records.map(recordFromD1);
+  if(Array.isArray(data.lookups)){
+    state.customStages = data.lookups.filter(l=>l.kind==='stage').map(l=>l.name);
+    state.customBatches = data.lookups.filter(l=>l.kind==='batch').map(l=>l.name);
+    state.customShifts = data.lookups.filter(l=>l.kind==='shift').map(l=>l.name);
+  }
+  if(data.state){
+    if(data.state.dayImages) state.dayImages = data.state.dayImages;
+    if(data.state.savedTeams) state.savedTeams = data.state.savedTeams;
+    if(data.state.settings) Object.assign(state.settings, data.state.settings);
+  }
+  rebuildShiftList();
+  saveStages(); saveBatches(); saveShifts(); saveRecords(); saveImages(); saveTeams(); saveEmployeesLS(); saveSettings();
+  renderStats(); renderRecords(); renderAnalytics(); renderOverview(); updateImageViewer(); renderBatchOptions(); renderSavedTeams(); renderChips(); renderShiftOptionSelects();
+  if(typeof renderPersonalReport === 'function' && state.personalCode) renderPersonalReport();
+  if(typeof renderAggregateShiftChart === 'function') renderAggregateShiftChart();
+  if(typeof refreshPersonalModulesPanel === 'function') refreshPersonalModulesPanel();
+  showToast('✅ Đã tải từ Supabase — v' + data.version);
+  logActivity('🟢 Tải từ Supabase — thành công (v' + data.version + ')');
+  saveSupabaseLastSync('pull');
+  // Vừa tải nguyên trạng từ Supabase — mọi bản ghi hiện có coi như đã đồng bộ, và fingerprint
+  // nhân viên/cấu hình cũng cập nhật lại, để lần Đẩy sau tính đúng phần thật sự mới/đổi.
+  saveSupabaseSyncedIds(new Set(state.records.map(r=>String(r.id))));
+  saveSupabasePendingDeletes(new Set());
+  try{ localStorage.setItem(SUPABASE_META_FP_KEY, quickHash(JSON.stringify(buildSupabaseMetaPayload()))); }catch(e){}
+  const label = document.getElementById('syncStatusText');
+  if(label) label.textContent = '✅ Cập nhật từ Supabase lúc ' + fmtSyncClock(new Date().toISOString());
+  updateSupabaseDot();
+}
+
+document.getElementById('btnSupabaseLogin')?.addEventListener('click', loginSupabaseAdmin);
+document.getElementById('btnSupabaseLogout')?.addEventListener('click', logoutSupabaseAdmin);
+document.getElementById('btnSupabasePush')?.addEventListener('click', pushToSupabase);
+document.getElementById('btnSupabasePull')?.addEventListener('click', pullFromSupabase);
+updateSupabaseDot();
+updateSupabaseLastSyncInfo();
 
 // ================= ĐẨY/TẢI NHANH DÙNG CHUNG — 1 PIN / 1 PHIÊN =================
 // PIN chỉ mở khóa phiên thao tác. Credential thật của Worker/D1 vẫn giữ nguyên,
@@ -10650,10 +11061,10 @@ async function pullBothQuick(){
   let okW=false, okD=false;
   try{
     if(flow==='worker' || flow==='both' || flow==='auto'){
-      if(canW) okW=await loadFromGithubSilent();
+      if(canW) okW=await loadFromGithubSilent({force:true});
     }
     if(flow==='d1' || flow==='both' || (flow==='auto'&&!okW)){
-      if(canD) okD=await loadFromD1Silent();
+      if(canD) okD=await loadFromD1Silent({force:true});
     }
   }catch(e){ console.error(e); }
 
