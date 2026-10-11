@@ -3,12 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
-<title>Chấm Công Theo Công Đoạn — V5.3</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Chấm Công">
+<meta name="format-detection" content="telephone=no">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<title>Chấm Công Theo Công Đoạn — V5.16</title>
 <script>
 /* V5.1 — HỘP ĐEN: ghi lỗi sớm nhất có thể (trước cả khi tải thư viện). KHÔNG ghi mật khẩu/khóa/tên nhân viên/nội dung phản hồi. */
 (function(){
   'use strict';
-  window.APP_VERSION = 'V5.3'; window.APP_BUILD = '05/10/2026';
+  window.APP_VERSION = 'V5.16'; window.APP_BUILD = '12/10/2026';
   var KEY = 'v4_blackbox', MAXN = 100, CAP = 100000, crumbs = [];
   function load(){ try{ var a = JSON.parse(localStorage.getItem(KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
   function save(a){ try{ var s = JSON.stringify(a); while(s.length > CAP && a.length > 1){ a.shift(); s = JSON.stringify(a); } localStorage.setItem(KEY, s); }catch(e){} }
@@ -99,6 +107,14 @@
       document.documentElement.classList.add('compact-mode');
     }
   }catch(e){}
+</script>
+<script>// Áp mức hiệu ứng đã lưu NGAY khi tải trang (full | lite | off) để không bị nháy hiệu ứng lúc mở app.
+(function(){
+  var v = 'full';
+  try{ v = localStorage.getItem('v515-fx') || 'full'; }catch(e){}
+  if(v !== 'full' && v !== 'lite' && v !== 'off') v = 'full';
+  document.documentElement.setAttribute('data-fx', v);
+})();
 </script>
 <style>
   :root{
@@ -2761,6 +2777,7 @@ body:not(.public-mode) #syncStatusBar{display:none;}
           </div>
           <div style="display:flex;justify-content:flex-end;">
             <button class="btn btn-primary" id="btnSavePayrollRates" type="button">💾 Lưu đơn giá</button>
+            <button class="btn" id="btnPayrollAssignShift" type="button" data-payroll-assign="" title="Chọn ca tự thêm (Ca 4...) tính lương theo giá Ca 1/2/3 hay Hành chính">🏷️ Gán giá cho ca lạ</button>
           </div>
           <div id="payrollRateHistoryList"></div>
         </div>
@@ -3628,9 +3645,11 @@ const LS_KEYS = { records:'attendance-records', stages:'custom-stages', images:'
 // ================= BỘ 8 THEME (giao diện màu) =================
 const THEMES = [
   { id:'titan',    name:'Sổ Lương',    desc:'Giấy ngà, chữ Georgia — kiểu sổ cái, mặc định',  dot:'#8a7248', public:true },
-  { id:'nga',      name:'Ngà — Claude', desc:'Kem ấm + cam san hô, đúng chất Claude', dot:'#d97757', public:true },
+  { id:'nga',      name:'Copilot Sáng', desc:'Xanh tím Copilot, nền sáng — mặc định mới', dot:'#4F6BED', public:true },
+  { id:'suong',    name:'Sương Mai',   desc:'Xanh ngọc nhạt — ô nhập và ô số liệu dễ phân biệt', dot:'#0C7C96', public:true },
+  { id:'oai',      name:'Oải Hương',   desc:'Tím phấn nhẹ — ô nhập và ô số liệu dễ phân biệt',  dot:'#6E55D8', public:true },
   { id:'lam',      name:'Lam Nhạt',    desc:'Xanh trời phấn nhẹ',           dot:'#3f6f9c' },
-  { id:'muc',      name:'Mực',         desc:'Dark mode dịu mắt ban đêm',    dot:'#d9822b', public:true },
+  { id:'muc',      name:'Copilot Tối', desc:'Dark mode kiểu Copilot, dịu mắt ban đêm',    dot:'#5069E8', public:true },
 ];
 
 // ================= STATE (gộp 1 chỗ thay vì rải rác nhiều biến toàn cục) =================
@@ -8247,6 +8266,7 @@ function renderShiftManageList(){
       if(customIdx > -1) state.customShifts[customIdx] = newName;
       state.records.forEach(r=>{ if(r.shift === orig) r.shift = newName; });
       if(state.currentShift === orig) state.currentShift = newName;
+      try{ payrollShiftMapOnRename(orig, newName); }catch(e){ console.warn('payrollShiftMapOnRename', e); } // giữ loại giá lương theo tên mới
       rebuildShiftList(); saveRecords(); saveShifts();
       renderShiftOptionSelects(); renderShiftChips();
       renderStats(); renderRecords(); renderAnalytics();
@@ -8263,6 +8283,7 @@ function renderShiftManageList(){
       const customIdx = state.customShifts.indexOf(orig);
       if(customIdx > -1) state.customShifts.splice(customIdx,1);
       if(state.currentShift === orig) state.currentShift = null;
+      try{ payrollShiftMapOnDelete(orig); }catch(e){ console.warn('payrollShiftMapOnDelete', e); }
       rebuildShiftList(); saveShifts();
       renderShiftOptionSelects(); renderShiftChips();
       renderStats(); renderShiftManageList();
@@ -8280,6 +8301,11 @@ document.getElementById('btnShiftManageAdd').onclick = ()=>{
   document.getElementById('shiftManageNewInput').value = '';
   renderShiftOptionSelects(); renderShiftChips(); renderShiftManageList();
   showToast(`Đã thêm ca "${val}"${isHalfDayShift(val) ? ' (tự nhận 0.5 công vì tên bắt đầu bằng "1/2 ")' : ''}`);
+  // Ca mới chưa có loại đơn giá lương → hỏi gán ngay (nếu bỏ qua, lương vẫn tạm tính Hành chính và bị báo đỏ).
+  if(typeof isAdminV4 !== 'undefined' && isAdminV4 && typeof payrollShiftIsUnmapped === 'function' && payrollShiftIsUnmapped(val)){
+    customConfirm(`Ca "${val}" là ca mới nên CHƯA có loại đơn giá lương.\n\nGán ngay (Ca 1 / Ca 2 / Ca 3 / Hành chính)?\nNếu để sau, lương ca này tạm tính theo giá Hành chính và bị báo đỏ.`, { okText:'Gán ngay', cancelText:'Để sau', title:'Ca mới chưa có đơn giá' })
+      .then(yes=>{ if(yes) openPayrollShiftAssign(val); });
+  }
 };
 const btnManageShifts = document.getElementById('btnManageShifts');
 if(btnManageShifts){
@@ -12161,7 +12187,7 @@ function getJournalCsvRows(){
     return {
       STT:i+1, Ngay:r.date||'', Thang:(r.date||'').slice(0,7), Ma:r.code||'', Ten:r.full||r.short||'',
       Phan_loai: jv.phanLoai,
-      Ca:r.shift||'', Loai_ca:PAYROLL_BASE_LABEL[base]||'', Cong_doan: jv.congDoan, Mac_thuoc:r.batch||'',
+      Ca:r.shift||'', Loai_ca:payrollShiftIsUnmapped(r.shift) ? 'CHUA_GAN_GIA (tam tinh Hanh chinh)' : (PAYROLL_BASE_LABEL[base]||''), Cong_doan: jv.congDoan, Mac_thuoc:r.batch||'',
       Gio_cham:r.time||'', He_so:jv.heSo, OT_gio:recOtHours(r), Ghi_chu:r.note||'',
       Cong_tinh:cong, Ngay_nghi_tinh:nghi, OT_tinh:ot, Com_tinh:com,
       Don_gia_cong:rWork, Don_gia_nghi:rt.leave||0, Don_gia_OT:rt.ot||0, Don_gia_com:rt.rice||0,
@@ -12463,15 +12489,34 @@ document.getElementById('btnSavePayrollRates').addEventListener('click', ()=>{
   if(document.getElementById('payrollAllArea').style.display !== 'none') renderPayrollAllTable();
 });
 
+// NHẬN DIỆN CA ĐÃ CÓ ĐƠN GIÁ: chỉ các ca có sẵn trong bảng dưới (hoặc đã được admin GÁN tay vào 1 loại giá)
+// mới được coi là "biết giá". Ca lạ (ca tự thêm như "Ca 4", ca đã đổi tên...) KHÔNG còn bị âm thầm tính theo giá
+// Hành chính: số tiền tạm tính vẫn theo Hành chính như trước (để không làm đổi lương cũ), nhưng được ĐÁNH DẤU
+// "chưa gán giá" và báo đỏ ở mọi nơi có tiền (tính lương, xuất Excel/CSV, sẵn sàng tính lương, chốt kỳ, phiếu lương).
+const PAYROLL_ASSIGNABLE = ['ca1','ca2','ca3','hc'];
+const PAYROLL_FIXED_BASE = {
+  'Ca 1':'ca1', '1/2 Ca 1':'ca1', 'Ca 2':'ca2', '1/2 Ca 2':'ca2', 'Ca 3':'ca3', '1/2 Ca 3':'ca3',
+  'Hành chính':'hc', 'Hành chính (Sáng)':'hc', 'Hành chính (Chiều)':'hc', 'Học / Họp':'hc'
+};
+// Bản gán tay: { "tên ca": 'ca1'|'ca2'|'ca3'|'hc' } — nằm trong state.settings nên đi theo cấu hình đồng bộ/sao lưu.
+// (Không chứa số tiền, chỉ là "ca này tính theo loại giá nào".)
+function payrollShiftMap(){
+  const m = state.settings && state.settings.payrollShiftMap;
+  return (m && typeof m === 'object' && !Array.isArray(m)) ? m : {};
+}
+// Trả về { base, source }: source = 'fixed' (ca có sẵn) | 'mapped' (admin đã gán) | 'unmapped' (chưa biết giá).
+function payrollShiftInfo(shift){
+  const s = (shift === null || shift === undefined) ? '' : String(shift);
+  if(s === LEAVE_SHIFT) return { base:'leave', source:'fixed' };
+  const mp = payrollShiftMap();
+  if(Object.prototype.hasOwnProperty.call(mp, s) && PAYROLL_ASSIGNABLE.indexOf(mp[s]) > -1) return { base:mp[s], source:'mapped' };
+  if(Object.prototype.hasOwnProperty.call(PAYROLL_FIXED_BASE, s)) return { base:PAYROLL_FIXED_BASE[s], source:'fixed' };
+  return { base:'hc', source:'unmapped' }; // tạm tính theo Hành chính + bị báo đỏ
+}
 // Quy về 1 trong 5 loại gốc để tra đơn giá — ca ½ vẫn tính đúng theo LOẠI ca gốc của nó (½ Ca 3 vẫn theo giá Ca 3),
 // khác với nhóm "½ Ca" gộp chung dùng ở tab Cá nhân.
-function payrollBaseType(shift){
-  if(shift === 'Ca 1' || shift === '1/2 Ca 1') return 'ca1';
-  if(shift === 'Ca 2' || shift === '1/2 Ca 2') return 'ca2';
-  if(shift === 'Ca 3' || shift === '1/2 Ca 3') return 'ca3';
-  if(shift === LEAVE_SHIFT) return 'leave';
-  return 'hc'; // Hành chính / Hành chính (Sáng/Chiều) và các ca khác mặc định theo giá Hành chính
-}
+function payrollBaseType(shift){ return payrollShiftInfo(shift).base; }
+function payrollShiftIsUnmapped(shift){ return payrollShiftInfo(shift).source === 'unmapped'; }
 const PAYROLL_BASE_LABEL = { ca1:'Ca 1', ca2:'Ca 2', ca3:'Ca 3', hc:'Hành chính', leave:'Nghỉ phép' };
 
 // Tính chi tiết lương 1 người trong 1 tháng (prefix dạng "2026-09").
@@ -12500,7 +12545,9 @@ function computePayrollDetail(code, monthPrefix){
   const mealSeen = new Set();
   const zeroRate = new Set();
   rows.forEach(row=>{
-    const base = payrollBaseType(row.shift);
+    const info = payrollShiftInfo(row.shift);
+    const base = info.base;
+    row.unmapped = info.source === 'unmapped';  // ca chưa gán đơn giá → tạm tính theo Hành chính, bị báo đỏ
     const rateForDay = getPayrollRatesForDate(row.date); // giá hiệu lực TẠI NGÀY của dòng này
     const rate = Number(base === 'leave' ? rateForDay.leave : rateForDay[base]) || 0;
     const otRate = Number(rateForDay.ot) || 0;
@@ -12535,10 +12582,25 @@ function computePayrollDetail(code, monthPrefix){
   const conflictDates = [...perDay.entries()].filter(([d,m])=>isDayShiftConflict(m)).map(([d])=>d);
   const bigMultDates = rows.filter(r=>(r.mult||0) > 3).map(r=>r.date);
   const warnings = [];
+  // Ca chưa gán đơn giá: nặng nhất nên đứng ĐẦU danh sách cảnh báo
+  const unmMap = new Map();
+  rows.forEach(row=>{
+    if(!row.unmapped) return;
+    let u = unmMap.get(row.shift);
+    if(!u){ u = { shift: row.shift, days: 0, pay: 0 }; unmMap.set(row.shift, u); }
+    u.days++; u.pay += row.pay + row.otPay + row.ricePay;
+  });
+  const unmappedShifts = [...unmMap.values()];
+  unmappedShifts.forEach(u=>{
+    const nm = String(u.shift || '').replace(/[<>&"]/g, ' ').trim();
+    warnings.push(nm
+      ? '🔴 Ca "' + nm + '" CHƯA GÁN ĐƠN GIÁ: ' + u.days + ' ngày, đang tạm tính theo giá Hành chính (' + money(u.pay) + ') — cần gán đúng loại giá' + ' (cơm cũng đang tính theo quy tắc mặc định, hãy kiểm tra)'
+      : '🔴 Có ' + u.days + ' ngày chưa ghi ca — đang tạm tính theo giá Hành chính (' + money(u.pay) + '), cần sửa lại ca ở Nhật ký');
+  });
   if(conflictDates.length) warnings.push('Ngày có tổng hệ số > 1 (đang trả đủ tất cả các ca trong ngày): ' + conflictDates.map(fmtDate).join(', '));
   if(zeroRate.size) warnings.push('Đơn giá đang là 0đ cho: ' + [...zeroRate].join(', ') + ' → các dòng này ra 0đ');
   if(bigMultDates.length) warnings.push('Hệ số > 3 (nghi gõ nhầm): ' + bigMultDates.map(fmtDate).join(', '));
-  return { leaveDays, rows, byType, workPay, otPay, otHoursTotal: rows.reduce((a,r)=>a+(r.ot||0),0), riceCount, ricePay, totalPay, rates, distinctWorkDays, warnings };
+  return { leaveDays, rows, byType, workPay, otPay, otHoursTotal: rows.reduce((a,r)=>a+(r.ot||0),0), riceCount, ricePay, totalPay, rates, distinctWorkDays, warnings, unmappedShifts };
 }
 
 // ===== XUẤT EXCEL LƯƠNG: ô tiền/công là SỐ THẬT (SUM, lọc, pivot được), có dòng tổng bằng công thức =====
@@ -12558,7 +12620,7 @@ function exportPayrollPersonExcel(emp, monthVal, d){
     const aoa = [ ['Họ tên', emp?emp.full:'', 'Mã', emp?emp.code:'', 'Tháng', monthVal], [], head ];
     d.rows.forEach((r,i)=>{
       const jv = journalView({shift:r.shift, mult:r.mult});
-      aoa.push([ i+1, r.date, r.shift, PAYROLL_BASE_LABEL[r.base]||'', jv.phanLoai, jv.isLeave ? '' : r.stages.filter(Boolean).join(' + '),
+      aoa.push([ i+1, r.date, r.shift, r.unmapped ? 'CHUA GAN GIA (tam tinh Hanh chinh)' : (PAYROLL_BASE_LABEL[r.base]||''), jv.phanLoai, jv.isLeave ? '' : r.stages.filter(Boolean).join(' + '),
         jv.heSo, jv.isLeave ? 0 : r.mult, jv.ngayNghi, r.rateUsed, r.pay, r.ot||0, r.otPay, r.ricePay, r.pay + r.otPay + r.ricePay ]);
     });
     const ws = XLSX.utils.aoa_to_sheet(aoa);
@@ -12664,14 +12726,14 @@ function renderPayrollReport(){
       <div class="last-work-banner" style="margin-top:10px;background:var(--amber-soft);border-color:var(--amber);">
         💰 <b>TỔNG LƯƠNG THÁNG:</b> <span style="font-size:16px;font-weight:800;">${money(d.totalPay)}</span>
       </div>
-      ${d.warnings.length ? `<div class="last-work-banner" style="margin-top:10px;background:var(--danger-soft);border-color:var(--danger);">⚠️ <b>Cần kiểm tra trước khi chi tiền:</b><ul style="margin:4px 0 0 18px;padding:0;font-size:12px;">${d.warnings.map(w=>`<li>${w}</li>`).join('')}</ul></div>` : ''}
+      ${d.warnings.length ? `<div class="last-work-banner" style="margin-top:10px;background:var(--danger-soft);border-color:var(--danger);">⚠️ <b>Cần kiểm tra trước khi chi tiền:</b><ul style="margin:4px 0 0 18px;padding:0;font-size:12px;">${d.warnings.map(w=>`<li>${w}</li>`).join('')}</ul>${(d.unmappedShifts.length && isAdminV4) ? `<button class="btn btn-primary" type="button" data-payroll-assign="${String(d.unmappedShifts[0].shift||'').replace(/"/g,'&quot;')}" style="margin-top:8px;">🏷️ Gán loại giá cho ca lạ</button>` : ''}</div>` : ''}
       <p class="sub" style="margin:12px 0 4px;">Chi tiết theo ngày:${isAdminV4 ? ' <span style="font-weight:400;">— bấm 1 dòng để sửa hệ số công / giờ OT</span>' : ''}</p>
       <div style="overflow-x:auto;">
         <table class="roster-table">
           <thead><tr><th style="width:30px;">#</th><th>Ngày</th><th>Ca</th><th>Loại</th><th style="text-align:right;">Công làm</th><th style="text-align:right;">Ngày nghỉ</th><th style="text-align:right;">OT (h)</th><th style="text-align:right;">Cơm</th><th style="text-align:right;">Thành tiền</th></tr></thead>
           <tbody>
-            ${rows.map((r,i)=>`<tr class="${isAdminV4?'payroll-editable-row':''}" data-date="${r.date}" data-shift="${r.shift}" ${isAdminV4?'style="cursor:pointer;" title="Bấm để sửa"':''}>
-              <td class="roster-stt">${i+1}</td><td>${fmtDate(r.date)}</td><td>${r.shift}</td>
+            ${rows.map((r,i)=>`<tr class="${isAdminV4?'payroll-editable-row':''}${r.unmapped?' payroll-row-unmapped':''}" data-date="${r.date}" data-shift="${r.shift}" ${isAdminV4?'style="cursor:pointer;" title="Bấm để sửa"':''}>
+              <td class="roster-stt">${i+1}</td><td>${fmtDate(r.date)}</td><td>${r.shift}${r.unmapped ? ' <span class="payroll-unmapped-tag" title="Ca này chưa gán loại đơn giá — đang tạm tính theo giá Hành chính">❓ chưa gán giá</span>' : ''}</td>
               <td>${r.base==='leave'?'Nghỉ':'Làm'}</td>
               <td style="text-align:right;">${fmtCong(journalView({shift:r.shift,mult:r.mult}).heSo)}</td>
               <td style="text-align:right;">${r.base==='leave' ? fmtCong(journalView({shift:r.shift,mult:r.mult}).ngayNghi) : '—'}</td>
@@ -12712,15 +12774,19 @@ function renderPayrollAllTable(){
     return { emp:e, ...d };
   }).filter(x=>x.rows.length > 0).sort((a,b)=>normalize(a.emp.short).localeCompare(normalize(b.emp.short)));
   const grandTotal = list.reduce((a,x)=>a+x.totalPay,0);
+  const unmAll = new Map();
+  list.forEach(x=>x.unmappedShifts.forEach(u=>{ const o = unmAll.get(u.shift) || { shift:u.shift, people:0, days:0 }; o.people++; o.days += u.days; unmAll.set(u.shift, o); }));
+  const unmBanner = unmAll.size ? `<div class="last-work-banner" style="margin:0 0 10px;background:var(--danger-soft);border-color:var(--danger);">🔴 <b>Có ca chưa gán đơn giá — tổng lương bên dưới CHƯA chính xác:</b><ul style="margin:4px 0 0 18px;padding:0;font-size:12px;">${[...unmAll.values()].map(o=>`<li>${o.shift ? `Ca "${String(o.shift).replace(/[<>&"]/g,' ')}"` : 'Dòng chưa ghi ca'}: ${o.people} người, ${o.days} ngày (đang tạm tính theo giá Hành chính)</li>`).join('')}</ul>${isAdminV4 ? `<button class="btn btn-primary" type="button" data-payroll-assign="${String([...unmAll.values()][0].shift||'').replace(/"/g,'&quot;')}" style="margin-top:8px;">🏷️ Gán loại giá cho ca lạ</button>` : ''}</div>` : '';
   area.innerHTML = `
     <div id="payrollAllExportArea">
+      ${unmBanner}
       <p class="sub" style="margin:0 0 8px;">Tháng ${monthVal.split('-')[1]}/${monthVal.split('-')[0]} — ${list.length} người có dữ liệu. Bấm 1 dòng để xem chi tiết ở trên.${list.some(x=>x.warnings.length) ? ` <b style="color:var(--danger);">⚠️ ${list.filter(x=>x.warnings.length).length} người cần kiểm tra</b> (rê chuột/bấm vào dòng để xem lý do).` : ''}</p>
       <div style="overflow-x:auto;">
         <table class="roster-table">
           <thead><tr><th style="width:30px;">#</th><th>Tên</th><th style="text-align:right;">Công làm</th><th style="text-align:right;">Ngày nghỉ</th><th style="text-align:right;">Tiền công</th><th style="text-align:right;">OT</th><th style="text-align:right;">Cơm</th><th style="text-align:right;">Tổng lương</th></tr></thead>
           <tbody>
             ${list.map((x,i)=>`<tr class="payroll-all-row" data-code="${x.emp.code}" style="cursor:pointer;" title="Bấm để xem chi tiết">
-              <td class="roster-stt">${i+1}</td><td>${x.emp.short}${x.warnings.length?` <span title="${x.warnings.join(' | ').replace(/"/g,'&quot;')}">⚠️</span>`:''}</td>
+              <td class="roster-stt">${i+1}</td><td>${x.emp.short}${x.warnings.length?` <span title="${x.warnings.join(' | ').replace(/"/g,'&quot;')}">${x.unmappedShifts.length ? '🔴' : '⚠️'}</span>`:''}</td>
               <td style="text-align:right;">${fmtCong(x.byType.ca1+x.byType.ca2+x.byType.ca3+x.byType.hc)}</td>
               <td style="text-align:right;">${fmtCong(x.leaveDays)}</td>
               <td style="text-align:right;">${money(x.workPay)}</td>
@@ -12778,6 +12844,110 @@ function renderPayrollTab(){
 }
 
 
+
+// ================= GÁN LOẠI GIÁ CHO CA LẠ =================
+// Ca không nằm trong bảng ca có sẵn (ca tự thêm, ca đã đổi tên) phải được admin GÁN vào 1 trong 4 loại giá
+// (Ca 1 / Ca 2 / Ca 3 / Hành chính). Trước khi gán: tiền tạm tính theo Hành chính nhưng báo đỏ khắp nơi.
+// Bản gán lưu ở state.settings.payrollShiftMap (đi theo "Đẩy kho"/sao lưu như các cấu hình khác).
+(function injectPayrollUnmappedCss(){
+  if(document.getElementById('payrollUnmappedCss')) return;
+  const st = document.createElement('style'); st.id = 'payrollUnmappedCss';
+  st.textContent = '.payroll-row-unmapped td{background:rgba(229,38,43,.09)!important}'
+    + '.payroll-unmapped-tag{display:inline-block;background:#e5262b;color:#fff;border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:700;white-space:nowrap}'
+    + '.shift-assign-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px dashed var(--line)}'
+    + '.shift-assign-row.hl{background:rgba(229,38,43,.07);border-radius:8px;padding-left:6px;padding-right:6px}'
+    + '.shift-assign-row select{min-width:150px;font-size:16px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:inherit}';
+  document.head.appendChild(st);
+})();
+
+// Giữ nguyên loại giá khi ĐỔI TÊN ca (nếu không, ca vừa đổi tên sẽ mất giá và bị tạm tính Hành chính).
+function payrollShiftMapOnRename(orig, newName){
+  if(!orig || !newName || orig === newName || newName === '__proto__') return;
+  const info = payrollShiftInfo(orig);
+  if(!state.settings.payrollShiftMap || typeof state.settings.payrollShiftMap !== 'object' || Array.isArray(state.settings.payrollShiftMap)) state.settings.payrollShiftMap = {};
+  const mp = state.settings.payrollShiftMap;
+  const had = Object.prototype.hasOwnProperty.call(mp, orig);
+  if(had) delete mp[orig];
+  if(PAYROLL_ASSIGNABLE.indexOf(info.base) > -1 && info.source !== 'unmapped' && payrollShiftInfo(newName).source === 'unmapped') mp[newName] = info.base;
+  if(had || mp[newName]) saveSettings();
+}
+// Xóa ca → xóa luôn bản gán của nó.
+function payrollShiftMapOnDelete(name){
+  const mp = state.settings && state.settings.payrollShiftMap;
+  if(mp && typeof mp === 'object' && Object.prototype.hasOwnProperty.call(mp, name)){ delete mp[name]; saveSettings(); }
+}
+// Các ca đang CHƯA có giá: ca trong danh sách ca + ca đang nằm trong nhật ký (kể cả ca đã bị xóa khỏi danh sách).
+function payrollUnmappedCandidates(){
+  const names = new Set(SHIFT_LIST_ALL.slice());
+  state.records.forEach(r=>{ if(r && r.shift) names.add(r.shift); });
+  return [...names].filter(n=>n && payrollShiftInfo(n).source !== 'fixed');
+}
+function openPayrollShiftAssign(preselect){
+  if(typeof isAdminV4 !== 'undefined' && !isAdminV4){ showToast('🔒 Đăng nhập Admin để gán loại giá cho ca'); return; }
+  const cands = payrollUnmappedCandidates();
+  const old = document.getElementById('payrollAssignModal'); if(old) old.remove();
+  const esc = (x)=>String(x).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const useCount = (n)=> state.records.filter(r=>r.shift===n).length;
+  const optsFor = (cur)=> '<option value="">— Chưa gán —</option>' + PAYROLL_ASSIGNABLE.map(b=>`<option value="${b}" ${cur===b?'selected':''}>Tính theo giá ${PAYROLL_BASE_LABEL[b]}</option>`).join('');
+  const rowsHtml = cands.length ? cands.map(n=>{
+    const info = payrollShiftInfo(n);
+    return `<div class="shift-assign-row ${(preselect!==undefined && n===preselect) || info.source==='unmapped' ? 'hl' : ''}" data-shift="${esc(n)}">
+      <div><b>${esc(n)}</b> ${info.source==='unmapped' ? '<span class="payroll-unmapped-tag">chưa gán</span>' : '<span class="sub">đã gán</span>'}<div class="sub" style="font-size:11.5px;">${useCount(n)} lượt chấm${isHalfDayShift(n) ? ' · nửa buổi (0.5 công)' : ''}</div></div>
+      <select class="shift-assign-sel">${optsFor(info.source==='mapped' ? info.base : '')}</select>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:14px 0;">Không có ca nào cần gán ✓ — mọi ca đều đã có loại giá.</div>';
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg'; bg.id = 'payrollAssignModal'; bg.style.zIndex = '150';
+  bg.innerHTML = `<div class="modal" style="max-width:520px;width:100%;max-height:90vh;overflow:auto;">
+    <h3 style="margin:0 0 6px;">🏷️ Gán loại giá cho ca</h3>
+    <p class="sub" style="margin:0 0 8px;font-size:12.5px;">Chọn mỗi ca lạ sẽ tính lương theo đơn giá nào. Áp dụng cho <b>mọi tháng</b> có ca đó. Ca nửa buổi (tên bắt đầu "1/2 ") vẫn nhân hệ số 0.5.</p>
+    ${rowsHtml}
+    <div class="modal-actions" style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button type="button" class="btn" id="payrollAssignCancel">Đóng</button>
+      ${cands.length ? '<button type="button" class="btn btn-primary" id="payrollAssignSave">💾 Lưu</button>' : ''}
+    </div></div>`;
+  document.body.appendChild(bg);
+  requestAnimationFrame(()=>bg.classList.add('show'));
+  const close = ()=>{ bg.classList.remove('show'); setTimeout(()=>bg.remove(), 50); };
+  bg.addEventListener('click', e=>{ if(e.target === bg) close(); });
+  bg.querySelector('#payrollAssignCancel').onclick = close;
+  const saveBtn = bg.querySelector('#payrollAssignSave');
+  if(saveBtn) saveBtn.onclick = async ()=>{
+    const changes = [];
+    bg.querySelectorAll('.shift-assign-row').forEach(row=>{
+      const n = row.dataset.shift, v = row.querySelector('.shift-assign-sel').value;
+      const cur = payrollShiftInfo(n);
+      const curVal = cur.source === 'mapped' ? cur.base : '';
+      if(v !== curVal && n !== '__proto__') changes.push({ shift:n, from:curVal, to:v });
+    });
+    if(!changes.length){ close(); return; }
+    // Cảnh báo nếu việc gán làm đổi tiền của tháng ĐÃ CHỐT
+    const locks = (window.v52Lock && v52Lock._locks) ? v52Lock._locks() : {};
+    const lockedHit = new Set();
+    changes.forEach(c=> state.records.forEach(r=>{ if(r.shift === c.shift && r.date){ const m = r.date.slice(0,7); if(locks && locks[m]) lockedHit.add(m); } }));
+    if(lockedHit.size){
+      const ok = await customConfirm('Việc gán này sẽ làm ĐỔI tiền lương của tháng đã chốt: ' + [...lockedHit].sort().join(', ') + '.\n\nVẫn lưu?', { okText:'Vẫn lưu', title:'Có tháng đã chốt' });
+      if(!ok) return;
+    }
+    if(!state.settings.payrollShiftMap || typeof state.settings.payrollShiftMap !== 'object' || Array.isArray(state.settings.payrollShiftMap)) state.settings.payrollShiftMap = {};
+    changes.forEach(c=>{ if(c.to) state.settings.payrollShiftMap[c.shift] = c.to; else delete state.settings.payrollShiftMap[c.shift]; });
+    saveSettings();
+    try{ logActivity('🏷️ Gán loại giá ca: ' + changes.map(c=>c.shift + ' → ' + (c.to ? PAYROLL_BASE_LABEL[c.to] : 'bỏ gán')).join('; ')); }catch(_){}
+    close();
+    showToast('🏷️ Đã lưu loại giá cho ' + changes.length + ' ca — nhớ Đẩy kho để lưu lên kho', 4200);
+    try{ renderPayrollReport(); }catch(_){}
+    try{ const a = document.getElementById('payrollAllArea'); if(a && a.style.display !== 'none') renderPayrollAllTable(); }catch(_){}
+    try{ if(window.reconUpdate) window.reconUpdate(); }catch(_){}
+    try{ const rb = document.getElementById('readyModal'); if(rb && rb.classList.contains('show') && window.readyOpen) window.readyOpen(document.getElementById('readyMonthIn').value); }catch(_){}
+  };
+}
+document.addEventListener('click', function(e){
+  const b = e.target.closest && e.target.closest('[data-payroll-assign]');
+  if(!b) return;
+  e.preventDefault();
+  const sh = b.getAttribute('data-payroll-assign');
+  openPayrollShiftAssign(sh === '' ? undefined : sh);
+});
 // ================= 🧪 KHO LƯU TRỮ MỚI (D1 — THỬ NGHIỆM, tách biệt hoàn toàn khỏi Worker cũ) =================
 // Đây là một máy chủ & cách lưu HOÀN TOÀN KHÁC (Cloudflare D1 — database thật, có bảng riêng
 // cho nhân viên/bản ghi thay vì 1 khối JSON). Mặc định TẮT, không tự động chạy, không đụng gì
@@ -15106,10 +15276,22 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
     });
     return Array.from(zr.entries()).map(function(x){ return {label:x[0], count:x[1]}; });
   }
+  // Ca chưa gán loại đơn giá (ca lạ) có lượt chấm trong tháng: đang bị tạm tính theo giá Hành chính → phải xử lý trước khi chốt.
+  function unmappedShifts(monthVal){
+    var seen = new Set(), cnt = new Map();
+    state.records.forEach(function(r){
+      if(!r.date || !r.date.startsWith(monthVal) || !r.code) return;
+      if(typeof payrollShiftIsUnmapped !== 'function' || !payrollShiftIsUnmapped(r.shift)) return;
+      var k = r.code+'|'+r.date+'|'+r.shift;
+      if(seen.has(k)) return; seen.add(k);
+      var name = r.shift || ''; cnt.set(name, (cnt.get(name)||0)+1);
+    });
+    return Array.from(cnt.entries()).map(function(x){ return {shift:x[0], count:x[1]}; }).sort(function(a,b){ return b.count - a.count; });
+  }
   function readyCompute(monthVal){
-    var res = compute(monthVal), zr = zeroRates(monthVal);
-    var issues = zr.length + res.susMoney.length + res.missingByEmp.size + res.emptyDays.length;
-    return { month:monthVal, res:res, zr:zr, issues:issues, pct: res.expected ? Math.round(res.have/res.expected*1000)/10 : 100 };
+    var res = compute(monthVal), zr = zeroRates(monthVal), um = unmappedShifts(monthVal);
+    var issues = zr.length + um.length + res.susMoney.length + res.missingByEmp.size + res.emptyDays.length;
+    return { month:monthVal, res:res, zr:zr, um:um, issues:issues, pct: res.expected ? Math.round(res.have/res.expected*1000)/10 : 100 };
   }
 
   function status(res){
@@ -15261,6 +15443,14 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
       + cell('Tổng lương dự kiến', money(pt.total))
       + cell('Số người có lương', num(pt.people))+'</div>';
     if(!rd.issues) h += '<div class="recon-sec" style="color:#2e9e5b;font-weight:800;">✅ Sẵn sàng chốt lương tháng '+mv.slice(5)+'/'+mv.slice(0,4)+' — dữ liệu đủ, không còn lỗi liên quan tiền.</div>';
+    if(rd.um.length){
+      h += '<div class="recon-sec"><div class="recon-h">🔴 Ca chưa gán đơn giá</div>';
+      rd.um.forEach(function(u){
+        h += '<div class="recon-row"><div><b>'+(u.shift ? esc(u.shift) : '(chưa ghi ca)')+'</b> <span class="recon-note">'+num(u.count)+' người×ngày đang tạm tính theo giá Hành chính</span></div><div>'
+          + (u.shift ? '<button type="button" class="recon-btn pri" data-assignshift="'+esc(u.shift)+'">🏷️ Gán giá</button>' : '<button type="button" class="recon-btn" data-goaudit="1">Xem Nhật ký</button>') + '</div></div>';
+      });
+      h += '<div class="recon-note">Chọn ca này tính theo giá Ca 1 / Ca 2 / Ca 3 / Hành chính. Chưa gán thì lương ca này có thể sai.</div></div>';
+    }
     if(rd.zr.length){
       h += '<div class="recon-sec"><div class="recon-h">💰 Đơn giá đang là 0đ</div>';
       rd.zr.forEach(function(z){ h += '<div class="recon-row"><div><b>'+esc(z.label)+'</b> <span class="recon-note">'+num(z.count)+' dòng công đang ra 0đ</span></div><div><button type="button" class="recon-btn pri" data-gopay="">Mở Tính lương</button></div></div>'; });
@@ -15348,6 +15538,8 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
         refresh(); update();
       } else if((t = e.target.closest('[data-openready]'))){
         e.preventDefault(); bg.classList.remove('show'); openReady();
+      } else if((t = e.target.closest('[data-assignshift]'))){
+        if(typeof openPayrollShiftAssign === 'function') openPayrollShiftAssign(t.getAttribute('data-assignshift'));
       } else if(e.target.closest('[data-gopay]')){
         bg.classList.remove('show'); goPay('', getMonth());
       } else if(e.target.closest('[data-goaudit]')){
@@ -15465,13 +15657,13 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
   function recKey(r){ var k = Object.keys(r).sort(); return JSON.stringify(r, k); }
 
   function summary(m){
-    var total = 0, people = 0, recs = 0, warn = 0;
+    var total = 0, people = 0, recs = 0, warn = 0, unm = 0;
     EMPLOYEES.forEach(function(e){
       var d = computePayrollDetail(e.code, m);
-      if(d.rows.length){ people++; total += d.totalPay; if(d.warnings.length) warn++; }
+      if(d.rows.length){ people++; total += d.totalPay; if(d.warnings.length) warn++; if(d.unmappedShifts && d.unmappedShifts.length) unm++; }
     });
     state.records.forEach(function(r){ if(mOf(r.date) === m) recs++; });
-    return { total: total, people: people, records: recs, warn: warn };
+    return { total: total, people: people, records: recs, warn: warn, unm: unm };
   }
 
   var FIELD_LABEL = { date:'ngày', shift:'ca', stage:'công đoạn', mult:'hệ số', batch:'mác', code:'mã NV', time:'giờ', short:'tên', full:'họ tên', note:'ghi chú' };
@@ -15623,7 +15815,8 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
     if(!s.records){ await customAlert('Tháng ' + mLabel(m) + ' chưa có dữ liệu chấm công để chốt.'); return; }
     var n = new Date(), curM = n.getFullYear() + '-' + pad2(n.getMonth() + 1);
     var msg = 'Chốt lương tháng ' + mLabel(m) + '?\n\n• ' + s.people + ' người · ' + s.records + ' lượt chấm\n• Tổng lương hiện tại: ' + money(s.total) +
-      (s.warn ? '\n• ⚠️ ' + s.warn + ' người còn cảnh báo (đơn giá 0đ, ngày trùng ca, hệ số lạ...) — nên xem lại trước khi chốt' : '') +
+      (s.unm ? '\n• 🔴 ' + s.unm + ' người có CA CHƯA GÁN ĐƠN GIÁ — lương đang tạm tính theo giá Hành chính, KHÔNG nên chốt khi chưa gán' : '') +
+      (s.warn ? '\n• ⚠️ ' + s.warn + ' người còn cảnh báo (đơn giá 0đ, ngày trùng ca, hệ số lạ, ca chưa gán giá...) — nên xem lại trước khi chốt' : '') +
       (m >= curM ? '\n• ⚠️ Tháng này chưa kết thúc' : '') +
       '\n\nSau khi chốt: mọi thêm/sửa/xóa chấm công trong tháng này phải nhập lý do, và app ghi lại chênh lệch.';
     if(!(await customConfirm(msg, { okText:'🔒 Chốt kỳ', title:'Chốt kỳ lương' }))) return;
@@ -15806,7 +15999,10 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
     var rows = ['ca1', 'ca2', 'ca3', 'hc', 'leave'].filter(function(k){ return d.byType[k] > 0; }).map(function(k){
       return slipRow(esc(baseLabel(k)), fmtCong(d.byType[k]) + (k === 'leave' ? ' ngày' : ' công'), money(p.payByType[k]));
     }).join('');
-    var status = p.lock
+    var unmSlip = d.unmappedShifts && d.unmappedShifts.length;
+    var status = unmSlip
+      ? '<div style="margin:8px 0;padding:6px 8px;border-radius:6px;background:#fde2e2;color:#a31212;font-size:12px;font-weight:700;">🔴 CHƯA CHÍNH THỨC — có ca chưa gán đơn giá, số tiền có thể sai</div>'
+      : p.lock
       ? '<div style="margin:8px 0;padding:6px 8px;border-radius:6px;background:#e1f2ef;color:#0f6e64;font-size:12px;">✔ Kỳ lương đã chốt ' + esc((p.lock.atStr || '').split(',')[0].split(' ')[0] || '') + '</div>'
       : '<div style="margin:8px 0;padding:6px 8px;border-radius:6px;background:#fbe9de;color:#8f3a0c;font-size:12px;">⚠ Tạm tính — kỳ lương chưa chốt, số liệu có thể thay đổi</div>';
     var stages = p.stArr.length
@@ -15840,12 +16036,19 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
     var t = 'PHIẾU LƯƠNG THÁNG ' + mLabel(p.m) + '\n' + p.emp.full + ' (' + p.emp.code + ')\n' +
       'Tổng công: ' + fmtCong(cong) + ' · Ngày có mặt: ' + d.distinctWorkDays + (d.leaveDays ? ' · Nghỉ: ' + fmtCong(d.leaveDays) : '') + '\n' +
       'Tiền công: ' + money(d.workPay) + '\nOT (' + fmtCong(d.otHoursTotal) + 'h): ' + money(d.otPay) + '\nCơm (' + d.riceCount + ' suất): ' + money(d.ricePay) + '\n' +
-      'TỔNG LƯƠNG: ' + money(d.totalPay) + '\n' + (p.lock ? '(Kỳ đã chốt)' : '(Tạm tính — kỳ chưa chốt)');
+      'TỔNG LƯƠNG: ' + money(d.totalPay) + '\n' + ((d.unmappedShifts && d.unmappedShifts.length) ? '(CHƯA CHÍNH THỨC — có ca chưa gán đơn giá)' : (p.lock ? '(Kỳ đã chốt)' : '(Tạm tính — kỳ chưa chốt)'));
     return t;
+  }
+  // Phiếu lương có ca chưa gán đơn giá = số tiền có thể sai → hỏi lại trước khi tạo để gửi cho công nhân.
+  async function slipUnmappedOk(p){
+    var u = p.d.unmappedShifts || [];
+    if(!u.length) return true;
+    return customConfirm('Phiếu này có ca CHƯA GÁN ĐƠN GIÁ: ' + u.map(function(x){ return x.shift ? '"' + x.shift + '"' : '(chưa ghi ca)'; }).join(', ') + '.\n\nTiền đang tạm tính theo giá Hành chính nên có thể SAI. Nên gán loại giá trước khi gửi cho nhân viên.\n\nVẫn tạo phiếu?', { okText:'Vẫn tạo phiếu', cancelText:'Quay lại', title:'Phiếu lương có thể sai' });
   }
   async function shareSlip(btn){
     var p = payslipData();
     if(!p){ showToast('Chọn nhân viên và tháng trước'); return; }
+    if(!(await slipUnmappedOk(p))) return;
     if(typeof html2canvas === 'undefined'){ await customAlert('❌ Chưa tải được thư viện tạo ảnh (cần mạng ở lần mở app đầu). Bạn có thể dùng nút "Chép chữ" thay thế.'); return; }
     var old = btn.textContent; btn.disabled = true; btn.textContent = '⏳ Đang tạo...';
     var host = buildSlip(p); document.body.appendChild(host);
@@ -15875,6 +16078,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
   async function copySlipText(){
     var p = payslipData();
     if(!p){ showToast('Chọn nhân viên và tháng trước'); return; }
+    if(!(await slipUnmappedOk(p))) return;
     var text = slipText(p);
     try{ await navigator.clipboard.writeText(text); showToast('📋 Đã chép phiếu lương dạng chữ — dán vào Zalo'); return; }catch(_){}
     try{ if(navigator.share){ await navigator.share({ text: text }); return; } }catch(_){}
@@ -16650,6 +16854,308 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAll()})
 update();
 }catch(err){}})();
 </script>
+<script id="v512-script">/* =====================================================================
+   V5.15 — HIỆU ỨNG PHẢN HỒI + CẢM GIÁC "NHƯ APP"
+   Chỉ THÊM hành vi nhìn thấy được; không đọc/ghi dữ liệu chấm công, không đổi logic tính lương.
+   Mỗi phần bọc try/catch riêng: 1 phần lỗi không làm hỏng app.
+   • Nút "✨ Hiệu ứng chuyển động" (Đầy đủ / Gọn / Tắt) trong menu Giao diện
+   • Gợn sóng + nảy khi chạm mọi nút menu (kèm rung nhẹ trên Android nếu máy hỗ trợ)
+   • Số trên thẻ thống kê đếm chạy từ 0
+   • Ctrl/Cmd + K: mở nhanh ô "Tìm trong trang"
+   • Màu thanh trạng thái (theme-color) đổi theo theme, chạy tốt khi "Thêm vào màn hình chính"
+   ===================================================================== */
+(function(){
+  'use strict';
+  var KEY = 'v515-fx', MODES = ['full','lite','off'], LABEL = { full:'Đầy đủ', lite:'Gọn', off:'Tắt' };
+  var root = document.documentElement;
+  function safe(fn, name){ try{ fn(); }catch(e){ try{ console.warn('[V5.15] '+name, e); }catch(_){} } }
+
+  function getFx(){ var v = null; try{ v = localStorage.getItem(KEY); }catch(e){} return MODES.indexOf(v) > -1 ? v : 'full'; }
+  function reduced(){ try{ return !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches); }catch(e){ return false; } }
+  function isFull(){ return getFx() === 'full' && !root.classList.contains('compact-mode') && !reduced(); }
+  function setFx(v){
+    try{ localStorage.setItem(KEY, v); }catch(e){}
+    root.setAttribute('data-fx', v);
+    var val = document.getElementById('fxModeVal'); if(val) val.textContent = LABEL[v];
+  }
+
+  // ---------- 1) Nút bật/tắt hiệu ứng trong menu Giao diện ----------
+  function mountFxButton(){
+    if(document.getElementById('btnFxMode')) return true;
+    var anchor = document.getElementById('btnToggleCompact');
+    if(!anchor) return false;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'more-menu-item'; b.id = 'btnFxMode';
+    b.style.cssText = 'display:flex;align-items:center;justify-content:space-between;';
+    b.title = 'Đổi mức hiệu ứng: Đầy đủ → Gọn → Tắt';
+    b.innerHTML = '<span>✨ Hiệu ứng chuyển động</span><span class="fx-val" id="fxModeVal">' + LABEL[getFx()] + '</span>';
+    anchor.insertAdjacentElement('afterend', b);
+    b.addEventListener('click', function(e){
+      e.preventDefault();
+      var next = MODES[(MODES.indexOf(getFx()) + 1) % MODES.length];
+      setFx(next);
+      if(typeof showToast === 'function') showToast('✨ Hiệu ứng: ' + LABEL[next], 1400);
+    });
+    return true;
+  }
+
+  // ---------- 2) Gợn sóng + nảy khi chạm mọi nút menu ----------
+  var PRESS = '.btn,.btn-top,.btn-teal,.btn-primary,.btn-ghost,.btn-danger-sm,.btn-edit-sm,.sb-icon-btn,.zoom-ctrl-btn,.zoom-ctrl-reset,'
+    + '.theme-picker-btn,.more-menu-item,.mg-head,.theme-opt,.settings-hub-tab,.settings-hub-close,.cg-chip,.seg-btn,.month-switch button,'
+    + '.tab-btn,.tab-more-item,.cal-nav,.nav-title.nav-group-toggle,.menu-close-btn,.auth-chip,.date-chip,#btnAppSearch';
+  var HAPTIC = '.more-menu-item,.tab-btn,.tab-more-item,.theme-opt,.settings-hub-tab,.mg-head,.nav-title.nav-group-toggle,.theme-picker-btn';
+  function restart(el, cls, ms){
+    el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls);
+    clearTimeout(el['__t_' + cls]);
+    el['__t_' + cls] = setTimeout(function(){ el.classList.remove(cls); }, ms);
+  }
+  function onDown(e){
+    if(!isFull()) return;
+    var el = e.target.closest && e.target.closest(PRESS);
+    if(!el || el.disabled || el.getAttribute('aria-disabled') === 'true') return;
+    var r = el.getBoundingClientRect();
+    el.style.setProperty('--rx', Math.round(e.clientX - r.left) + 'px');
+    el.style.setProperty('--ry', Math.round(e.clientY - r.top) + 'px');
+    restart(el, 'cp-rip', 520);
+  }
+  function onClick(e){
+    if(!isFull()) return;
+    var el = e.target.closest && e.target.closest(PRESS);
+    if(!el || el.disabled) return;
+    restart(el, 'cp-pop', 420);
+    if(navigator.vibrate && el.matches(HAPTIC)){ try{ navigator.vibrate(6); }catch(_){} }
+  }
+
+  // ---------- 3) Số trên thẻ thống kê đếm chạy từ 0 ----------
+  var NUM_SEL = '.stat .val,.stat-card-num,.mini-stat b';
+  var running = new WeakSet();
+  function parseNum(txt){
+    var t = txt.trim();
+    if(/^\d+$/.test(t)) return { v:+t, dec:0, th:false };
+    if(/^\d{1,3}(\.\d{3})+$/.test(t)) return { v:+t.replace(/\./g,''), dec:0, th:true };
+    var m = /^(\d+),(\d{1,2})$/.exec(t);
+    if(m) return { v:parseFloat(m[1] + '.' + m[2]), dec:m[2].length, th:false };
+    return null;
+  }
+  function fmt(v, p){
+    var s = p.dec ? v.toFixed(p.dec).replace('.', ',') : String(Math.round(v));
+    if(p.th) s = s.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return s;
+  }
+  function countUp(el){
+    if(running.has(el) || !el.offsetParent) return;
+    var orig = el.textContent, p = parseNum(orig);
+    if(!p || p.v <= 0 || p.v > 1e9) return;
+    running.add(el);
+    var t0 = performance.now(), dur = 520;
+    (function tick(now){
+      var k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+      if(k < 1){ el.textContent = fmt(p.v * e, p); requestAnimationFrame(tick); }
+      else { el.textContent = orig; running.delete(el); }
+    })(t0);
+  }
+  var pendingNodes = [], scheduled = false;
+  function flush(){
+    scheduled = false;
+    var list = pendingNodes; pendingNodes = [];
+    if(!isFull()) return;
+    list.forEach(function(n){
+      if(!n.isConnected) return;
+      if(n.matches && n.matches(NUM_SEL)) countUp(n);
+      if(n.querySelectorAll) n.querySelectorAll(NUM_SEL).forEach(countUp);
+    });
+  }
+  function startObserver(){
+    if(!window.MutationObserver) return;
+    new MutationObserver(function(muts){
+      for(var i = 0; i < muts.length; i++){
+        var a = muts[i].addedNodes;
+        for(var j = 0; j < a.length; j++){
+          if(a[j].nodeType === 1 && !(a[j].parentElement && running.has(a[j].parentElement))) pendingNodes.push(a[j]);
+        }
+      }
+      if(pendingNodes.length && !scheduled){ scheduled = true; requestAnimationFrame(flush); }
+    }).observe(document.body, { childList:true, subtree:true });
+  }
+
+  // ---------- 4) Ctrl/Cmd + K = Tìm trong trang ----------
+  function onKey(e){
+    if((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === 'k' || e.key === 'K')){
+      var btn = document.getElementById('btnAppSearch');
+      if(!btn) return;
+      e.preventDefault();
+      btn.click();
+      setTimeout(function(){
+        var inp = document.querySelector('#appHeaderWrap .search-bar input');
+        if(inp){ inp.focus(); inp.select && inp.select(); }
+      }, 60);
+    }
+  }
+
+  // ---------- 5) theme-color + chế độ app (Thêm vào màn hình chính) ----------
+  function syncThemeColor(){
+    var m = document.querySelector('meta[name="theme-color"]');
+    if(!m){ m = document.createElement('meta'); m.name = 'theme-color'; document.head.appendChild(m); }
+    var c = '';
+    try{ c = getComputedStyle(root).getPropertyValue('--bg').trim(); }catch(e){}
+    if(c) m.setAttribute('content', c);
+  }
+  function detectStandalone(){
+    var sa = false;
+    try{ sa = (window.navigator.standalone === true) || (window.matchMedia && matchMedia('(display-mode: standalone)').matches); }catch(e){}
+    if(sa) root.classList.add('is-standalone');
+  }
+
+  function boot(){
+    safe(function(){ setFx(getFx()); }, 'fx');
+    safe(function(){ if(!mountFxButton()) setTimeout(mountFxButton, 400); }, 'fx-button');
+    safe(function(){
+      document.addEventListener('pointerdown', onDown, { passive:true });
+      document.addEventListener('click', onClick, true);
+    }, 'press');
+    safe(startObserver, 'countup');
+    safe(function(){ document.addEventListener('keydown', onKey); }, 'ctrlk');
+    safe(function(){
+      detectStandalone(); syncThemeColor();
+      new MutationObserver(syncThemeColor).observe(root, { attributes:true, attributeFilter:['data-theme'] });
+    }, 'theme-color');
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
+})();
+</script>
+<script id="v512-script">/* V5.16 — Đăng ký "app cài được" (service worker). Chỉ chạy trên địa chỉ https/localhost; mở file trực tiếp (file://) thì bỏ qua, không ảnh hưởng gì. */
+(function(){
+  'use strict';
+  try{
+    if('serviceWorker' in navigator && /^https?:$/.test(location.protocol)){
+      window.addEventListener('load', function(){
+        navigator.serviceWorker.register('./sw.js').then(function(reg){
+          try{ reg.update(); }catch(e){}
+          var hadController = !!navigator.serviceWorker.controller;
+          navigator.serviceWorker.addEventListener('controllerchange', function(){
+            if(hadController && typeof showToast === 'function') showToast('🔄 Đã cập nhật bản mới — mở lại app để dùng', 4500);
+          });
+        }).catch(function(){});
+      });
+    }
+  }catch(e){}
+  // Bản đưa lên GitHub không chứa danh sách nhân viên: nhắc người dùng tải từ kho ở lần đầu.
+  try{
+    window.addEventListener('load', function(){
+      setTimeout(function(){
+        if(typeof EMPLOYEES !== 'undefined' && EMPLOYEES.length === 0 && typeof showToast === 'function'){
+          showToast('📋 Danh sách nhân viên đang trống — vào "Thêm & đồng bộ", nhập khóa rồi bấm Tải từ kho', 8000);
+        }
+      }, 1800);
+    });
+  }catch(e){}
+})();
+</script>
+
+<style id="sacMauNhe">
+/* ===== Màu nhẹ cho Nhật ký + Báo cáo (chỉ CSS, theo biến màu của từng giao diện) ===== */
+#tab-journal .panel h2, #tab-stats .panel h2, #tab-charts .panel h2{color:var(--teal);}
+#tab-stats #mealReportPanel h2{color:var(--amber-dark);}
+
+/* Đầu bảng + dòng xen kẽ */
+#tab-journal .records-table th, #tab-stats .roster-table th, #tab-stats #mealReportBody table th{
+  background:color-mix(in srgb,var(--teal-soft) 80%,var(--card));
+  color:var(--teal);
+}
+#tab-journal .records-table tbody tr:nth-child(even) td,
+#tab-stats .roster-table tbody tr:nth-child(even) td,
+#tab-stats #mealReportBody table tbody tr:nth-child(even) td{
+  background:color-mix(in srgb,var(--teal-soft) 28%,var(--card));
+}
+#tab-journal .records-table tbody tr:hover td,
+#tab-stats .roster-table tbody tr:hover td{
+  background:var(--amber-soft);
+}
+#tab-journal .records-table td.stt-cell{color:var(--muted);font-family:var(--font-mono);}
+
+/* Nhật ký: nhãn nổi bật vừa phải */
+#tab-journal .group-count{
+  display:inline-block;background:var(--teal);color:#fff;
+  padding:1px 8px;border-radius:999px;margin-bottom:4px;
+}
+#tab-journal .person-pill{
+  background:color-mix(in srgb,var(--amber-soft) 65%,var(--card));
+  border:1px solid color-mix(in srgb,var(--amber) 28%,var(--line));
+}
+#tab-journal .person-pill small{color:var(--amber-dark);font-family:var(--font-mono);}
+#tab-journal .person-pill:hover{background:var(--amber-soft);border-color:var(--amber);}
+#tab-journal .tag-stage{
+  background:var(--teal-soft);color:var(--teal);
+  border:1px solid color-mix(in srgb,var(--teal) 35%,transparent);
+}
+#tab-journal .batch-tag.tag-shift{
+  background:var(--amber-soft);color:var(--amber-dark);
+  border:1px solid color-mix(in srgb,var(--amber) 35%,transparent);
+}
+#tab-journal .time-tag{
+  background:color-mix(in srgb,var(--teal-soft) 60%,var(--card));color:var(--teal);
+  border:1px solid color-mix(in srgb,var(--teal) 25%,transparent);
+}
+#tab-journal .ca-tag{box-shadow:0 1px 0 rgba(0,0,0,.08);}
+#journalToolbar #recordSearch:focus,#journalToolbar input:focus,#journalToolbar select:focus{
+  border-color:var(--teal);box-shadow:0 0 0 3px color-mix(in srgb,var(--teal) 18%,transparent);
+}
+#journalBulkBar{border:1px solid color-mix(in srgb,var(--amber) 35%,transparent);}
+
+/* Báo cáo cơm: tổng số nổi bật nhất */
+#tab-stats .meal-total{
+  background:linear-gradient(90deg,var(--amber-soft),color-mix(in srgb,var(--amber-soft) 40%,var(--card)));
+  border:1px solid color-mix(in srgb,var(--amber) 45%,transparent);color:var(--amber-dark);
+}
+#tab-stats .meal-total b{color:var(--amber);}
+#tab-stats #mealReportBody table tbody tr:last-child td{font-weight:700;color:var(--amber-dark);}
+
+/* Thống kê / báo cáo */
+#tab-stats .mini-stat b, #tab-charts .mini-stat b{color:var(--teal);}
+#tab-stats .mini-stat:nth-child(2n) b, #tab-charts .mini-stat:nth-child(2n) b{color:var(--amber-dark);}
+#tab-stats h3{color:var(--ink);}
+#tab-stats .rank-no{color:var(--teal);font-weight:700;}
+#tab-stats .rank-bar{background:color-mix(in srgb,var(--teal-soft) 70%,var(--line));}
+#tab-stats .rank-bar i{background:linear-gradient(90deg,var(--teal),var(--amber));}
+#tab-stats .top-stage-list li:nth-child(1) b{color:var(--amber);}
+#tab-stats .stat-card:nth-child(1) .stat-card-num{color:var(--teal);}
+#tab-stats .stat-card:nth-child(2) .stat-card-num{color:var(--amber);}
+
+/* Tiêu đề nhóm "Báo cáo" trên thanh bên */
+#appHeaderWrap #navTitleReport{color:color-mix(in srgb,var(--eyebrow,#f0a26d) 85%,var(--sb-muted,#aeb9c4));}
+#appHeaderWrap #navTitleReport::before{
+  content:"";width:6px;height:6px;border-radius:50%;background:var(--eyebrow,#e2742d);display:inline-block;
+}
+:is(html.sb-collapsed,html.sb-rail) #appHeaderWrap #navTitleReport::before{display:none;}
+
+/* ===== Phối màu chữ (lớp 2): xanh = nhãn/số liệu, nâu-cam = mã/ghi chú, mực = nội dung chính ===== */
+#tab-journal .panel .sub, #tab-stats .panel .sub{color:var(--muted);}
+#tab-journal .field label, #tab-stats .field label, #tab-stats .panel label{color:var(--teal);font-weight:600;}
+#tab-journal .rec-date-cell{color:var(--ink);font-weight:600;}
+#tab-journal .records-table td{color:var(--ink);}
+#tab-journal .person-pill{color:color-mix(in srgb,var(--ink) 88%,var(--teal));font-weight:600;}
+#tab-journal .note-flag{color:var(--amber-dark);}
+#tab-journal .records-table td .sub{color:var(--muted);}
+#tab-journal #journalSelCount{color:var(--amber-dark);}
+#tab-stats h3{color:var(--amber-dark);}
+#tab-stats h3 .sub{color:var(--muted);font-weight:400;}
+#tab-stats .roster-table td{color:var(--ink);}
+#tab-stats .roster-table td:nth-child(1){color:var(--muted);font-family:var(--font-mono);}
+#tab-stats .roster-table td:nth-child(2){font-weight:600;}
+#tab-stats .roster-table td:last-child{color:var(--teal);font-weight:700;}
+#tab-stats .roster-table td small, #swapHistTable small{color:var(--amber-dark);font-family:var(--font-mono);}
+#tab-stats #mealReportBody table td{color:var(--ink);}
+#tab-stats #mealReportBody table td:last-child{color:var(--amber-dark);font-weight:700;}
+#tab-stats .mini-stat span{color:var(--muted);}
+#tab-stats .rank-no + *, #tab-stats .top-stage-list li span:first-child{color:var(--ink);}
+#tab-stats .top-stage-list li b{color:var(--teal);}
+#tab-stats .legend-row{color:var(--muted);}
+/* Sổ Lương (giao diện mặc định): chữ phối xanh rêu + nâu vàng, ấm và dễ đọc hơn */
+:root[data-theme="titan"] #tab-journal .panel h2, :root[data-theme="titan"] #tab-stats .panel h2{color:var(--teal);}
+:root[data-theme="titan"] #tab-stats h3{color:var(--amber-dark);}
+:root[data-theme="titan"] #tab-journal .group-count{background:var(--teal);}
+:root[data-theme="titan"] #tab-journal .person-pill small{color:var(--amber);}
+</style>
 </body>
 </html>
 
@@ -16736,5 +17242,457 @@ body :is([style*="font-size:8px"],[style*="font-size:9px"],[style*="font-size:9.
 @media (max-width:899px),(pointer:coarse){
   input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):not([type=button]):not([type=submit]):not([type=hidden]),
   select,textarea{font-size:16px!important;}
+}
+</style>
+
+<style id="copilotFluent">/* =====================================================================
+   GIAO DIỆN COPILOT / FLUENT (V5.14) — CHỈ CSS, KHÔNG ĐỘNG TỚI JAVASCRIPT
+   • Nạp CUỐI CÙNG nên đè lên mọi lớp trước. Muốn quay về giao diện cũ: xóa 1 dòng <link> của file này.
+   • Bảng màu Copilot áp cho 2 theme: "Ngà" (sáng, mặc định) và "Mực" (tối). Các theme khác giữ màu riêng
+     nhưng cũng được bo góc / đổ bóng / kính mờ theo kiểu Fluent (dùng chung biến màu của chúng).
+   • Màu thành công (xanh lá) và lỗi (đỏ) vẫn TÁCH khỏi màu chính (xanh Copilot) như yêu cầu trước đây.
+   ===================================================================== */
+
+/* ---------- 1) Biến chung (mọi theme) ---------- */
+:root{
+  --cp-primary:#4F6BED; --cp-secondary:#7B83FF; --cp-accent:#00B7C3;
+  --cp-grad:linear-gradient(135deg,var(--amber),color-mix(in srgb,var(--amber) 78%,#fff));
+  --cp-chart-grad:linear-gradient(90deg,var(--amber),var(--amber-dark));
+  --cp-glow:color-mix(in srgb,var(--amber) 30%,transparent);
+  --cp-ring:color-mix(in srgb,var(--amber) 24%,transparent);
+  --cp-glass:color-mix(in srgb,var(--card) 74%,transparent);
+  --cp-glass-strong:color-mix(in srgb,var(--card) 92%,transparent);
+  --cp-glass-line:color-mix(in srgb,var(--line) 70%,transparent);
+  --cp-blur:saturate(1.5) blur(18px);
+  --cp-shadow-1:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.05);
+  --cp-shadow-2:0 2px 4px rgba(16,24,40,.05),0 10px 28px rgba(16,24,40,.09);
+  --cp-hairline:color-mix(in srgb,var(--line) 85%,transparent);
+  --cp-ink-accent:var(--amber-dark); --cp-accent-ink:var(--teal); --cp-sb-active-ink:var(--sb-ink);
+  --radius:12px; --panel-radius:16px;
+}
+
+/* ---------- 2) Bảng màu Copilot — SÁNG (theme Ngà) ---------- */
+:root[data-theme="nga"]{
+  --bg:#F5F7FB; --card:#FFFFFF; --ink:#1F2937; --muted:#6B7280; --line:#E5E7EB;
+  --amber:#4F6BED; --amber-dark:#3B54D1; --amber-soft:#E9EDFE;
+  --teal:#0B7A5A; --teal-soft:#E2F4EC;
+  --danger:#C4262B; --danger-soft:#FDE7E9;
+  --panel-soft:#F0F3FA; --input-bg:#FFFFFF;
+  --page-grad-1:#F5F7FB; --page-grad-2:#F5F7FB; --page-grad-3:#F5F7FB;
+  --header-grad:rgba(255,255,255,.72); --header-text:#1F2937; --eyebrow:#4F6BED;
+  --datechip-bg:#EEF1FD; --datechip-border:#DDE3FB; --btntop-bg:#FFFFFF; --btntop-border:#E5E7EB;
+  --tabbar-bg:#FFFFFF; --tabbar-border:#E5E7EB; --tab-text:#4B5563;
+  --tab-hover-bg:#EEF1FD; --tab-hover-text:#1F2937; --tab-active-bg:#E9EDFE; --tab-active-text:#3B54D1;
+  --tab-active-border:#4F6BED; --tab-badge-bg:#4F6BED; --cp-sb-active-ink:#3B54D1;
+  --sb-bg:transparent; --sb-ink:#1F2937; --sb-muted:#6B7280; --sb-line:rgba(229,231,235,.9);
+  --sb-hover:rgba(79,107,237,.07); --sb-active:rgba(79,107,237,.12);
+  --cp-grad:linear-gradient(135deg,#4560E8 0%,#5B6AF0 100%);
+  --cp-chart-grad:linear-gradient(90deg,#4F6BED 0%,#7B83FF 100%);
+  --cp-glow:rgba(79,107,237,.30); --cp-ring:rgba(79,107,237,.22);
+  --cp-glass:rgba(255,255,255,.72); --cp-glass-strong:rgba(255,255,255,.94); --cp-glass-line:rgba(229,231,235,.85);
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.05);
+}
+
+/* ---------- 3) Bảng màu Copilot — TỐI (theme Mực, nền #1B1A19) ---------- */
+:root[data-theme="muc"]{
+  --bg:#1B1A19; --card:#252423; --ink:#F3F2F1; --muted:#A19F9D; --line:#3B3A39;
+  --amber:#5069E8; --amber-dark:#6C83F6; --amber-soft:#2A2F52;
+  --teal:#4CC9A0; --teal-soft:#153A2E;
+  --danger:#FF7B7F; --danger-soft:#3F1F22;
+  --panel-soft:#2D2C2B; --input-bg:#2B2A29;
+  --page-grad-1:#1B1A19; --page-grad-2:#1B1A19; --page-grad-3:#1B1A19;
+  --header-grad:rgba(37,36,35,.72); --header-text:#F3F2F1; --eyebrow:#9FB0FF;
+  --datechip-bg:#2D2C2B; --datechip-border:#3B3A39; --btntop-bg:#2D2C2B; --btntop-border:#3B3A39;
+  --tabbar-bg:#201F1E; --tabbar-border:#3B3A39; --tab-text:#A19F9D;
+  --tab-hover-bg:#2D2C2B; --tab-hover-text:#FFFFFF; --tab-active-bg:#2A2F52; --tab-active-text:#C7D1FF;
+  --tab-active-border:#7B83FF; --tab-badge-bg:#5069E8; --cp-sb-active-ink:#C7D1FF;
+  --sb-bg:transparent; --sb-ink:#F3F2F1; --sb-muted:#A19F9D; --sb-line:rgba(255,255,255,.08);
+  --sb-hover:rgba(255,255,255,.06); --sb-active:rgba(123,131,255,.18);
+  --cp-grad:linear-gradient(135deg,#4A63E2 0%,#6272F2 100%);
+  --cp-chart-grad:linear-gradient(90deg,#5069E8 0%,#7B83FF 100%);
+  --cp-glow:rgba(80,105,232,.40); --cp-ring:rgba(123,131,255,.32);
+  --cp-glass:rgba(37,36,35,.72); --cp-glass-strong:rgba(37,36,35,.94); --cp-glass-line:rgba(255,255,255,.08);
+  --cp-shadow-1:0 1px 2px rgba(0,0,0,.30),0 2px 8px rgba(0,0,0,.22);
+  --cp-shadow-2:0 2px 4px rgba(0,0,0,.32),0 12px 32px rgba(0,0,0,.38);
+  --shadow:0 1px 2px rgba(0,0,0,.30),0 2px 8px rgba(0,0,0,.22);
+}
+:root[data-theme="muc"] .cal-cell{background:var(--panel-soft);}
+:root[data-theme="muc"] .cal-nav{background:var(--panel-soft);color:var(--ink);}
+
+/* ---------- 4) Nền trang: vài vệt sáng xanh–tím–ngọc rất nhạt để hiệu ứng kính mờ có cái để "mờ" ---------- */
+:root[data-theme="nga"] body,:root[data-theme="muc"] body{
+  background:
+    radial-gradient(900px 520px at 4% -8%,rgba(79,107,237,.10),transparent 62%),
+    radial-gradient(760px 480px at 100% 0%,rgba(123,131,255,.09),transparent 60%),
+    radial-gradient(700px 520px at 60% 108%,rgba(0,183,195,.07),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+:root[data-theme="muc"] body{
+  background:
+    radial-gradient(900px 520px at 4% -8%,rgba(80,105,232,.16),transparent 62%),
+    radial-gradient(760px 480px at 100% 0%,rgba(123,131,255,.12),transparent 60%),
+    radial-gradient(700px 520px at 60% 108%,rgba(0,183,195,.09),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* ---------- 5) Nút bấm: bo 12px, gradient xanh Copilot, hover sáng nhẹ, bóng mềm ---------- */
+.btn{border-radius:12px;box-shadow:var(--cp-shadow-1);
+  transition:background .15s ease,border-color .15s ease,box-shadow .18s ease,filter .15s ease,transform .08s ease;}
+/* Nút thường (trung tính) mới đổi viền/nền; nút màu (chính, xanh lá) giữ màu riêng để chữ trắng luôn đọc được */
+.btn:not(.btn-primary):not(.btn-teal){border-color:var(--cp-hairline);}
+.btn:not(.btn-primary):not(.btn-teal):hover{background:color-mix(in srgb,var(--amber) 7%,var(--input-bg));border-color:color-mix(in srgb,var(--amber) 38%,var(--line));filter:none;}
+.btn-ghost{box-shadow:none;}
+.btn-primary{background:var(--cp-grad);border-color:transparent;color:#fff;box-shadow:0 4px 12px var(--cp-glow);}
+.btn-primary:hover{background:var(--cp-grad);border-color:transparent;filter:brightness(1.1) saturate(1.05);box-shadow:0 6px 18px var(--cp-glow);}
+.btn-primary:active{filter:brightness(.97);box-shadow:0 2px 6px var(--cp-glow);}
+.btn-teal{border-radius:12px;box-shadow:0 3px 10px color-mix(in srgb,var(--teal) 28%,transparent);}
+.btn-teal:hover{filter:brightness(1.08);}
+.btn-danger-sm,.btn-edit-sm{border-radius:10px;}
+.btn:focus-visible,.btn-top:focus-visible{outline:none;box-shadow:0 0 0 3px var(--cp-ring);}
+.btn-top{border-radius:12px;transition:background .15s ease,box-shadow .15s ease,filter .15s ease;}
+.btn-top:hover{filter:brightness(1.04);}
+
+/* ---------- 6) Thanh bên (Sidebar): nền trắng mờ + blur, mục đang chọn có thanh màu xanh ---------- */
+#appHeaderWrap{background:transparent;border-right:1px solid var(--cp-glass-line);
+  box-shadow:8px 0 32px -18px rgba(16,24,40,.18);}
+/* Lớp kính nằm ở pseudo-element (không đặt backdrop-filter lên chính #appHeaderWrap, vì sẽ làm các menu
+   position:fixed bên trong bị lệch vị trí). */
+#appHeaderWrap::before{content:"";position:fixed;top:0;bottom:0;left:inherit;width:var(--sb-w);z-index:-1;
+  background:var(--cp-glass);-webkit-backdrop-filter:var(--cp-blur);backdrop-filter:var(--cp-blur);pointer-events:none;}
+#appHeaderWrap .tab-btn,#appHeaderWrap .tab-more-item,#appHeaderWrap #btnAppSearch,
+#appHeaderWrap .theme-picker-btn,#appHeaderWrap .auth-chip{position:relative;border-radius:12px;
+  transition:background .15s ease,color .15s ease;}
+#appHeaderWrap .tab-btn.active,#appHeaderWrap .tab-more-item.active{background:var(--sb-active);color:var(--cp-sb-active-ink);font-weight:600;}
+#appHeaderWrap .tab-btn.active::before,#appHeaderWrap .tab-more-item.active::before{content:"";position:absolute;left:-2px;top:8px;bottom:8px;
+  width:3px;border-radius:3px;background:linear-gradient(180deg,var(--cp-primary),var(--cp-accent));}
+:is(html.sb-collapsed,html.sb-rail) #appHeaderWrap .tab-btn.active::before{left:0;}
+#appHeaderWrap .tab-badge{background:var(--tab-badge-bg);color:#fff;}
+#appHeaderWrap #sbBrand h1{letter-spacing:-.01em;}
+#appHeaderWrap .nav-title{letter-spacing:.02em;}
+.sb-icon-btn{border-radius:10px;}
+@media (max-width:899px){
+  #appHeaderWrap::before{background:var(--cp-glass-strong);}
+  #sbBackdrop{-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+}
+
+/* ---------- 7) Header (thanh trên mobile, tiêu đề Trung tâm cài đặt): kính mờ + bóng nhẹ, cùng tông sidebar ---------- */
+#mobileBar,.settings-hub-head{background:var(--cp-glass);border-bottom:1px solid var(--cp-glass-line);
+  -webkit-backdrop-filter:var(--cp-blur);backdrop-filter:var(--cp-blur);box-shadow:0 4px 18px -10px rgba(16,24,40,.22);}
+.settings-hub-nav{background:var(--cp-glass-strong);}
+.settings-hub-tab{border-radius:16px;transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;}
+.settings-hub-tab.active{border-color:var(--amber);box-shadow:0 0 0 3px var(--cp-ring);}
+.settings-hub-close{border-radius:12px;}
+header.topbar{box-shadow:none;}
+
+/* ---------- 8) Card / Bảng: bo 16px, viền rất mảnh, bóng nhẹ kiểu Fluent ---------- */
+.panel,.last-work-banner,.theme-menu{border-radius:16px;}
+/* Modal: chỉ bo 16px khi màn hình đủ cao/rộng; màn hình thấp & điện thoại nhỏ vẫn dùng bo gọn có sẵn */
+@media (min-height:521px) and (min-width:521px){.modal{border-radius:16px;}}
+.panel{border:1px solid var(--cp-hairline);box-shadow:var(--cp-shadow-1);}
+.panel:hover{box-shadow:var(--cp-shadow-2);}
+.modal{border:1px solid var(--cp-hairline);box-shadow:var(--cp-shadow-2);}
+.modal-bg{background:rgba(17,24,39,.42);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px);}
+:root[data-theme="muc"] .modal-bg{background:rgba(0,0,0,.55);}
+.theme-menu{border:1px solid var(--cp-hairline);box-shadow:var(--cp-shadow-2);}
+#appHeaderWrap .theme-menu:not(#tabMoreMenu){border-radius:16px;box-shadow:var(--cp-shadow-2);}
+.theme-opt{border-radius:10px;}
+.theme-opt.active{background:var(--amber-soft);color:var(--cp-ink-accent);}
+.stat{border:1px solid var(--cp-hairline);border-left:1px solid var(--cp-hairline);border-radius:16px;box-shadow:var(--cp-shadow-1);
+  background:linear-gradient(var(--cp-primary),var(--cp-secondary)) top left/100% 3px no-repeat,var(--card);}
+.stat:hover{box-shadow:var(--cp-shadow-2);}
+.stat:after{background:color-mix(in srgb,var(--cp-primary) 7%,transparent);}
+:root[data-theme="muc"] .stat:after{background:rgba(123,131,255,.10);}
+.stat-card{border-radius:16px;border-color:var(--cp-hairline);}
+.last-work-banner{border-color:var(--cp-hairline);}
+.empty-state{border-radius:16px;}
+/* Bảng dữ liệu: tiêu đề cột gọn, dòng hover xanh nhạt, đường kẻ mảnh */
+.records-table th,.roster-table th,table.overview-table thead th,.csv-viewer-table th{background:var(--panel-soft);color:var(--muted);font-weight:600;}
+.records-table td,.roster-table td,table.luong-table td,.csv-viewer-table td,.audit-tbl td{border-bottom-color:var(--cp-hairline);}
+.records-table tbody tr:hover td,.roster-table tbody tr:hover td,table.luong-table tbody tr:hover td{background:color-mix(in srgb,var(--amber) 6%,transparent);}
+.heat-cell{border-radius:5px;}
+.ms-suggest-list{border-radius:0 0 14px 14px;box-shadow:var(--cp-shadow-2);border-color:var(--cp-hairline);}
+.ms-suggest-item.active{background:var(--amber-soft);}
+.cal-cell{border-radius:10px;}
+.cal-cell.selected{box-shadow:0 0 0 2px var(--cp-ring);}
+.cal-nav{border-radius:10px;}
+
+/* ---------- 9) Form: ô nhập bo tròn, focus viền xanh Copilot, khoảng cách thoáng hơn ---------- */
+input[type=text],input[type=date],input[type=number],input[type=password],select,textarea{
+  border-radius:12px;border:1px solid var(--cp-hairline);background:var(--input-bg);color:var(--ink);
+  transition:border-color .15s ease,box-shadow .15s ease,background .15s ease;}
+textarea{line-height:1.45;}
+input[type=text]:hover,input[type=date]:hover,input[type=number]:hover,input[type=password]:hover,select:hover,textarea:hover{
+  border-color:color-mix(in srgb,var(--amber) 45%,var(--line));filter:none;}
+input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,input[type=password]:focus,select:focus,textarea:focus{
+  outline:none;border-color:var(--cp-primary);box-shadow:0 0 0 3px var(--cp-ring);background:var(--input-bg);}
+:root:not([data-theme="nga"]):not([data-theme="muc"]):not([data-theme="suong"]):not([data-theme="oai"]) input:focus,
+:root:not([data-theme="nga"]):not([data-theme="muc"]):not([data-theme="suong"]):not([data-theme="oai"]) select:focus,
+:root:not([data-theme="nga"]):not([data-theme="muc"]):not([data-theme="suong"]):not([data-theme="oai"]) textarea:focus{border-color:var(--amber);}
+/* Khoảng cách thoáng hơn: chỉ tăng ở màn hình rộng (không đụng chế độ Gọn / điện thoại) */
+@media (min-width:900px){
+  html:not(.compact-mode) .row{gap:14px;margin-bottom:14px;}
+  html:not(.compact-mode) .panel h2{margin-bottom:6px;}
+  html:not(.compact-mode) .panel .sub{margin-bottom:14px;}
+}
+.modal-actions{gap:10px;}
+input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--cp-primary);}
+
+/* ---------- 10) Biểu đồ: dải màu xanh–tím Copilot (cột/ thanh dùng biến màu nên tự đồng bộ) ---------- */
+.chart-bar-track{border-radius:10px;border-color:var(--cp-hairline);background:var(--panel-soft);}
+.chart-bar-fill{background:var(--cp-chart-grad);border-radius:8px;}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) .top15-bar-fill{background:linear-gradient(90deg,var(--cp-accent),var(--cp-primary));border-radius:4px;}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) .trend-bar-fill{background:linear-gradient(180deg,var(--cp-secondary),var(--cp-primary));border-radius:6px 6px 0 0;}
+.heat-cell.work{border-color:var(--amber-dark);}
+
+/* ---------- 11) Thông báo (toast) hiện đại ---------- */
+.toast{background:color-mix(in srgb,var(--ink) 92%,transparent);color:var(--card);border-radius:14px;
+  -webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);box-shadow:var(--cp-shadow-2);
+  border:1px solid rgba(255,255,255,.10);padding:11px 18px;}
+
+/* ---------- 12) Chi tiết: thanh cuộn mảnh, chọn chữ, giảm chuyển động ---------- */
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) ::selection{background:var(--cp-ring);}
+/* ---------- 13) Nhật ký / Báo cáo: điểm nhấn xanh rêu cũ (--teal) → xanh–tím–ngọc Copilot (chỉ theme Ngà & Mực) ---------- */
+:root[data-theme="nga"]{--cp-accent-ink:#00727B;--cp-ink-accent:#3B54D1;}
+:root[data-theme="muc"]{--cp-accent-ink:#5CDDE6;--cp-ink-accent:#9FB0FF;}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-journal,#tab-stats,#tab-charts) .panel h2{color:var(--cp-ink-accent);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-journal .records-table th,#tab-stats .roster-table th,#tab-stats #mealReportBody table th){
+  background:color-mix(in srgb,var(--amber-soft) 72%,var(--card));color:var(--cp-ink-accent);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-journal .records-table tbody tr:nth-child(even) td,#tab-stats .roster-table tbody tr:nth-child(even) td,#tab-stats #mealReportBody table tbody tr:nth-child(even) td){
+  background:color-mix(in srgb,var(--amber-soft) 30%,var(--card));}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) #tab-journal .group-count{background:var(--cp-grad);color:#fff;}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) #tab-journal .tag-stage{background:var(--amber-soft);color:var(--cp-ink-accent);
+  border:1px solid color-mix(in srgb,var(--amber) 30%,transparent);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) #tab-journal .time-tag{background:color-mix(in srgb,var(--cp-accent) 12%,var(--card));color:var(--cp-accent-ink);
+  border:1px solid color-mix(in srgb,var(--cp-accent) 35%,transparent);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-journal .field label,#tab-stats .field label,#tab-stats .panel label){color:var(--cp-ink-accent);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) #tab-journal .person-pill{color:color-mix(in srgb,var(--ink) 86%,var(--amber-dark));}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#journalToolbar #recordSearch:focus,#journalToolbar input:focus,#journalToolbar select:focus){
+  border-color:var(--cp-primary);box-shadow:0 0 0 3px var(--cp-ring);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-stats #mealReportBody table tbody tr:last-child td,#tab-stats #mealReportBody table td:last-child){color:var(--cp-ink-accent);}
+
+/* ---------- 14) Nút chọn / chip / công tắc đoạn: trạng thái "đang chọn" dùng xanh Copilot thay cho đen/xanh rêu ---------- */
+.seg-toggle{border-radius:12px;border-color:var(--cp-hairline);}
+.seg-toggle .seg-btn{background:var(--card);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) .seg-toggle .seg-btn.active{background:var(--cp-grad);color:#fff;}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) .month-switch button.active{background:var(--cp-grad);border-color:transparent;color:#fff;}
+.month-switch button{border-radius:12px;}
+.cg-chip{border-color:var(--cp-hairline);}
+:is(:root[data-theme="nga"],:root[data-theme="muc"],:root[data-theme="suong"],:root[data-theme="oai"]) .cg-chip.active{border-color:var(--cp-primary);background:var(--amber-soft);color:var(--cp-ink-accent);}
+.stat-card-num{letter-spacing:-.01em;}
+
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){
+  #appHeaderWrap::before{background:var(--card);}
+  #mobileBar,.settings-hub-head{background:var(--card);}
+}
+@media (prefers-reduced-motion:reduce){
+  .btn,.btn-top,.panel,.stat,input,select,textarea,#appHeaderWrap .tab-btn{transition:none!important;}
+}
+@media print{#appHeaderWrap::before{display:none;}}
+</style>
+
+<style id="copilotThemes">/* =====================================================================
+   2 THEME MỚI (V5.15): "Sương Mai" (xanh ngọc nhạt) và "Oải Hương" (tím phấn nhẹ)
+   Màu nhẹ, nhưng CÁC Ô được tách rõ: nền ô nhập khác nền thẻ, ô số liệu mỗi ô một tông, bảng có kẻ cột + sọc dòng.
+   Màu thành công (xanh lá) và lỗi (đỏ) vẫn tách khỏi màu chính. Chỉ cần xóa file này + 2 dòng trong THEMES để bỏ.
+   ===================================================================== */
+
+/* ---- Sương Mai — xanh ngọc nhạt (suong) ---- */
+:root[data-theme="suong"]{
+  --bg:#F2F8FA; --card:#FFFFFF; --ink:#1B2B33; --muted:#566A73; --line:#C9DDE5;
+  --amber:#0C7C96; --amber-dark:#0A667B; --amber-soft:#DCEFF5;
+  --teal:#2C7730; --teal-soft:#E3F3E4; --danger:#C4262B; --danger-soft:#FDE7E9;
+  --panel-soft:#E5F1F5; --input-bg:#F7FBFC;
+  --page-grad-1:#F2F8FA; --page-grad-2:#F2F8FA; --page-grad-3:#F2F8FA;
+  --header-grad:rgba(255,255,255,.72); --header-text:#1B2B33; --eyebrow:#0C7C96;
+  --datechip-bg:#DCEFF5; --datechip-border:#C9DDE5; --btntop-bg:#FFFFFF; --btntop-border:#C9DDE5;
+  --tabbar-bg:#FFFFFF; --tabbar-border:#C9DDE5; --tab-text:#566A73;
+  --tab-hover-bg:#DCEFF5; --tab-hover-text:#1B2B33; --tab-active-bg:#DCEFF5; --tab-active-text:#0A667B;
+  --tab-active-border:#0C7C96; --tab-badge-bg:#0C7C96; --cp-sb-active-ink:#0A667B;
+  --sb-bg:transparent; --sb-ink:#1B2B33; --sb-muted:#566A73; --sb-line:rgba(201,221,229,0.9);
+  --sb-hover:rgba(12,124,150,0.08); --sb-active:rgba(12,124,150,0.14);
+  --cp-primary:#0C7C96; --cp-secondary:#4FB3D9; --cp-accent:#2CC4A8;
+  --cp-accent-ink:#1C8270; --cp-ink-accent:#0A667B;
+  --cp-grad:linear-gradient(135deg,#0B7087 0%,#0C7C96 100%);
+  --cp-chart-grad:linear-gradient(90deg,#0C7C96 0%,#4FB3D9 100%);
+  --cp-glow:rgba(12,124,150,0.3); --cp-ring:rgba(12,124,150,0.24);
+  --cp-glass:rgba(255,255,255,.72); --cp-glass-strong:rgba(255,255,255,.94); --cp-glass-line:rgba(201,221,229,0.85);
+  --cp-ripple:rgba(12,124,150,0.18);
+  --cell-1:#E1F3F8; --cell-2:#E3F5EA; --cell-3:#FFF1DA; --cell-4:#ECE8FA;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.05);
+}
+:root[data-theme="suong"] body{
+  background:
+    radial-gradient(900px 520px at 4% -8%,rgba(12,124,150,0.1),transparent 62%),
+    radial-gradient(760px 480px at 100% 0%,rgba(79,179,217,0.1),transparent 60%),
+    radial-gradient(700px 520px at 60% 108%,rgba(44,196,168,0.08),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* ---- Oải Hương — tím phấn nhẹ (oai) ---- */
+:root[data-theme="oai"]{
+  --bg:#F6F4FC; --card:#FFFFFF; --ink:#2A2540; --muted:#5F5979; --line:#D8D0EE;
+  --amber:#6E55D8; --amber-dark:#5A46B1; --amber-soft:#E8E3FA;
+  --teal:#2C7730; --teal-soft:#E3F3E4; --danger:#C4262B; --danger-soft:#FDE7E9;
+  --panel-soft:#EDE9F8; --input-bg:#FBF9FF;
+  --page-grad-1:#F6F4FC; --page-grad-2:#F6F4FC; --page-grad-3:#F6F4FC;
+  --header-grad:rgba(255,255,255,.72); --header-text:#2A2540; --eyebrow:#6E55D8;
+  --datechip-bg:#E8E3FA; --datechip-border:#D8D0EE; --btntop-bg:#FFFFFF; --btntop-border:#D8D0EE;
+  --tabbar-bg:#FFFFFF; --tabbar-border:#D8D0EE; --tab-text:#5F5979;
+  --tab-hover-bg:#E8E3FA; --tab-hover-text:#2A2540; --tab-active-bg:#E8E3FA; --tab-active-text:#5A46B1;
+  --tab-active-border:#6E55D8; --tab-badge-bg:#6E55D8; --cp-sb-active-ink:#5A46B1;
+  --sb-bg:transparent; --sb-ink:#2A2540; --sb-muted:#5F5979; --sb-line:rgba(216,208,238,0.9);
+  --sb-hover:rgba(110,85,216,0.08); --sb-active:rgba(110,85,216,0.14);
+  --cp-primary:#6E55D8; --cp-secondary:#9B87F0; --cp-accent:#2BA39A;
+  --cp-accent-ink:#217E77; --cp-ink-accent:#5A46B1;
+  --cp-grad:linear-gradient(135deg,#634CC2 0%,#7A63DB 100%);
+  --cp-chart-grad:linear-gradient(90deg,#6E55D8 0%,#9B87F0 100%);
+  --cp-glow:rgba(110,85,216,0.3); --cp-ring:rgba(110,85,216,0.24);
+  --cp-glass:rgba(255,255,255,.72); --cp-glass-strong:rgba(255,255,255,.94); --cp-glass-line:rgba(216,208,238,0.85);
+  --cp-ripple:rgba(110,85,216,0.18);
+  --cell-1:#EAE5FB; --cell-2:#E1EEFB; --cell-3:#FCE7F1; --cell-4:#E3F4EA;
+  --shadow:0 1px 2px rgba(16,24,40,.04),0 2px 8px rgba(16,24,40,.05);
+}
+:root[data-theme="oai"] body{
+  background:
+    radial-gradient(900px 520px at 4% -8%,rgba(110,85,216,0.1),transparent 62%),
+    radial-gradient(760px 480px at 100% 0%,rgba(155,135,240,0.1),transparent 60%),
+    radial-gradient(700px 520px at 60% 108%,rgba(43,163,154,0.08),transparent 60%),
+    var(--bg);
+  background-attachment:fixed;
+}
+
+/* ---- Ô nhập dễ thấy: nền hơi ngả màu + viền theo tông chính ---- */
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) input[type=text],:is(:root[data-theme="suong"],:root[data-theme="oai"]) input[type=date],:is(:root[data-theme="suong"],:root[data-theme="oai"]) input[type=number],:is(:root[data-theme="suong"],:root[data-theme="oai"]) input[type=password],:is(:root[data-theme="suong"],:root[data-theme="oai"]) select,:is(:root[data-theme="suong"],:root[data-theme="oai"]) textarea{
+  background:var(--input-bg);border-color:color-mix(in srgb,var(--amber) 30%,var(--line));}
+/* ---- Ô số liệu: mỗi thẻ một tông nhạt khác nhau (xoay vòng 4 màu) ---- */
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat:nth-child(4n+1){--cell:var(--cell-1);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat:nth-child(4n+2){--cell:var(--cell-2);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat:nth-child(4n+3){--cell:var(--cell-3);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat:nth-child(4n+4){--cell:var(--cell-4);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat{background:linear-gradient(var(--cp-primary),var(--cp-secondary)) top left/100% 3px no-repeat,var(--cell,var(--card));}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat-card:nth-child(4n+1){background:var(--cell-1);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat-card:nth-child(4n+2){background:var(--cell-2);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat-card:nth-child(4n+3){background:var(--cell-3);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat-card:nth-child(4n+4){background:var(--cell-4);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat .val,:is(:root[data-theme="suong"],:root[data-theme="oai"]) .stat-card-num{color:var(--cp-ink-accent);}
+/* ---- Bảng: kẻ cột mảnh + sọc dòng rõ hơn để dò từng ô ---- */
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) :is(.records-table,.roster-table,table.luong-table,.csv-viewer-table,.audit-tbl,table.overview-table) td{border-right:1px solid var(--cp-hairline);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) :is(.records-table,.roster-table,table.luong-table,.csv-viewer-table,.audit-tbl,table.overview-table) td:last-child{border-right:none;}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) :is(.records-table,.roster-table,table.luong-table,.csv-viewer-table) tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--amber-soft) 55%,var(--card));}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) :is(#tab-journal .records-table,#tab-stats .roster-table) tbody tr:nth-child(even) td{background:color-mix(in srgb,var(--amber-soft) 55%,var(--card));}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .heat-cell{background:color-mix(in srgb,var(--amber-soft) 70%,var(--card));}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .cal-cell{background:color-mix(in srgb,var(--amber-soft) 40%,var(--card));}
+
+/* ---- Thẻ số liệu nhỏ (Bản ghi / Người có công / Tổng công / Nhân sự...) cũng mỗi ô một tông ---- */
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat:nth-child(4n+1){background:var(--cell-1);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat:nth-child(4n+2){background:var(--cell-2);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat:nth-child(4n+3){background:var(--cell-3);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat:nth-child(4n+4){background:var(--cell-4);}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat{border-color:color-mix(in srgb,var(--amber) 22%,var(--line));}
+:is(:root[data-theme="suong"],:root[data-theme="oai"]) .mini-stat b{color:var(--cp-ink-accent);}
+</style>
+
+<style id="copilotMotion">/* =====================================================================
+   CẢM GIÁC "NHƯ APP" + HIỆU ỨNG PHẢN HỒI (V5.15)
+   • 3 mức: Đầy đủ / Gọn / Tắt (nút "✨ Hiệu ứng chuyển động" trong menu Giao diện, lưu ở máy).
+   • Chế độ Gọn của app và "giảm chuyển động" của hệ điều hành tự tắt phần lớn hiệu ứng.
+   ===================================================================== */
+@property --rr{syntax:'<length>';inherits:false;initial-value:0px;}
+:root{--cp-ease:cubic-bezier(.2,.8,.2,1);--cp-spring:cubic-bezier(.34,1.56,.64,1);--cp-ripple:rgba(79,107,237,.18);}
+:root[data-theme="muc"]{--cp-ripple:rgba(255,255,255,.16);}
+
+/* ---------- A) Cảm giác app: không bôi chọn chữ trên nút, không giật 300ms, không nảy kéo-làm-mới ---------- */
+body{-webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;}
+:where(button,[role=button],.tab-btn,.tab-more-item,.more-menu-item,.theme-opt,.settings-hub-tab,.cg-chip,.seg-btn,.cal-cell,.cal-nav,.nav-title,.auth-chip,.date-chip,.sb-icon-btn,.zoom-ctrl-btn){
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:manipulation;}
+.stat .val,.stat-card-num,.mini-stat b,.records-table td,table.luong-table td,.heat-cell,td.ov-cell,td.ov-summary,.audit-tbl td{font-variant-numeric:tabular-nums;}
+.fx-val{font-size:12px;font-weight:700;color:var(--cp-ink-accent);background:var(--amber-soft);border-radius:999px;padding:2px 10px;}
+@media (hover:hover) and (pointer:fine){
+  ::-webkit-scrollbar{width:9px;height:9px;}
+  ::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--muted) 38%,transparent);border-radius:9px;border:2px solid transparent;background-clip:padding-box;}
+  ::-webkit-scrollbar-thumb:hover{background:color-mix(in srgb,var(--muted) 60%,transparent);background-clip:padding-box;border:2px solid transparent;}
+  ::-webkit-scrollbar-track{background:transparent;}
+}
+/* Ô tìm kiếm: khi chọn có viền chuyển màu xanh–tím–ngọc kiểu Copilot */
+input:is([id*="Search"],[id*="search"],[type=search]):focus,#appHeaderWrap .search-bar input:focus,#journalToolbar input:focus{
+  border-color:transparent;
+  background:linear-gradient(var(--input-bg),var(--input-bg)) padding-box,linear-gradient(120deg,var(--cp-primary),var(--cp-secondary),var(--cp-accent)) border-box;
+  box-shadow:0 0 0 3px var(--cp-ring);}
+
+/* ---------- B) Phản hồi khi chạm: chữ/nút phồng nhẹ rồi nảy về, gợn sóng loang từ ngón tay ---------- */
+@keyframes cp-pop{0%{transform:scale(.95);}45%{transform:scale(1.07);}75%{transform:scale(.985);}100%{transform:scale(1);}}
+@keyframes cp-pop-text{0%{transform:scale(1);}45%{transform:scale(1.08);}100%{transform:scale(1);}}
+@keyframes cp-ripple{from{--rr:0px;opacity:1;}to{--rr:320px;opacity:0;}}
+@keyframes cp-pop-in{from{opacity:0;transform:translateY(8px) scale(.965);}to{opacity:1;transform:none;}}
+@keyframes cp-fade{from{opacity:0;}to{opacity:1;}}
+@keyframes cp-rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:none;}}
+@keyframes cp-bar-in{from{transform:scaleY(0);}to{transform:scaleY(1);}}
+:where(.cp-rip){position:relative;}
+.cp-rip::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:radial-gradient(circle at var(--rx,50%) var(--ry,50%),var(--cp-ripple) var(--rr),transparent calc(var(--rr) + 1px));
+  animation:cp-ripple .5s var(--cp-ease) forwards;}
+.btn-primary.cp-rip,.btn-teal.cp-rip{--cp-ripple:rgba(255,255,255,.34);}
+
+/* Nút lẻ (có nền riêng): hover phồng nhẹ, bấm lún, thả ra nảy lại kiểu lò xo */
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.btn,.btn-top,.btn-teal,.btn-primary,.btn-ghost,.btn-danger-sm,.btn-edit-sm,.zoom-ctrl-btn,.zoom-ctrl-reset,.settings-hub-close,.cg-chip,.seg-btn,.month-switch button,.cal-nav,.menu-close-btn,.sb-icon-btn){
+  transition:transform .26s var(--cp-spring),background-color .15s ease,border-color .15s ease,box-shadow .18s ease,filter .15s ease,color .15s ease;}
+@media (hover:hover){
+  html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.btn,.btn-top,.btn-teal,.btn-primary,.zoom-ctrl-btn,.settings-hub-close,.cg-chip,.month-switch button):hover{transform:scale(1.035);}
+}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.btn,.btn-top,.btn-teal,.btn-primary,.btn-ghost,.btn-danger-sm,.btn-edit-sm,.zoom-ctrl-btn,.settings-hub-close,.cg-chip,.seg-btn,.month-switch button,.cal-nav,.sb-icon-btn,.menu-close-btn):active{
+  transform:scale(.955);transition-duration:.08s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.btn,.btn-top,.btn-teal,.btn-primary,.btn-ghost,.btn-danger-sm,.btn-edit-sm,.zoom-ctrl-btn,.settings-hub-close,.cg-chip,.seg-btn,.month-switch button,.cal-nav,.sb-icon-btn,.menu-close-btn).cp-pop{animation:cp-pop .38s var(--cp-spring);}
+
+/* Mục menu / dòng menu: chữ + biểu tượng phồng nhẹ khi rê, nảy khi bấm; cả dòng lún nhẹ */
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap :is(.tab-btn,.tab-more-item,#btnAppSearch,.theme-picker-btn,.auth-chip,.nav-title.nav-group-toggle) :is(.lbl,.i,#topDateChip,.nav-label){
+  transition:transform .26s var(--cp-spring);transform-origin:left center;}
+@media (hover:hover){
+  html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap :is(.tab-btn,.tab-more-item,#btnAppSearch,.theme-picker-btn,.auth-chip):hover :is(.lbl,.i,#topDateChip){transform:translateX(2px) scale(1.045);}
+}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap :is(.tab-btn,.tab-more-item,#btnAppSearch,.theme-picker-btn,.auth-chip):active{transform:scale(.975);transition:transform .08s ease;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap :is(.tab-btn,.tab-more-item,#btnAppSearch,.theme-picker-btn,.auth-chip).cp-pop :is(.lbl,.i,#topDateChip){animation:cp-pop-text .36s var(--cp-spring);}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap :is(.tab-btn,.tab-more-item,#btnAppSearch,.theme-picker-btn,.auth-chip){transition:background .15s ease,color .15s ease,transform .26s var(--cp-spring);}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.more-menu-item,.mg-head,.theme-opt,.settings-hub-tab){transition:transform .24s var(--cp-spring),background-color .15s ease,border-color .15s ease,box-shadow .15s ease;}
+@media (hover:hover){html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.more-menu-item,.mg-head,.theme-opt,.settings-hub-tab):hover{transform:scale(1.018);}}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.more-menu-item,.mg-head,.theme-opt,.settings-hub-tab):active{transform:scale(.972);transition-duration:.08s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) :is(.more-menu-item,.mg-head,.theme-opt,.settings-hub-tab).cp-pop{animation:cp-pop .36s var(--cp-spring);}
+/* Ánh sáng lướt qua nút chính khi rê chuột (máy tính) */
+@media (hover:hover){
+  html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .btn-primary{position:relative;}
+  html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .btn-primary::before{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+    background:linear-gradient(115deg,transparent 35%,rgba(255,255,255,.36) 50%,transparent 65%);background-size:260% 100%;background-position:160% 0;
+    transition:background-position .7s var(--cp-ease);}
+  html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .btn-primary:hover::before{background-position:-60% 0;}
+}
+
+/* ---------- C) Chuyển cảnh: menu/hộp thoại hiện mượt, tab trượt-mờ vào, thanh xanh sidebar trượt ra ---------- */
+html:not([data-fx="off"]) .theme-menu.open:not(.dragging):not(.menu-armed){animation:cp-pop-in .18s var(--cp-ease);}
+html:not([data-fx="off"]) .modal-bg.show{animation:cp-fade .16s ease-out;}
+html:not([data-fx="off"]) .modal-bg.show .modal{animation:cp-pop-in .22s var(--cp-spring);}
+html:not([data-fx="off"]) .settings-hub.show{animation:cp-fade .18s ease-out;}
+html:not([data-fx="off"]) .tab-panel.active{animation:cp-fade .2s ease-out;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .tab-panel.active > .panel{animation:cp-rise .26s var(--cp-ease) both;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .tab-panel.active > .panel:nth-child(2){animation-delay:.03s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .tab-panel.active > .panel:nth-child(3){animation-delay:.06s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .tab-panel.active > .panel:nth-child(4){animation-delay:.09s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) .tab-panel.active > .panel:nth-child(n+5){animation-delay:.12s;}
+html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap .tab-btn.active::before,html:not([data-fx="off"]):not([data-fx="lite"]):not(.compact-mode) #appHeaderWrap .tab-more-item.active::before{animation:cp-bar-in .28s var(--cp-spring);}
+.toast{transition:opacity .22s ease,transform .3s var(--cp-spring);}
+/* Thanh biểu đồ mọc ra lần lượt từng dòng */
+.chart-bar-fill{transition:width .7s var(--cp-ease);}
+.chart-bar-row:nth-child(2) .chart-bar-fill{transition-delay:.04s;}
+.chart-bar-row:nth-child(3) .chart-bar-fill{transition-delay:.08s;}
+.chart-bar-row:nth-child(4) .chart-bar-fill{transition-delay:.12s;}
+.chart-bar-row:nth-child(5) .chart-bar-fill{transition-delay:.16s;}
+.chart-bar-row:nth-child(n+6) .chart-bar-fill{transition-delay:.2s;}
+
+/* ---------- D) Tắt / giảm hiệu ứng ---------- */
+html[data-fx="lite"] .cp-rip::after,html.compact-mode .cp-rip::after{display:none;}
+html[data-fx="off"] *,html[data-fx="off"] *::before,html[data-fx="off"] *::after{animation:none!important;transition:none!important;}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
 }
 </style>
