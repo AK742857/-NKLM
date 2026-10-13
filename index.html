@@ -17051,6 +17051,73 @@ update();
   }catch(e){}
 })();
 </script>
+<script id="v517-script">// V5.17 — Trang chủ nhân viên (chỉ lớp hiển thị; không đổi dữ liệu). Tắt bằng cách bỏ thẻ <script>/<link> của file này.
+(function(){
+  var LAST_KEY='v517-nv-last', restored=false, panel=null, hero=null, card=null;
+  function esc(s){ return (typeof escapeHtml==='function') ? escapeHtml(String(s==null?'':s)) : String(s==null?'':s).replace(/[&<>"]/g,''); }
+  function getLast(){ try{ return localStorage.getItem(LAST_KEY)||''; }catch(e){ return ''; } }
+  function setLast(c){ try{ if(c) localStorage.setItem(LAST_KEY,c); else localStorage.removeItem(LAST_KEY); }catch(e){} }
+  function greet(){ var h=new Date().getHours(); return h<11?'Chào buổi sáng':h<14?'Chào buổi trưa':h<18?'Chào buổi chiều':'Chào buổi tối'; }
+  function ddmm(iso){ var p=String(iso||'').split('-'); return p.length===3 ? p[2]+'/'+p[1] : '—'; }
+  function build(){
+    var body=document.getElementById('personalLookupBody'); if(!body||panel) return;
+    panel=body.parentElement; panel.classList.add('nv-panel');
+    hero=document.createElement('div'); hero.id='nvHero';
+    hero.innerHTML='<h1 id="nvGreet"></h1><p>Gõ tên hoặc mã nhân viên để xem công của bạn.</p>';
+    card=document.createElement('div'); card.id='nvCard';
+    var row=body.querySelector('.personal-lookup-row'); body.insertBefore(hero,row);
+    body.insertBefore(card,document.getElementById('personalReportArea'));
+    card.addEventListener('click',function(e){
+      if(e.target.closest('.nv-switch')){ switchPerson(); return; }
+      var t=e.target.closest('.nv-tile'); if(!t) return;
+      var open=!document.body.classList.contains('nv-exp');
+      document.body.classList.toggle('nv-exp',open);
+      card.querySelectorAll('.nv-tile').forEach(function(x){ x.setAttribute('aria-expanded',open?'true':'false'); });
+      if(open){ var a=document.getElementById('personalReportArea'); if(a&&a.scrollIntoView) a.scrollIntoView({behavior:'smooth',block:'start'}); }
+    });
+    document.getElementById('personalSearchInput').setAttribute('placeholder','Tên hoặc mã NV');
+  }
+  function switchPerson(){
+    setLast(''); state.personalCode=null; restored=true;
+    var inp=document.getElementById('personalSearchInput'); if(inp) inp.value='';
+    document.body.classList.remove('nv-exp');
+    renderPersonalReport();
+    if(inp) setTimeout(function(){ inp.focus(); },50);
+  }
+  function fill(code){
+    var emp=EMPLOYEES.find(function(e){ return e.code===code; });
+    var today=todayISO(), all=state.records.filter(function(r){ return r.code===code; });
+    var tr=all.filter(function(r){ return r.date===today; });
+    var work=tr.filter(function(r){ return r.shift!==LEAVE_SHIFT; });
+    var tv='—', ts='Chưa có chấm công hôm nay';
+    if(work.length){ tv=[...new Set(work.map(function(r){ return r.shift; }))].join(' + '); ts=(work[0].stage&&String(work[0].stage).trim())||'Chưa ghi công đoạn'; }
+    else if(tr.length){ tv=LEAVE_SHIFT; ts='Ngày nghỉ'; }
+    var cong='—'; try{ var c=computeCongForCode(code,today.slice(0,7)); if(typeof c==='number') cong=c.toLocaleString('vi-VN',{maximumFractionDigits:2}); }catch(e){}
+    var last=all.filter(function(r){ return r.shift!==LEAVE_SHIFT && r.date<=today; }).sort(function(a,b){ return b.date.localeCompare(a.date); })[0];
+    var open=document.body.classList.contains('nv-exp')?'true':'false';
+    card.innerHTML='<div class="nv-head"><div><span class="nv-name">'+esc(emp?emp.full:code)+'</span><span class="nv-code">'+esc(emp?emp.code:'')+'</span></div><button type="button" class="nv-switch">Không phải bạn?</button></div>'+
+      '<div class="nv-tiles">'+
+      '<button type="button" class="nv-tile today" aria-expanded="'+open+'"><span class="nv-k">Hôm nay</span><span class="nv-v">'+esc(tv)+'</span><span class="nv-s">'+esc(ts)+'</span></button>'+
+      '<button type="button" class="nv-tile" aria-expanded="'+open+'"><span class="nv-k">Tháng '+(new Date().getMonth()+1)+'</span><span class="nv-v">'+esc(cong)+'</span><span class="nv-s">công quy đổi</span></button>'+
+      '<button type="button" class="nv-tile" aria-expanded="'+open+'"><span class="nv-k">Lần làm gần nhất</span><span class="nv-v">'+esc(last?ddmm(last.date):'—')+'</span><span class="nv-s">'+esc(last?last.shift:'Chưa có')+'</span></button>'+
+      '</div><p class="nv-hint">Chạm vào một ô để xem chi tiết.</p>';
+  }
+  function update(){
+    build(); if(!panel) return;
+    var g=document.getElementById('nvGreet'); if(g) g.textContent=greet();
+    if(!restored){ var last=getLast();
+      if(last && !state.personalCode && EMPLOYEES.some(function(e){ return e.code===last; })){ restored=true; selectPersonalCode(last); return; }
+      if(last && !EMPLOYEES.length) return; // chưa tải xong danh sách — lần vẽ sau sẽ thử lại
+      restored=true; }
+    var has=!!state.personalCode;
+    document.body.classList.toggle('nv-open',has); document.body.classList.toggle('nv-home',!has);
+    if(!has) document.body.classList.remove('nv-exp'); else { setLast(state.personalCode); fill(state.personalCode); }
+  }
+  var _render=window.renderPersonalReport;
+  window.renderPersonalReport=function(){ var r=_render.apply(this,arguments); try{ update(); }catch(e){ console.warn('nv',e); } return r; };
+  try{ update(); }catch(e){ console.warn('nv',e); }
+})();
+</script>
 
 <style id="sacMauNhe">
 /* ===== Màu nhẹ cho Nhật ký + Báo cáo (chỉ CSS, theo biến màu của từng giao diện) ===== */
@@ -17695,4 +17762,37 @@ html[data-fx="off"] *,html[data-fx="off"] *::before,html[data-fx="off"] *::after
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;}
 }
+</style>
+
+<style id="v517Nv">/* V5.17 — Trang chủ nhân viên: lúc đầu chỉ một ô gõ tên, chạm vào mới mở ra chi tiết. Chỉ áp dụng khi chưa đăng nhập Admin. */
+body.public-mode .nv-panel > h2, body.public-mode .nv-panel > .sub{display:none}
+body.public-mode.nv-home #personalMonthFilterRow, body.public-mode.nv-home #personalEmptyHint,
+body.public-mode.nv-home #personalFreeSearchBlock > label{display:none!important}
+body.public-mode.nv-open #personalFreeSearchBlock{display:none!important}
+body.public-mode.nv-open:not(.nv-exp) #personalMonthFilterRow, body.public-mode.nv-open:not(.nv-exp) #personalReportArea{display:none!important}
+#nvHero, #nvCard{display:none}
+body.public-mode.nv-home #nvHero{display:block;padding:clamp(28px,12vh,96px) 4px 14px}
+body.public-mode.nv-open #nvCard{display:block}
+#nvHero h1{margin:0 0 6px;font-size:clamp(26px,7vw,36px);font-weight:700;letter-spacing:-.02em;color:var(--ink)}
+#nvHero p{margin:0;color:var(--muted);font-size:15px}
+body.public-mode.nv-home #personalSearchInput{height:60px;font-size:20px;padding:0 20px;border-radius:18px;border:1.5px solid var(--line);background:var(--input-bg,#fff)}
+body.public-mode.nv-home #personalSearchInput:focus{border-color:var(--primary,#4F6BED);outline:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--primary,#4F6BED) 18%,transparent)}
+body.public-mode.nv-home #personalSuggest .ms-suggest-item{padding:14px 16px;font-size:17px}
+body.public-mode.nv-home #btnPersonalClear{display:none}
+.nv-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:4px 2px 12px}
+.nv-name{font-size:24px;font-weight:700;letter-spacing:-.01em;color:var(--ink)}
+.nv-code{margin-left:8px;font-size:13px;color:var(--muted)}
+.nv-switch{background:none;border:0;color:var(--muted);font-size:13px;text-decoration:underline;padding:6px 2px;cursor:pointer}
+.nv-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.nv-tile{text-align:left;font:inherit;color:var(--ink);background:var(--panel-soft);border:1.5px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;min-height:84px}
+.nv-tile.today{grid-column:1/-1}
+.nv-tile[aria-expanded="true"]{border-color:var(--primary,#4F6BED)}
+.nv-tile:focus-visible{outline:3px solid color-mix(in srgb,var(--primary,#4F6BED) 40%,transparent);outline-offset:2px}
+.nv-k{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.nv-v{display:block;font-size:24px;font-weight:700;line-height:1.2}
+.nv-s{display:block;font-size:13px;color:var(--muted);margin-top:3px}
+.nv-hint{margin:10px 2px 0;font-size:13px;color:var(--muted)}
+body.public-mode.nv-exp #personalReportArea{margin-top:14px;animation:nvIn .22s ease-out}
+@keyframes nvIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){body.public-mode.nv-exp #personalReportArea{animation:none}}
 </style>
