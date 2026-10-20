@@ -16,7 +16,7 @@
 /* V5.1 — HỘP ĐEN: ghi lỗi sớm nhất có thể (trước cả khi tải thư viện). KHÔNG ghi mật khẩu/khóa/tên nhân viên/nội dung phản hồi. */
 (function(){
   'use strict';
-  window.APP_VERSION = 'V5.26'; window.APP_BUILD = '17/10/2026';
+  window.APP_VERSION = 'V5.27'; window.APP_BUILD = '18/10/2026';
   var KEY = 'v4_blackbox', MAXN = 100, CAP = 100000, crumbs = [];
   function load(){ try{ var a = JSON.parse(localStorage.getItem(KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
   function save(a){ try{ var s = JSON.stringify(a); while(s.length > CAP && a.length > 1){ a.shift(); s = JSON.stringify(a); } localStorage.setItem(KEY, s); }catch(e){} }
@@ -3498,7 +3498,106 @@ body:not(.public-mode) #syncStatusBar{display:none;}
 </div>
 
 <div class="toast" id="toast"></div>
-<script>
+<script type="module" id="v527-idb">// V5.27 — KHO DỮ LIỆU LỚN (IndexedDB). Chuyển các key nặng/tăng dần (lượt chấm, ảnh kế hoạch, dấu vân tay đồng bộ...) khỏi localStorage
+// (giới hạn ~5 MB) sang IndexedDB (giới hạn lớn hơn hàng trăm lần) mà KHÔNG phải sửa các file JS khác: lớp này "đóng vai" localStorage
+// cho đúng các key đó (getItem/setItem/removeItem), còn lại giữ nguyên.
+// Chạy dạng <script type="module"> có top-level await: trình duyệt CHỜ tải xong kho rồi mới chạy các khối app (đánh dấu type="text/x-app"
+// bởi build) — nên mọi mã đọc localStorage lúc khởi động vẫn thấy dữ liệu đầy đủ, sự kiện DOMContentLoaded/load không bị lỡ.
+// AN TOÀN DỮ LIỆU: (1) lần đầu: chép localStorage → IndexedDB rồi ĐỌC LẠI so khớp; (2) bản localStorage cũ được GIỮ và ghi song song
+// ("giai đoạn kép") cho đến lần mở sau, khi thấy hai bản GIỐNG HỆT mới xóa bản cũ; (3) lỗi bất kỳ → bỏ lớp này, app chạy như V5.26.
+// Đường lui: localStorage 'v527_idb_off'='1' hoặc mở với ?idb=0 → không dùng kho mới (dữ liệu đã chuyển sẽ KHÔNG hiện; bật lại là thấy).
+const apps = [...document.querySelectorAll('script[type="text/x-app"]')];
+if (apps.length) {
+  try { await boot(); } catch (e) { console.warn('[kho-idb] không dùng được, chạy bằng localStorage:', e); window.__khoIdb = { mode: 'ls', error: String(e && e.message || e), has: () => false, sizes: () => ({}) }; }
+  for (const old of apps) {                       // chạy tuần tự đúng thứ tự gốc; chèn thẻ script thật → thực thi ngay, đồng bộ
+    const s = document.createElement('script');
+    if (old.id) s.id = old.id;
+    s.textContent = old.textContent;
+    old.parentNode.insertBefore(s, old); old.remove();
+  }
+}
+
+async function boot() {
+  try { if (localStorage.getItem('v527_idb_off') === '1' || /[?&]idb=0\b/.test(location.search)) throw new Error('đã tắt thủ công'); } catch (e) { if (String(e.message).includes('tắt')) throw e; }
+  const VIRT = new Set(['attendance-records', 'day-images', 'v5_d1_synced_fingerprints', 'v5_supabase_synced_fingerprints', 'v4_d1_synced_ids', 'v4_supabase_synced_ids', 'v4_d1_meta_fp', 'v4_supabase_meta_fp', 'v4_sync_delete_history']);
+  const LS = window.localStorage;
+  const oGet = Storage.prototype.getItem, oSet = Storage.prototype.setItem, oRem = Storage.prototype.removeItem;
+  const nGet = k => oGet.call(LS, k), nSet = (k, v) => oSet.call(LS, k, v), nRem = k => oRem.call(LS, k);
+  if (!window.indexedDB) throw new Error('trình duyệt không có IndexedDB');
+
+  const db = await new Promise((res, rej) => {
+    const t = setTimeout(() => rej(new Error('mở IndexedDB quá lâu')), 5000);
+    const r = indexedDB.open('chamcong-kho', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('kv'); };
+    r.onsuccess = () => { clearTimeout(t); res(r.result); };
+    r.onerror = () => { clearTimeout(t); rej(r.error || new Error('lỗi mở IndexedDB')); };
+  });
+  const tx = (mode, fn) => new Promise((res, rej) => {
+    const t = db.transaction('kv', mode); let out;
+    try { out = fn(t.objectStore('kv')); } catch (e) { rej(e); return; }
+    t.oncomplete = () => res(out && out.result); t.onerror = () => rej(t.error); t.onabort = () => rej(t.error || new Error('giao dịch bị hủy'));
+  });
+  const idbGet = k => tx('readonly', s => s.get(k)), idbPut = (k, v) => tx('readwrite', s => s.put(v, k)), idbDel = k => tx('readwrite', s => s.delete(k));
+
+  const cache = new Map(), conflicts = [];
+  const meta = Object.assign({ dual: {}, lsStale: {} }, await idbGet('__meta') || {});
+  meta.dual = meta.dual || {}; meta.lsStale = meta.lsStale || {};
+  for (const k of VIRT) { const v = await idbGet(k); if (typeof v === 'string') cache.set(k, v); }
+
+  // ---- Chuyển dữ liệu cũ, an toàn từng bước ----
+  for (const k of VIRT) {
+    const lv = nGet(k), iv = cache.get(k);
+    if (lv == null) continue;                                           // localStorage không có → chỉ IndexedDB (hoặc chưa có gì)
+    if (iv == null) { await copy(k, lv); continue; }                    // lần đầu: chép sang + kiểm tra đọc lại
+    if (lv === iv) { nRem(k); delete meta.dual[k]; delete meta.lsStale[k]; continue; }   // hai bản GIỐNG HỆT → bỏ bản cũ, giải phóng localStorage
+    if (meta.lsStale[k]) { nRem(k); delete meta.dual[k]; delete meta.lsStale[k]; continue; } // bản localStorage từng ghi hỏng → IndexedDB mới hơn
+    if (meta.dual[k]) { await copy(k, lv); continue; }                  // đang giai đoạn kép mà lệch → localStorage mới hơn → chép lại
+    // Đã chuyển xong từ trước mà localStorage lại có bản KHÁC (tạo ra khi app chạy chế độ dự phòng/?idb=0): KHÔNG ghi đè kho chính.
+    try { nSet(k + '@conflict', lv); nRem(k); conflicts.push(k); } catch (_) { conflicts.push(k + ' (chưa gỡ được)'); }
+  }
+  async function copy(k, v) {
+    await idbPut(k, v);
+    if ((await idbGet(k)) !== v) throw new Error('đọc lại không khớp: ' + k);
+    cache.set(k, v); meta.dual[k] = 1; delete meta.lsStale[k];
+  }
+  await idbPut('__meta', meta);
+
+  // ---- Ghi: bản trong RAM đổi ngay; IndexedDB ghi ngay sau lượt chạy hiện tại (gom các lần ghi dồn dập), tuần tự theo thứ tự ----
+  const dirty = new Set(); let scheduled = false, chain = Promise.resolve(), inflight = 0;
+  const api = window.__khoIdb = { mode: 'idb', error: null, conflicts, has: k => VIRT.has(k), sizes: () => { const o = {}; VIRT.forEach(k => { const v = cache.get(k); if (v != null) o[k] = v.length; }); return o; }, dual: () => Object.keys(meta.dual), pending: () => inflight + dirty.size, flush: () => { flushNow(); return chain; } };
+  const saveMeta = () => idbPut('__meta', meta).catch(() => {});
+  function dualWrite(k, v) {                                           // giai đoạn kép: ghi ĐỒNG BỘ vào localStorage để bản cũ luôn mới nhất
+    try { v === undefined ? nRem(k) : nSet(k, v); if (meta.lsStale[k]) { delete meta.lsStale[k]; saveMeta(); } }
+    catch (_) { if (!meta.lsStale[k]) { meta.lsStale[k] = 1; saveMeta(); } }
+  }
+  function flushNow() {
+    scheduled = false;
+    for (const k of [...dirty]) {
+      dirty.delete(k); inflight++;
+      chain = chain.then(async () => {
+        const v = cache.get(k);
+        try { if (v === undefined) await idbDel(k); else await idbPut(k, v); }
+        catch (e) {                                                       // IndexedDB hỏng giữa chừng → cố ghi tạm vào localStorage để không mất
+          api.error = 'Không ghi được vào kho dữ liệu: ' + (e && e.message || e);
+          try { v === undefined ? nRem(k) : nSet(k, v); } catch (_) {}
+          setTimeout(() => { try { showToast('⚠️ Kho dữ liệu lớn bị lỗi khi ghi — hãy bấm 💾 Sao lưu ngay!', 12000); } catch (_) {} }, 0);
+        }
+      }).finally(() => { inflight--; });
+    }
+  }
+  const queue = k => { dirty.add(k); if (!scheduled) { scheduled = true; queueMicrotask(flushNow); } };
+  addEventListener('pagehide', flushNow); document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flushNow(); });
+  addEventListener('beforeunload', e => { if (api.pending() > 0) { e.preventDefault(); e.returnValue = ''; } });   // chỉ hỏi nếu đang ghi dở (vài mili-giây)
+
+  // ---- Đóng vai localStorage cho các key lớn ----
+  Storage.prototype.getItem = function (k) { if (this === LS && VIRT.has(k)) { const v = cache.get(k); return v === undefined ? null : v; } return oGet.apply(this, arguments); };
+  Storage.prototype.setItem = function (k, v) { if (this === LS && VIRT.has(k)) { const sv = String(v); cache.set(k, sv); if (meta.dual[k]) dualWrite(k, sv); queue(k); return; } return oSet.apply(this, arguments); };
+  Storage.prototype.removeItem = function (k) { if (this === LS && VIRT.has(k)) { cache.delete(k); if (meta.dual[k]) dualWrite(k, undefined); queue(k); return; } return oRem.apply(this, arguments); };
+  if (conflicts.length) setTimeout(() => { try { showToast('⚠️ Có dữ liệu khác trong localStorage (tạo lúc chạy chế độ dự phòng): ' + conflicts.join(', ') + '. Kho chính được giữ nguyên, bản kia lưu ở key "…@conflict". Hãy 💾 Sao lưu rồi báo để gộp.', 20000); } catch (_) {} }, 4000);
+  try { if (navigator.storage && navigator.storage.persist && !/Firefox/i.test(navigator.userAgent)) navigator.storage.persist(); } catch (_) {}   // xin trình duyệt đừng tự xóa
+}
+</script>
+<script type="text/x-app">
 // ================= DỮ LIỆU GỐC (không đổi so với bản v1) =================
 const DEFAULT_EMPLOYEES = [];
 let EMPLOYEES = DEFAULT_EMPLOYEES.slice();
@@ -14638,7 +14737,7 @@ safeRun(refreshPersonalModulesPanel, 'Bảng tuỳ chỉnh các mục tab Cá nh
 safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 </script>
 
-<script>
+<script type="text/x-app">
 /* ============ THANH BÊN KIỂU CLAUDE: thu gọn (máy tính) / trượt ra (điện thoại) ============ */
 (function(){
   try{
@@ -14828,7 +14927,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
   }catch(err){ console.error('Nút Tải/Đẩy trên cùng:', err); }
 })();
 </script>
-<script>
+<script type="text/x-app">
 // Hộp thoại: thêm nút ✕ (dính đỉnh), nút phóng to/thu nhỏ, phím Esc để đóng — áp dụng cho MỌI hộp thoại .modal-bg (trừ hộp xác nhận/nhập có nút riêng)
 (function(){
   var SKIP = { confirmModal:1, promptModal:1 };
@@ -14880,7 +14979,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
   });
 })();
 </script>
-<script>
+<script type="text/x-app">
 (function(){
   var K='v4_ui_fold', KC='v4_ui_compact', KG='v4_chart_group', st={};
   try{ st=JSON.parse(localStorage.getItem(K)||'{}')||{}; }catch(_){}
@@ -14953,7 +15052,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
   if(ov){ var oa=ov.querySelector('.panel'); if(oa){ h3Fold(oa,'ov#h',[false,true]); bar(ov); } }
 })();
 </script>
-<script>
+<script type="text/x-app">
 (function(){
   var $=function(id){return document.getElementById(id);};
   var cmp=function(a,b){return String(a).localeCompare(String(b),'vi');};
@@ -15124,7 +15223,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 })();
 </script>
 
-<script>
+<script type="text/x-app">
 /* ===== ĐỐI SOÁT LƯỢT CHẤM (ô "Tổng lượt chấm") + SẴN SÀNG TÍNH LƯƠNG (ô cạnh bên) — cho lưu rồi cảnh báo, chỉ đúng chỗ cần sửa ===== */
 (function(){
   'use strict';
@@ -15608,7 +15707,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 })();
 </script>
 
-<script>
+<script type="text/x-app">
 /* ===== V5.2: (1) CHẤM NHANH THEO THÓI QUEN · (2) CHỐT KỲ LƯƠNG · (4) PHIẾU LƯƠNG GỬI ZALO ===== */
 (function(){
   'use strict';
@@ -16133,7 +16232,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 })();
 </script>
 
-<script>
+<script type="text/x-app">
 /* ===== V5.1: SỨC KHỎE HỆ THỐNG + HỘP ĐEN + BÁO CÁO CLAUDE ===== */
 (function(){
   'use strict';
@@ -16263,7 +16362,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
         (days==null||days>3) ? 'Nên bấm Sao lưu (⋯ Khác → 💾 Sao lưu) trước khi tính lương.' : '');
       // Dự báo đầy bộ nhớ: tốc độ tăng theo số lượt mới 30 ngày gần nhất × dung lượng mỗi lượt (nhật ký + hai kho vân tay)
       if(recs.length > 50){
-        var chars = function(k){ try{ return (localStorage.getItem(k)||'').length; }catch(e){ return 0; } };
+        var chars = function(k){ try{ if(window.__khoIdb && window.__khoIdb.mode==='idb' && window.__khoIdb.has(k)) return 0; /* V5.27: key này nằm ở kho IndexedDB, không tốn 5 MB localStorage */ return (localStorage.getItem(k)||'').length; }catch(e){ return 0; } };
         var perRec = (chars('attendance-records') + chars('v5_d1_synced_fingerprints') + chars('v5_supabase_synced_fingerprints') + chars('v4_d1_synced_ids')) / recs.length;
         var day0 = new Date(), cutoffD = new Date(day0.getFullYear(), day0.getMonth(), day0.getDate()-29), pad2 = function(x){ return ('0'+x).slice(-2); };
         var from = cutoffD.getFullYear()+'-'+pad2(cutoffD.getMonth()+1)+'-'+pad2(cutoffD.getDate());
@@ -16430,7 +16529,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 })();
 </script>
 
-<script>
+<script type="text/x-app">
 /* ===== THÙNG RÁC NHẬT KÝ: xóa lượt chấm → vào đây, khôi phục được trong 30 ngày ===== */
 (function(){
   'use strict';
@@ -16650,7 +16749,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 }
 </style>
 
-<script id="v57-script">
+<script type="text/x-app" id="v57-script">
 (function(){
 var $=function(i){return document.getElementById(i)};
 var P=function(d){return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+d+'</svg>'};
@@ -16744,7 +16843,7 @@ if(document.readyState==='complete')setTimeout(init,300);else window.addEventLis
 .mm-sec.mm-closed .mm-body{display:none}
 </style>
 
-<script id="v511-script">
+<script type="text/x-app" id="v511-script">
 (function(){
 var $=function(i){return document.getElementById(i)};
 var SW_MIN=70,opened=[],toastEl,toastT,sx=0,sy=0,st=0,ok=false;
@@ -16821,7 +16920,7 @@ if(document.readyState==='complete')setTimeout(start,700);else window.addEventLi
 .jt-danger .btn:hover{background:var(--danger-soft)!important}
 </style>
 
-<script id="v512-script">
+<script type="text/x-app" id="v512-script">
 (function(){try{
 var $=function(i){return document.getElementById(i)};
 var tb=$('journalToolbar');if(!tb||tb.classList.contains('jt-on'))return;
@@ -16866,7 +16965,7 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape')closeAll()})
 update();
 }catch(err){}})();
 </script>
-<script id="v512-script">/* =====================================================================
+<script type="text/x-app" id="v512-script">/* =====================================================================
    V5.15 — HIỆU ỨNG PHẢN HỒI + CẢM GIÁC "NHƯ APP"
    Chỉ THÊM hành vi nhìn thấy được; không đọc/ghi dữ liệu chấm công, không đổi logic tính lương.
    Mỗi phần bọc try/catch riêng: 1 phần lỗi không làm hỏng app.
@@ -17035,7 +17134,7 @@ update();
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
 })();
 </script>
-<script id="v512-script">/* V5.16 — Đăng ký "app cài được" (service worker). Chỉ chạy trên địa chỉ https/localhost; mở file trực tiếp (file://) thì bỏ qua, không ảnh hưởng gì. */
+<script type="text/x-app" id="v512-script">/* V5.16 — Đăng ký "app cài được" (service worker). Chỉ chạy trên địa chỉ https/localhost; mở file trực tiếp (file://) thì bỏ qua, không ảnh hưởng gì. */
 (function(){
   'use strict';
   try{
@@ -17063,7 +17162,7 @@ update();
   }catch(e){}
 })();
 </script>
-<script id="v517-script">// V5.17 — Trang chủ nhân viên (chỉ lớp hiển thị; không đổi dữ liệu). Tắt bằng cách bỏ thẻ <script>/<link> của file này.
+<script type="text/x-app" id="v517-script">// V5.17 — Trang chủ nhân viên (chỉ lớp hiển thị; không đổi dữ liệu). Tắt bằng cách bỏ thẻ <script>/<link> của file này.
 (function(){
   var LAST_KEY='v517-nv-last', restored=false, panel=null, hero=null, card=null;
   function esc(s){ return (typeof escapeHtml==='function') ? escapeHtml(String(s==null?'':s)) : String(s==null?'':s).replace(/[&<>"]/g,''); }
@@ -17130,7 +17229,7 @@ update();
   try{ update(); }catch(e){ console.warn('nv',e); }
 })();
 </script>
-<script id="v522-script">// V5.22 — Thanh lệnh MỞ RỘNG (Ctrl/Cmd+K hoặc nút "Lệnh" ở thanh trên). Làm tiếp từ V5.21.
+<script type="text/x-app" id="v522-script">// V5.22 — Thanh lệnh MỞ RỘNG (Ctrl/Cmd+K hoặc nút "Lệnh" ở thanh trên). Làm tiếp từ V5.21.
 // Tra cứu MỌI tab và cả BÊN TRONG từng tab: chấm công (theo ngày/tuần/tháng/khoảng ngày), người, ca, công đoạn,
 // mác thuốc/lô, ghi chú, lương, phép năm, đổi ca, cơm, người chưa chấm, ảnh kế hoạch, nhật ký thao tác,
 // và mọi mục/nút bên trong từng tab + Trung tâm cài đặt (bấm là nhảy tới đúng chỗ và nháy sáng).
@@ -17917,7 +18016,7 @@ update();
   try{ if(window.__V522_TEST) window.__v522={parse:parse,results:results,buildUI:buildUI,uiSearch:uiSearch}; }catch(e){}
 })();
 </script>
-<script id="v523-script">// V5.23 — Nhật ký theo THÁNG + chia trang. Dữ liệu vẫn nguyên một khối (Thống kê/Lương/Đồng bộ không đổi), chỉ đổi cách VẼ Nhật ký:
+<script type="text/x-app" id="v523-script">// V5.23 — Nhật ký theo THÁNG + chia trang. Dữ liệu vẫn nguyên một khối (Thống kê/Lương/Đồng bộ không đổi), chỉ đổi cách VẼ Nhật ký:
 //   • Mở app: Nhật ký tự chọn sẵn tháng hiện tại (nếu tháng này chưa có dữ liệu → tháng mới nhất có dữ liệu).
 //   • Thanh chọn tháng: ‹ tháng trước | ô chọn tháng (kèm số lượt) | tháng sau › | "Tất cả".
 //   • Xem "Tất cả"/lọc rộng: chỉ vẽ 300 dòng đầu, nút "Xem thêm" vẽ tiếp. Xuất CSV luôn đủ cả bộ lọc; Xuất PDF/ảnh tự dựng đủ dòng rồi trả lại.
@@ -18014,7 +18113,7 @@ update();
   setTimeout(updateBar,0);
 })();
 </script>
-<script id="v525-script">// V5.25 — Thanh lệnh: tra cứu ngoài + gợi ý + chip "Gần đây" + sao chép kết quả (gộp & mở rộng V5.24).
+<script type="text/x-app" id="v525-script">// V5.25 — Thanh lệnh: tra cứu ngoài + gợi ý + chip "Gần đây" + sao chép kết quả (gộp & mở rộng V5.24).
 //   1) Dưới Thanh lệnh luôn có 2 liên kết "Tìm trên Google" / "Hỏi Claude.ai" khi đã gõ chữ (không ra kết quả → hiện to; có kết quả → hiện gọn).
 //   2) Ctrl/Cmd+Enter = hỏi Claude.ai · Shift+Enter = tìm Google (Enter thường giữ nguyên như cũ).
 //   3) "Ý bạn là…": gõ sai tên / sai lệnh thì gợi ý 1–4 tên hoặc lệnh gần giống nhất (bấm là điền vào ô lệnh).
@@ -18211,7 +18310,7 @@ update();
   }
 })();
 </script>
-<script id="v526-script">// V5.26 — SAO LƯU: (1) tự lưu vào THƯ MỤC đã chọn (Chrome/Edge trên máy tính) rồi đọc lại để kiểm tra,
+<script type="text/x-app" id="v526-script">// V5.26 — SAO LƯU: (1) tự lưu vào THƯ MỤC đã chọn (Chrome/Edge trên máy tính) rồi đọc lại để kiểm tra,
 // (2) dòng trạng thái "sao lưu gần nhất" ở menu Thêm + chip trên thanh trên, (3) chỉ báo dung lượng bộ nhớ trình duyệt,
 // (4) lời nhắc sao lưu chạy NGAY sau khi đăng nhập Admin — chưa đăng nhập thì không nhắc gì.
 // Chỉ THÊM file mới vào thư mục, không bao giờ xóa/ghi đè file cũ.
@@ -18323,6 +18422,7 @@ update();
     var lb=lastBackup(), si=storageInfo(), out=[];
     out.push('🛡️ Sao lưu gần nhất: '+(lb ? whenText(lb.t)+' · '+lb.how : 'chưa có lần nào trên máy này'));
     out.push('💽 Bộ nhớ trình duyệt (ước tính): '+si.pct.toFixed(0)+'% — '+mb(si.total)+'/5 MB'+(si.top.length?' · nhiều nhất: '+si.top.map(function(x){ return (NAMES[x[0]]||x[0])+' '+mb(x[1]); }).join(', '):''));
+    try{ var kho=window.__khoIdb; if(kho&&kho.mode==='idb'){ var tt=0, z=kho.sizes(); for(var q in z) tt+=z[q]; out.push('🗄️ Kho dữ liệu lớn (IndexedDB): '+mb(tt)+' — không bị giới hạn 5 MB'+(kho.dual().length?' · đang chuyển, còn giữ bản cũ song song':'')); } }catch(e){}
     if(configured()) out.push('📁 Tự lưu vào thư mục "'+localStorage.getItem(K_NAME)+'" mỗi '+(nDays()>0?nDays():1)+' ngày khi đăng nhập Admin');
     return out;
   }
