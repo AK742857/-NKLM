@@ -16,7 +16,7 @@
 /* V5.1 — HỘP ĐEN: ghi lỗi sớm nhất có thể (trước cả khi tải thư viện). KHÔNG ghi mật khẩu/khóa/tên nhân viên/nội dung phản hồi. */
 (function(){
   'use strict';
-  window.APP_VERSION = 'V5.29.1'; window.APP_BUILD = '22/10/2026';
+  window.APP_VERSION = 'V5.29.2'; window.APP_BUILD = '23/10/2026';
   var KEY = 'v4_blackbox', MAXN = 100, CAP = 100000, crumbs = [];
   function load(){ try{ var a = JSON.parse(localStorage.getItem(KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
   function save(a){ try{ var s = JSON.stringify(a); while(s.length > CAP && a.length > 1){ a.shift(); s = JSON.stringify(a); } localStorage.setItem(KEY, s); }catch(e){} }
@@ -4171,6 +4171,7 @@ function applyAccessMode(){
     authBtn.classList.add('is-admin');
     if(typeof publicAutoRefreshTimer !== 'undefined' && publicAutoRefreshTimer){ clearInterval(publicAutoRefreshTimer); set_publicAutoRefreshTimer(null); }
     if(syncLabel) syncLabel.textContent = '🔐 Đang ở chế độ Admin — dữ liệu đọc từ máy này';
+    window.__teamAfterLogin && window.__teamAfterLogin(); // V5.29.2: máy chưa có nhân viên (bản GitHub) -> tự tải từ kho D1
   } else {
     if(authIcon) authIcon.textContent = '🔒';
     authBtn.title = 'Đang ở chế độ chỉ xem — bấm để đăng nhập Admin';
@@ -11870,7 +11871,7 @@ async function loadFromD1Silent(opts){
   const merge=mergeAndSaveRemoteRecords(remoteSbRecords, 'D1');
   markRemoteRecordsSyncedForChannel(remoteSbRecords, 'd1');
   let newEmployees=0;
-  if(Array.isArray(data.employees) && data.employees.length){ const em=new Map((EMPLOYEES||[]).map(e=>[String(e.code),e])); data.employees.forEach(e=>{if(!em.has(String(e.code))){em.set(String(e.code),e);newEmployees++;}}); set_EMPLOYEES([...em.values()]); }
+  if(Array.isArray(data.employees) && data.employees.length){ const em=new Map((EMPLOYEES||[]).map(e=>[String(e.code),e])); data.employees.forEach(e=>{if(!em.has(String(e.code))){em.set(String(e.code),e);newEmployees++;}}); set_EMPLOYEES([...em.values()]); } window.__teamApply && window.__teamApply(data.state && data.state.settings, null);
   if(Array.isArray(data.lookups)){
     const add=(cur,kind)=>[...new Set([...(cur||[]),...data.lookups.filter(l=>l.kind===kind).map(l=>l.name)])];
     state.customStages=add(state.customStages,'stage');
@@ -13604,6 +13605,7 @@ async function syncPushToD1(key, onProgress, force, overrideMeta){
   const fail = (error)=>({ ok:false, error, step:curStep, done:done.slice() });
   try{
     // 1) Nhân viên + danh mục + cấu hình — khối lượng nhỏ (vài trăm dòng), ghi đè toàn bộ vô hại
+    window.__teamPack && window.__teamPack();
     const metaPayload = {
       employees: EMPLOYEES,
       lookups: [
@@ -13724,7 +13726,7 @@ async function pullFromD1(){
     const merge=mergeAndSaveRemoteRecords(remoteD1Records, 'D1');
     markRemoteRecordsSyncedForChannel(remoteD1Records, 'd1');
     let newD1Employees=0;
-    if(Array.isArray(data.employees) && data.employees.length){ const em=new Map((EMPLOYEES||[]).map(e=>[String(e.code),e])); data.employees.forEach(e=>{if(!em.has(String(e.code))){em.set(String(e.code),e);newD1Employees++;}}); set_EMPLOYEES([...em.values()]); }
+    if(Array.isArray(data.employees) && data.employees.length){ const em=new Map((EMPLOYEES||[]).map(e=>[String(e.code),e])); data.employees.forEach(e=>{if(!em.has(String(e.code))){em.set(String(e.code),e);newD1Employees++;}}); set_EMPLOYEES([...em.values()]); } window.__teamApply && window.__teamApply(data.state && data.state.settings, null);
     if(Array.isArray(data.lookups)){
       const add=(cur,kind)=>[...new Set([...(cur||[]),...data.lookups.filter(l=>l.kind===kind).map(l=>l.name)])];
       state.customStages=add(state.customStages,'stage');
@@ -14018,6 +14020,7 @@ async function logoutSupabaseAdmin(){
 // Dùng lại recordToD1 vì bảng "records" trên Supabase dùng đúng cùng cấu trúc cột
 // (client_id, date, shift, stage, employee_code, batch, extra) như kho D1 đã có.
 function buildSupabaseMetaPayload(){
+  window.__teamPack && window.__teamPack();
   return {
     employees: EMPLOYEES,
     lookups: [
@@ -14127,7 +14130,7 @@ async function pullFromSupabase(){
   const remoteSbRecords = Array.isArray(data.records) ? data.records.map(recordFromD1) : [];
   const merge = mergeAndSaveRemoteRecords(remoteSbRecords, 'D1');
   markRemoteRecordsSyncedForChannel(remoteSbRecords, 'd1');
-  if(Array.isArray(data.employees) && data.employees.length) set_EMPLOYEES(data.employees);
+  if(Array.isArray(data.employees) && data.employees.length){ const __tk = window.__teamKeep && window.__teamKeep(); set_EMPLOYEES(data.employees); window.__teamApply && window.__teamApply(data.state && data.state.settings, __tk); }
   if(Array.isArray(data.lookups)){
     state.customStages = data.lookups.filter(l=>l.kind==='stage').map(l=>l.name);
     state.customBatches = data.lookups.filter(l=>l.kind==='batch').map(l=>l.name);
@@ -19167,7 +19170,12 @@ update();
     var shift = document.getElementById('chartToShiftSelect').value;
     var r = currentChartToRange();
     var lbl = document.getElementById('chartToRangeLabel'); if(lbl) lbl.textContent = rangeLabel(r.scope, r.from, r.to);
-    if(!team || !shift){ body.innerHTML = '<div class="tn-n" style="padding:10px 0;">Chưa có tổ nào — vào "⋯ Thêm → 🏷️ Quản lý Tổ" để gán tổ trước.</div>'; return; }
+    if(!team || !shift){
+      body.innerHTML = (!EMPLOYEES || !EMPLOYEES.length)
+        ? '<div class="tn-n" style="padding:10px 0;">Máy này chưa có danh sách nhân viên (bản GitHub không chứa sẵn) — vào "⋯ Thêm → Đồng bộ → Tải từ kho D1" để lấy nhân viên và tổ về.</div>'
+        : '<div class="tn-n" style="padding:10px 0;">Chưa có tổ nào — vào "⋯ Thêm → 🏷️ Quản lý Tổ" để gán tổ trước.</div>';
+      return;
+    }
     var rows = computeLookupRows(team, shift, r.from, r.to);
     if(!rows.length){ body.innerHTML = '<div class="tn-n" style="padding:10px 0;">Không có ai thuộc tổ này làm ca đã chọn trong khoảng thời gian này.</div>'; return; }
     var singleDay = (r.scope === 'day');
@@ -19244,6 +19252,105 @@ update();
     window.renderChartsHub = function(){ _origRenderChartsHub(); try{ renderToNhomChartsPanel(); }catch(e){} };
   }
   renderToNhomChartsPanel();
+})();
+
+/* ===== js/39-to-dongbo.js ===== */
+// [thứ-tự] chạy sau file đứng trước
+
+
+
+
+
+/* ===== V5.29.2 — TỔ đi cùng nhân viên khi đồng bộ =====
+   Vấn đề: kho (D1/Supabase) có thể không giữ trường EMPLOYEES[].to -> tải về là "Chưa gán tổ".
+   Cách làm: ngoài trường `to` của từng người, ghi thêm vào khối cấu hình state.settings (đã đi theo mọi lần đẩy/tải):
+     settings.teamMap     = { mã: [tổ, thời điểm đổi gần nhất] }
+     settings.teamHistory = lịch sử đổi tổ (cùng nội dung v4_team_history)
+   Khi tải về thì áp ngược lại lên danh sách nhân viên. Tắt tính năng: localStorage.setItem('v4_team_sync_off','1').
+   Các file khác chỉ gọi qua window.__teamXxx (nếu không có thì bỏ qua) nên không ảnh hưởng gì khi module này tắt. */
+(function(){
+  'use strict';
+  var HIST_KEY = 'v4_team_history';
+  function off(){ try{ return localStorage.getItem('v4_team_sync_off') === '1'; }catch(e){ return false; } }
+  function loadHist(){ try{ var v = JSON.parse(localStorage.getItem(HIST_KEY) || '[]'); return Array.isArray(v) ? v : []; }catch(e){ return []; } }
+  function histKey(h){ return [h.code, h.date, h.at, h.fromTeam, h.toTeam].join('|'); }
+  function lastAt(hist, code){ var m = 0; hist.forEach(function(h){ if(h.code === code && (+h.at||0) > m) m = +h.at||0; }); return m; }
+
+  // Trước khi đẩy lên kho: ghi bản đồ tổ + lịch sử vào settings
+  function pack(){
+    if(off()) return;
+    try{
+      var hist = loadHist(), map = {}, n = 0;
+      (EMPLOYEES||[]).forEach(function(e){ if(e && e.code && e.to){ map[String(e.code)] = [e.to, lastAt(hist, e.code)]; n++; } });
+      if(!state.settings) state.settings = {};
+      var oldMap = JSON.stringify(state.settings.teamMap || {}), oldHist = JSON.stringify(state.settings.teamHistory || []);
+      if(n || hist.length){
+        state.settings.teamMap = map; state.settings.teamHistory = hist;
+        if(oldMap !== JSON.stringify(map) || oldHist !== JSON.stringify(hist)) saveSettings();
+      }
+    }catch(e){}
+  }
+
+  // Chụp tổ hiện có trên máy (dùng khi bước tải về sắp thay toàn bộ danh sách nhân viên)
+  function keep(){
+    var k = {}; try{ var hist = loadHist(); (EMPLOYEES||[]).forEach(function(e){ if(e && e.code && e.to) k[String(e.code)] = [e.to, lastAt(hist, e.code)]; }); }catch(e){}
+    return k;
+  }
+
+  // Sau khi tải về: áp tổ từ kho (settings.teamMap/teamHistory) lên EMPLOYEES. Trả về số người được gán/đổi tổ.
+  function apply(rs, kept){
+    if(off()) return 0;
+    try{
+      var changed = 0, added = 0, local = loadHist();
+      if(rs && Array.isArray(rs.teamHistory)){
+        var seen = new Set(local.map(histKey));
+        rs.teamHistory.forEach(function(h){ if(h && h.code && !seen.has(histKey(h))){ local.push(h); seen.add(histKey(h)); added++; } });
+        if(added){ try{ localStorage.setItem(HIST_KEY, JSON.stringify(local)); }catch(e){} }
+      }
+      var map = (rs && rs.teamMap) || {};
+      (EMPLOYEES||[]).forEach(function(e){
+        if(!e || !e.code) return;
+        var m = map[e.code], t = m ? (Array.isArray(m) ? m[0] : m) : '', at = m && Array.isArray(m) ? (+m[1]||0) : 0;
+        if(t){
+          if(!e.to){ e.to = t; changed++; }
+          else if(e.to !== t && at > lastAt(local, e.code)){ e.to = t; changed++; }
+        }
+        // Tổ đang có trên máy trước khi tải về mà kho không có -> giữ lại
+        if(!e.to && kept && kept[e.code]){ e.to = Array.isArray(kept[e.code]) ? kept[e.code][0] : kept[e.code]; changed++; }
+      });
+      if(changed || added) saveEmployeesLS();
+      return changed;
+    }catch(e){ return 0; }
+  }
+
+  // Admin đăng nhập mà máy chưa có danh sách nhân viên (bản GitHub) -> tự tải nhân viên + tổ từ kho D1
+  var loading = false;
+  async function afterLogin(){
+    if(off() || loading) return;
+    if(EMPLOYEES && EMPLOYEES.length) return;
+    if(!D1_URL) return;
+    if(sessionStorage.getItem('v4_team_autoload_done') === '1') return; // chống vòng lặp tải lại trang
+    loading = true;
+    try{
+      var res = await fetch(D1_URL + '/export?t=' + Date.now(), { cache:'no-store', headers: D1_KEY ? { 'X-Sync-Key': D1_KEY } : {} });
+      if(!res.ok){ showToast('⚠️ Chưa tải được danh sách nhân viên từ kho D1 (HTTP ' + res.status + ')', 5000); return; }
+      var data = await res.json();
+      if(!Array.isArray(data.employees) || !data.employees.length){ showToast('⚠️ Kho D1 chưa có danh sách nhân viên', 5000); return; }
+      set_EMPLOYEES(data.employees.slice());
+      apply(data.state && data.state.settings, null);
+      saveEmployeesLS();
+      sessionStorage.setItem('v4_team_autoload_done', '1');
+      showToast('✅ Đã tải ' + data.employees.length + ' nhân viên từ kho D1', 3000);
+      setTimeout(function(){ location.reload(); }, 600); // nạp lại để mọi màn hình dùng danh sách mới
+    }catch(e){
+      showToast('⚠️ Không kết nối được kho D1 để tải nhân viên', 5000);
+    }finally{ loading = false; }
+  }
+
+  window.__teamPack = pack;
+  window.__teamKeep = keep;
+  window.__teamApply = apply;
+  window.__teamAfterLogin = afterLogin;
 })();
 </script>
 

@@ -1,8 +1,8 @@
-/* Chấm Công — service worker (V5.29.1)
+/* Chấm Công — service worker (V5.29.2)
    • Trang chính: ƯU TIÊN MẠNG (có mạng là luôn lấy bản mới nhất), mất mạng/mạng yếu >4 giây mới dùng bản đã lưu.
    • Kho dữ liệu (Cloudflare Worker, Supabase, mọi địa chỉ API khác): KHÔNG BAO GIỜ lưu — đi thẳng ra mạng để số liệu luôn là số thật.
    • Thư viện (cdnjs, jsdelivr) và phông chữ: lưu để mở được khi mất mạng. */
-const VERSION = 'V5.29.1';
+const VERSION = 'V5.29.2';
 const CACHE = 'chamcong-' + VERSION;
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png', './icons/apple-touch-icon.png'];
 const STATIC_HOSTS = ['cdnjs.cloudflare.com', 'cdn.jsdelivr.net', 'fonts.googleapis.com', 'fonts.gstatic.com'];
