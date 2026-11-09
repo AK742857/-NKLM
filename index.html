@@ -13,12 +13,12 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
-<title>Chấm Công Theo Công Đoạn — V5.48</title>
+<title>Chấm Công Theo Công Đoạn — V5.49.1</title>
 <script>
 /* V5.1 — HỘP ĐEN: ghi lỗi sớm nhất có thể (trước cả khi tải thư viện). KHÔNG ghi mật khẩu/khóa/tên nhân viên/nội dung phản hồi. */
 (function(){
   'use strict';
-  window.APP_VERSION = 'V5.48'; window.APP_BUILD = '05/11/2026';
+  window.APP_VERSION = 'V5.49.1'; window.APP_BUILD = '07/11/2026';
   var KEY = 'v4_blackbox', MAXN = 100, CAP = 100000, crumbs = [];
   function load(){ try{ var a = JSON.parse(localStorage.getItem(KEY)||'[]'); return Array.isArray(a)?a:[]; }catch(e){ return []; } }
   function save(a){ try{ var s = JSON.stringify(a); while(s.length > CAP && a.length > 1){ a.shift(); s = JSON.stringify(a); } localStorage.setItem(KEY, s); }catch(e){} }
@@ -1912,13 +1912,13 @@ body:not(.public-mode) #syncStatusBar{display:none;}
 <!-- ============ LOGIN GATE (đăng nhập admin) ============ -->
 <div id="loginGate" class="hidden">
   <div class="login-box">
-    <div class="eyebrow">PRODUCTION TIME TRACKING · <span data-appver>V5.3</span></div>
-    <h2>🔐 Đăng nhập Admin <span data-appver style="font-size:.6em;opacity:.7;">V5.3</span></h2>
+    <div class="eyebrow">PRODUCTION TIME TRACKING</div>
+    <h2>🔐 Đăng nhập Admin</h2>
     <div id="loginSecureWarn" style="display:none;background:#fdecea;border:1px solid #e5484d;color:#a12127;border-radius:10px;padding:8px 10px;font-size:12.5px;line-height:1.5;margin-bottom:8px;"></div>
     <input type="password" id="loginPassInput" placeholder="Nhập mật khẩu..." autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="go" />
     <button type="button" id="btnDoLogin">Đăng nhập</button>
     <div class="login-err" id="loginErrMsg"></div>
-    <div style="text-align:center;margin-top:10px;"><a href="#" id="loginHealthLink" style="font-size:12px;opacity:.8;">🩺 Kiểm tra hệ thống</a></div>
+    <div id="loginHealthWrap" style="text-align:center;margin-top:10px;display:none;"><a href="#" id="loginHealthLink" style="font-size:12px;opacity:.8;">🩺 Kiểm tra hệ thống</a></div>
   </div>
 </div>
 
@@ -4342,6 +4342,7 @@ async function doLogin(){
 
   if(passOk){
     clearLoginFails();
+    try{ sessionStorage.removeItem('v4_login_wrong'); sessionStorage.removeItem('v4_login_help'); }catch(e){}
     sessionStorage.setItem('admin_logged_in', 'true');
     try{ localStorage.setItem('v4_admin_device', '1'); }catch(e){}   // nhớ đây là máy Admin để lần mở sau không tự đè dữ liệu chưa đẩy
     __adminPassMem = pass;
@@ -4363,6 +4364,8 @@ async function doLogin(){
     }, 50);
   } else {
     registerLoginFail();
+    // V5.48: link "Kiểm tra hệ thống" ở hộp đăng nhập mặc định ẩn; hiện sau 2 lần nhập sai (hoặc khi trình duyệt chặn đăng nhập)
+    try{ const w=(parseInt(sessionStorage.getItem('v4_login_wrong')||'0',10))+1; sessionStorage.setItem('v4_login_wrong',String(w)); if(w>=2 && window.__loginHelpOn) window.__loginHelpOn(); }catch(e){}
     const remain = getLoginLockRemainSec();
     err.textContent = remain > 0
       ? `⛔ Sai quá nhiều lần. Vui lòng thử lại sau ${remain} giây.`
@@ -4400,25 +4403,19 @@ document.getElementById('btnAuthToggle').addEventListener('click', function(){
 });
 
 // 🔐 Chế độ công khai: ẩn biểu tượng khóa nhưng vẫn giữ một lối vào Admin kín đáo.
-// Nhấn giữ tab “Cá nhân” khoảng 1.8 giây (hoặc chạm 5 lần nhanh) để mở cửa sổ đăng nhập.
+// V5.48: lối vào DUY NHẤT cho Admin ở chế độ công khai = nhấn giữ tab “Cá nhân” khoảng 2 giây.
+// (Đã bỏ nút "Đăng nhập Admin" lộ ra và kiểu chạm nhanh 5 lần — nhân viên bấm liên tục khi app chậm sẽ mở nhầm.)
 (function initHiddenAdminLogin(){
   const tab=document.querySelector('.tab-btn[data-tab="personal"]');
   if(!tab) return;
-  let timer=null, taps=0, tapTimer=null;
+  let timer=null;
   const openSecret=()=>{ if(!isAdminV4) openLoginGate(); };
   tab.addEventListener('pointerdown',()=>{
     if(isAdminV4) return;
     clearTimeout(timer);
-    timer=setTimeout(openSecret,1800);
+    timer=setTimeout(openSecret,2000);
   });
   ['pointerup','pointercancel','pointerleave'].forEach(ev=>tab.addEventListener(ev,()=>clearTimeout(timer)));
-  tab.addEventListener('click',()=>{
-    if(isAdminV4) return;
-    taps++;
-    clearTimeout(tapTimer);
-    if(taps>=5){ taps=0; openSecret(); return; }
-    tapTimer=setTimeout(()=>{taps=0;},900);
-  });
 })();
 
 
@@ -16930,6 +16927,14 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
 
   /* ---- Ngữ cảnh an toàn: đăng nhập dùng crypto.subtle, chỉ chạy được trên https/localhost ---- */
   function secureOk(){ try{ return !!(window.isSecureContext && window.crypto && window.crypto.subtle); }catch(e){ return false; } }
+  // V5.48: link "Kiểm tra hệ thống" trong hộp đăng nhập chỉ hiện khi CẦN chẩn đoán: trình duyệt chặn đăng nhập, hoặc đã nhập sai ≥ 2 lần.
+  function updateLoginHealthLink(){
+    var wrap = document.getElementById('loginHealthWrap'); if(!wrap) return;
+    var warn = document.getElementById('loginSecureWarn'), blocked = !!(warn && warn.style.display !== 'none' && (warn.textContent || '').trim());
+    var helped = false; try{ helped = sessionStorage.getItem('v4_login_help') === '1'; }catch(e){}
+    wrap.style.display = (blocked || helped) ? '' : 'none';
+  }
+  window.__loginHelpOn = function(){ try{ sessionStorage.setItem('v4_login_help','1'); }catch(e){} updateLoginHealthLink(); };
   function applyLoginSecure(){
     var w = document.getElementById('loginSecureWarn'), b = document.getElementById('btnDoLogin');
     if(!w) return;
@@ -16940,7 +16945,7 @@ safeRun(renderMvRows, 'Điều chuyển linh hoạt');
       if(b) b.disabled = true;
     }
   }
-  if(typeof openLoginGate === 'function'){ var _ol = openLoginGate; set_openLoginGate(function(){ var r = _ol.apply(this, arguments); applyLoginSecure(); return r; }); }
+  if(typeof openLoginGate === 'function'){ var _ol = openLoginGate; set_openLoginGate(function(){ var r = _ol.apply(this, arguments); applyLoginSecure(); updateLoginHealthLink(); return r; }); }
   applyLoginSecure();
 
   /* ---- Thao tác gần nhất (chỉ ghi id/tab, KHÔNG ghi chữ hiển thị để không lộ tên người) ---- */
@@ -20408,10 +20413,6 @@ html.skin-v6.v6-public body{padding-left:0!important;}
 html.skin-v6.v6-public{--v6-top:58px;}
 html.skin-v6.v6-public #v6Sun{margin-left:auto;}
 html.skin-v6.v6-public #v6Top .v6-title{padding-left:4px;}
-.v6-plogin{display:none;}
-html.skin-v6.v6-public .v6-plogin{display:flex;justify-content:flex-end;margin:0 0 10px;}
-.v6-plogin button{height:40px;padding:0 16px;border-radius:20px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit;font-size:14px;font-weight:600;cursor:pointer;}
-.v6-plogin button:hover{border-color:var(--v6-blue);color:var(--v6-blue);}
 /* ---------- Điện thoại ---------- */
 @media (max-width:899px){
   html.skin-v6{--v6-top:112px;--v6-sidew:0px;}
@@ -20706,13 +20707,23 @@ html.skin-v6.v6-public .v6-plogin{display:flex;justify-content:flex-end;margin:0
   $('v6Sync').addEventListener('click', function(){ if(!isPublic()) clickId('btnShortcutSync'); });
   $('v6Sun').addEventListener('click', function(){ clickId('btnToggleDarkMode'); });
   $('v6Avatar').addEventListener('click', function(){ clickId('btnAuthToggle'); });
-  var persTab = $('tab-personal');
-  if(persTab){
-    var pl = doc.createElement('div'); pl.className = 'v6-plogin';
-    pl.innerHTML = '<button type="button" id="v6PLogin">🔐 Đăng nhập Admin</button>';
-    persTab.insertBefore(pl, persTab.firstChild);
-    pl.querySelector('button').addEventListener('click', function(){ clickId('btnAuthToggle'); });
-  }
+  // V5.49: đã BỎ nút "🔐 Đăng nhập Admin" ở đầu tab Cá nhân (nhân viên tò mò bấm vào sẽ thấy hộp đăng nhập).
+  // Lối vào kín của Admin = NHẤN GIỮ ~2 giây vào chỗ trống trên THANH ĐẦU TRANG (#v6Top: hiện ở mọi kích thước — dọc, ngang, iPad, máy tính;
+  // tiêu đề trang thì bị ẩn khi màn hình rộng ≥ 900px nên không dùng riêng được). Bấm vào các nút thật trên thanh (Menu, Tìm, Sáng/tối…) không tính.
+  // Máy có thanh tab vẫn nhấn giữ tab "Cá nhân" được (journal-actions-login.js).
+  (function(){
+    var tt = doc.getElementById('v6Top'); if(!tt) return;
+    var st = doc.createElement('style'); st.textContent = '#v6Top{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;}'; doc.head.appendChild(st);
+    var timer = null, isAdm = function(){ return typeof isAdminV4 !== 'undefined' && isAdminV4; };
+    tt.addEventListener('pointerdown', function(e){
+      if(isAdm()) return;
+      if(e.target && e.target.closest && e.target.closest('button, a, input, select, textarea')) return;   // chỉ chỗ trống/chữ tiêu đề, không tính nút thật
+      clearTimeout(timer);
+      timer = setTimeout(function(){ if(!isAdm() && typeof openLoginGate === 'function') openLoginGate(); }, 2000);
+    });
+    ['pointerup','pointercancel','pointerleave'].forEach(function(ev){ tt.addEventListener(ev, function(){ clearTimeout(timer); }); });
+    tt.addEventListener('contextmenu', function(e){ e.preventDefault(); });   // iPhone: nhấn giữ không bật menu/phóng to chữ
+  })();
 
   // ---------------------------------------------------------------- CÔNG TẮC BẬT / TẮT (Cài đặt › Giao diện › Kiểu giao diện)
   function paintSwitch(){
